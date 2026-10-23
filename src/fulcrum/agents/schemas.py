@@ -1,0 +1,112 @@
+"""Agent-local schemas: LLM output wrappers and the shared workflow state.
+
+These are NOT cross-service contracts (those live in `fulcrum.contracts`). They describe what each LLM
+agent returns (`EditorOutput`, `ReviewOutput`, …) and the typed state the explain-moment workflow passes
+between steps (`MomentContext`). In the Microsoft Agent Framework port, `MomentContext` becomes the
+workflow's shared state and each step becomes an executor that reads and writes it.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
+
+from fulcrum.contracts import (
+    CheckStatus,
+    Explanation,
+    Insight,
+    InsightVariant,
+    Moment,
+    OverlayCue,
+    Team,
+)
+
+
+class EditorOutput(BaseModel):
+    """Persona Editor output: exactly four variants (analyst, casual, club_fan home, club_fan away)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    variants: list[InsightVariant]
+
+
+class TranslationOutput(BaseModel):
+    """Translator output: the source variants, translated, in the same order."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    variants: list[InsightVariant]
+
+
+class ReviewOutput(BaseModel):
+    """LLM reviewer verdict for big moments (significance >= 0.6, `FULCRUM_LLM_REVIEW=1`)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    supported: bool
+    issues: list[str] = Field(default_factory=list)
+
+
+class RecapOutput(BaseModel):
+    """Match Reporter output. Turned into a `fulcrum.contracts.Recap` after fact-checking."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(max_length=80)
+    summary: str = Field(max_length=1200)
+    key_moment_ids: list[str] = Field(default_factory=list)
+    player_of_the_match_id: str | None = None
+
+
+class MomentContext(BaseModel):
+    """Shared, typed state for one run of the explain-moment workflow.
+
+    Every step reads what it needs and writes its result here; routing between steps is decided only
+    from this state (see `orchestrator.EDGES`). Input fields are set once by the caller; output fields
+    are filled as the workflow advances.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # --- inputs ---------------------------------------------------------------------------------- #
+    moment: Moment
+    home: Team
+    away: Team
+    score: str = Field(description="Current score as 'home-away', e.g. '2-1'")
+    recent_sequence: list[str] = Field(default_factory=list, description="Compact lines, oldest first")
+    foreign_names: list[str] = Field(
+        default_factory=list, description="League team/player names NOT in this match (must not appear)"
+    )
+
+    # --- workflow bookkeeping -------------------------------------------------------------------- #
+    attempt: int = 1
+    max_attempts: int = 2
+    issues: list[str] = Field(default_factory=list, description="Issues from the latest failed check")
+    explanation_failed: bool = Field(False, description="True if the latest issues include the explanation")
+    error: str | None = Field(None, description="Last LLM error/timeout message, cleared on success")
+    timed_out: bool = False
+    notes: list[str] = Field(default_factory=list, description="Audit trail → Insight.check_notes")
+    trace: list[str] = Field(default_factory=list, description="Step names in execution order")
+
+    # --- outputs --------------------------------------------------------------------------------- #
+    explanation: Explanation | None = None
+    variants: list[InsightVariant] = Field(default_factory=list)
+    status: CheckStatus | None = None
+    latency_ms: int | None = None
+    insight: Insight | None = None
+    cues: list[OverlayCue] = Field(default_factory=list)
+
+    _cache: dict[str, Any] = PrivateAttr(default_factory=dict)
+
+    @property
+    def can_retry(self) -> bool:
+        """True while another attempt is allowed (timeouts never retry: the latency budget is spent)."""
+        return self.attempt < self.max_attempts and not self.timed_out
+
+    def team_name(self, team_id: str | None) -> str | None:
+        """Return the display name for `team_id` if it plays in this match."""
+        for team in (self.home, self.away):
+            if team.team_id == team_id:
+                return team.name
+        return None
