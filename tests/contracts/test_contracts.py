@@ -6,13 +6,21 @@ import pytest
 from fulcrum.bus.base import MemoryBus
 from fulcrum.contracts import (
     TOPIC_EVENTS,
+    TOPIC_INSIGHTS,
+    CheckStatus,
     EventType,
     Explanation,
     Fact,
+    Insight,
+    InsightsEnvelope,
     MatchEvent,
     Moment,
     MomentType,
+    OverlayCue,
+    OverlayTemplate,
     PassAttributes,
+    Persona,
+    Recap,
     Team,
     WinProbability,
 )
@@ -103,3 +111,55 @@ def test_moment_requires_facts():
         trigger="goal",
     )
     assert m.facts[0].value == "67'"
+
+
+def _envelope_items() -> list[Insight | OverlayCue | Recap]:
+    insight = Insight(
+        match_id="m1",
+        moment_id="mo1",
+        clock_ms=4_000_000,
+        explanation=Explanation(
+            headline="Swing", why_it_matters="x", tactical_tag="turning_point", key_fact_keys=["minute"]
+        ),
+        variants=[],
+        check_status=CheckStatus.PASSED,
+    )
+    cue = OverlayCue(
+        match_id="m1",
+        template=OverlayTemplate.LOWER_THIRD,
+        priority=5,
+        sync_clock_ms=4_000_000,
+        sync_seq=900,
+        show_at_clock_ms=4_002_000,
+        duration_ms=8000,
+        persona=Persona.CASUAL,
+        headline="Goal",
+    )
+    recap = Recap(
+        match_id="m1",
+        persona=Persona.CASUAL,
+        title="Full time",
+        summary="x",
+        key_moment_ids=["mo1"],
+        check_status=CheckStatus.FALLBACK,
+    )
+    return [insight, cue, recap]
+
+
+async def test_insights_envelope_roundtrip_over_bus():
+    bus = MemoryBus()
+    bus.register(TOPIC_INSIGHTS, "api")
+    items = _envelope_items()
+    for item in items:
+        await bus.publish(TOPIC_INSIGHTS, "m1", InsightsEnvelope.wrap(item))
+    sub = bus.subscribe(TOPIC_INSIGHTS, InsightsEnvelope, "api")
+    got = [await anext(sub) for _ in items]
+    assert [e.kind for e in got] == ["insight", "cue", "recap"]
+    assert [type(e.data) for e in got] == [Insight, OverlayCue, Recap]
+    assert got[1].data.cue_id == items[1].cue_id
+
+
+def test_insights_envelope_rejects_mismatched_kind():
+    cue = _envelope_items()[1]
+    with pytest.raises(ValueError):
+        InsightsEnvelope(kind="insight", data=cue)

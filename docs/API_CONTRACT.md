@@ -18,8 +18,8 @@ The pydantic models win over this document if they ever disagree — then fix th
 | `insights` | Insight \| OverlayCue \| Recap (envelope below) | match_id | agents | api (`api`) | 2 |
 
 `insights` carries an envelope so one topic serves three types:
-`{"kind": "insight" | "cue" | "recap", "data": {...}}` — define `InsightsEnvelope` in the agents module if
-needed; it is NOT yet in contracts (add it via CONTRACT_CHANGES if you need it typed).
+`{"kind": "insight" | "cue" | "recap", "data": {...}}` — this is `InsightsEnvelope` in `fulcrum.contracts`.
+Producers publish `InsightsEnvelope.wrap(item)`; consumers subscribe with `InsightsEnvelope` and branch on `kind`.
 
 **Ordering & idempotency:** key = match_id ⇒ per-match ordering within a partition. Consumers de-dupe on
 `(match_id, seq)` for events and on ids for everything else. Engine publishes `MatchState` at most every

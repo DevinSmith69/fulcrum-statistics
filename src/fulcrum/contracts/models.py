@@ -20,7 +20,7 @@ from enum import StrEnum
 from typing import Any, Literal
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 PITCH_LENGTH_M = 105.0
 PITCH_WIDTH_M = 68.0
@@ -500,6 +500,31 @@ class Recap(_Base):
     check_status: CheckStatus
 
 
+class InsightsEnvelope(_Base):
+    """Wrapper for the `insights` topic, which carries three message types.
+
+    Build with `InsightsEnvelope.wrap(item)`; `kind` must match the type of `data`.
+    """
+
+    kind: Literal["insight", "cue", "recap"]
+    data: Insight | OverlayCue | Recap
+
+    @model_validator(mode="after")
+    def _kind_matches_data(self) -> InsightsEnvelope:
+        expected = _ENVELOPE_KINDS[type(self.data)]
+        if self.kind != expected:
+            raise ValueError(f"kind '{self.kind}' does not match data type {type(self.data).__name__}")
+        return self
+
+    @classmethod
+    def wrap(cls, item: Insight | OverlayCue | Recap) -> InsightsEnvelope:
+        """Wrap an Insight, OverlayCue or Recap with the correct `kind`."""
+        return cls(kind=_ENVELOPE_KINDS[type(item)], data=item)
+
+
+_ENVELOPE_KINDS: dict[type[BaseModel], str] = {Insight: "insight", OverlayCue: "cue", Recap: "recap"}
+
+
 # --------------------------------------------------------------------------- #
 # WebSocket protocol (api <-> web)
 # --------------------------------------------------------------------------- #
@@ -543,6 +568,7 @@ ALL_MODELS: list[type[BaseModel]] = [
     Insight,
     OverlayCue,
     Recap,
+    InsightsEnvelope,
     ClientMessage,
     ServerMessage,
 ]

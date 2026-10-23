@@ -9,3 +9,4 @@ web/dist/
 .azure/
 data/matches/*.jsonl
 !data/matches/sample*.jsonl
+.idea/
