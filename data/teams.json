@@ -1,0 +1,1206 @@
+[
+  {
+    "team_id": "NBA",
+    "name": "Northbridge Athletic",
+    "short_name": "NBA",
+    "primary_colour": "#1E3A8A",
+    "secondary_colour": "#F8FAFC",
+    "formation": "4-3-3",
+    "attack_rating": 82,
+    "defence_rating": 78,
+    "pre_match_goal_rate": 1.75,
+    "players": [
+      {
+        "player_id": "NBA-01",
+        "name": "Pavel Penhallow",
+        "short_name": "Penhallow",
+        "shirt_number": 1,
+        "position": "GK",
+        "role": "GK",
+        "ratings": {
+          "passing": 74,
+          "finishing": 15,
+          "pace": 81,
+          "tackling": 46,
+          "dribbling": 41,
+          "goalkeeping": 91
+        }
+      },
+      {
+        "player_id": "NBA-02",
+        "name": "Wim Mortlake",
+        "short_name": "Mortlake",
+        "shirt_number": 2,
+        "position": "DF",
+        "role": "RB",
+        "ratings": {
+          "passing": 80,
+          "finishing": 41,
+          "pace": 80,
+          "tackling": 93,
+          "dribbling": 82,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "NBA-03",
+        "name": "Marek Plumridge",
+        "short_name": "Plumridge",
+        "shirt_number": 5,
+        "position": "DF",
+        "role": "RCB",
+        "ratings": {
+          "passing": 82,
+          "finishing": 53,
+          "pace": 84,
+          "tackling": 84,
+          "dribbling": 90,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "NBA-04",
+        "name": "Petr Kerridge",
+        "short_name": "Kerridge",
+        "shirt_number": 6,
+        "position": "DF",
+        "role": "LCB",
+        "ratings": {
+          "passing": 84,
+          "finishing": 48,
+          "pace": 76,
+          "tackling": 90,
+          "dribbling": 65,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "NBA-05",
+        "name": "Dario Westmacott",
+        "short_name": "Westmacott",
+        "shirt_number": 3,
+        "position": "DF",
+        "role": "LB",
+        "ratings": {
+          "passing": 73,
+          "finishing": 50,
+          "pace": 83,
+          "tackling": 85,
+          "dribbling": 78,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "NBA-06",
+        "name": "Oskar Frome-Ashby",
+        "short_name": "Frome-Ashby",
+        "shirt_number": 4,
+        "position": "MF",
+        "role": "CDM",
+        "ratings": {
+          "passing": 82,
+          "finishing": 58,
+          "pace": 70,
+          "tackling": 78,
+          "dribbling": 61,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "NBA-07",
+        "name": "Cormac Quarrie",
+        "short_name": "Quarrie",
+        "shirt_number": 8,
+        "position": "MF",
+        "role": "RCM",
+        "ratings": {
+          "passing": 86,
+          "finishing": 62,
+          "pace": 68,
+          "tackling": 72,
+          "dribbling": 73,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "NBA-08",
+        "name": "Soren Loxley",
+        "short_name": "Loxley",
+        "shirt_number": 10,
+        "position": "MF",
+        "role": "LCM",
+        "ratings": {
+          "passing": 80,
+          "finishing": 81,
+          "pace": 85,
+          "tackling": 85,
+          "dribbling": 71,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "NBA-09",
+        "name": "Gael Aldane",
+        "short_name": "Aldane",
+        "shirt_number": 7,
+        "position": "FW",
+        "role": "RW",
+        "ratings": {
+          "passing": 76,
+          "finishing": 83,
+          "pace": 82,
+          "tackling": 61,
+          "dribbling": 76,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "NBA-10",
+        "name": "Iker Brennick",
+        "short_name": "Brennick",
+        "shirt_number": 9,
+        "position": "FW",
+        "role": "ST",
+        "ratings": {
+          "passing": 87,
+          "finishing": 85,
+          "pace": 83,
+          "tackling": 54,
+          "dribbling": 88,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "NBA-11",
+        "name": "Nils Fenwick-Shaw",
+        "short_name": "Fenwick-Shaw",
+        "shirt_number": 11,
+        "position": "FW",
+        "role": "LW",
+        "ratings": {
+          "passing": 80,
+          "finishing": 87,
+          "pace": 81,
+          "tackling": 51,
+          "dribbling": 83,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "NBA-12",
+        "name": "Petr Iversen",
+        "short_name": "Iversen",
+        "shirt_number": 13,
+        "position": "GK",
+        "role": "GK",
+        "ratings": {
+          "passing": 61,
+          "finishing": 15,
+          "pace": 83,
+          "tackling": 49,
+          "dribbling": 43,
+          "goalkeeping": 79
+        }
+      },
+      {
+        "player_id": "NBA-13",
+        "name": "Mateo Zelenko",
+        "short_name": "Zelenko",
+        "shirt_number": 15,
+        "position": "DF",
+        "role": "CB",
+        "ratings": {
+          "passing": 73,
+          "finishing": 45,
+          "pace": 73,
+          "tackling": 82,
+          "dribbling": 75,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "NBA-14",
+        "name": "Zeke Grimaldi",
+        "short_name": "Grimaldi",
+        "shirt_number": 22,
+        "position": "DF",
+        "role": "FB",
+        "ratings": {
+          "passing": 73,
+          "finishing": 39,
+          "pace": 75,
+          "tackling": 82,
+          "dribbling": 67,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "NBA-15",
+        "name": "Marek Rasmussen-Vale",
+        "short_name": "Rasmussen-Vale",
+        "shirt_number": 16,
+        "position": "MF",
+        "role": "CM",
+        "ratings": {
+          "passing": 78,
+          "finishing": 59,
+          "pace": 78,
+          "tackling": 78,
+          "dribbling": 67,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "NBA-16",
+        "name": "Rafe Elstow",
+        "short_name": "Elstow",
+        "shirt_number": 14,
+        "position": "MF",
+        "role": "CAM",
+        "ratings": {
+          "passing": 82,
+          "finishing": 62,
+          "pace": 78,
+          "tackling": 76,
+          "dribbling": 63,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "NBA-17",
+        "name": "Niko Zamorano",
+        "short_name": "Zamorano",
+        "shirt_number": 17,
+        "position": "FW",
+        "role": "W",
+        "ratings": {
+          "passing": 75,
+          "finishing": 78,
+          "pace": 78,
+          "tackling": 52,
+          "dribbling": 74,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "NBA-18",
+        "name": "Pavel Nettleford",
+        "short_name": "Nettleford",
+        "shirt_number": 19,
+        "position": "FW",
+        "role": "ST",
+        "ratings": {
+          "passing": 78,
+          "finishing": 74,
+          "pace": 75,
+          "tackling": 59,
+          "dribbling": 78,
+          "goalkeeping": 10
+        }
+      }
+    ]
+  },
+  {
+    "team_id": "RVR",
+    "name": "Riverside Rovers",
+    "short_name": "RVR",
+    "primary_colour": "#B91C1C",
+    "secondary_colour": "#FDE68A",
+    "formation": "4-3-3",
+    "attack_rating": 76,
+    "defence_rating": 74,
+    "pre_match_goal_rate": 1.45,
+    "players": [
+      {
+        "player_id": "RVR-01",
+        "name": "Idris Venn",
+        "short_name": "Venn",
+        "shirt_number": 1,
+        "position": "GK",
+        "role": "GK",
+        "ratings": {
+          "passing": 72,
+          "finishing": 15,
+          "pace": 76,
+          "tackling": 47,
+          "dribbling": 36,
+          "goalkeeping": 77
+        }
+      },
+      {
+        "player_id": "RVR-02",
+        "name": "Silas Castellane",
+        "short_name": "Castellane",
+        "shirt_number": 2,
+        "position": "DF",
+        "role": "RB",
+        "ratings": {
+          "passing": 76,
+          "finishing": 40,
+          "pace": 77,
+          "tackling": 78,
+          "dribbling": 72,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "RVR-03",
+        "name": "Nuno Yardley",
+        "short_name": "Yardley",
+        "shirt_number": 5,
+        "position": "DF",
+        "role": "RCB",
+        "ratings": {
+          "passing": 77,
+          "finishing": 47,
+          "pace": 78,
+          "tackling": 78,
+          "dribbling": 70,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "RVR-04",
+        "name": "Pim Ravensworth",
+        "short_name": "Ravensworth",
+        "shirt_number": 6,
+        "position": "DF",
+        "role": "LCB",
+        "ratings": {
+          "passing": 72,
+          "finishing": 46,
+          "pace": 77,
+          "tackling": 74,
+          "dribbling": 73,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "RVR-05",
+        "name": "Ivo Lanyon",
+        "short_name": "Lanyon",
+        "shirt_number": 3,
+        "position": "DF",
+        "role": "LB",
+        "ratings": {
+          "passing": 87,
+          "finishing": 46,
+          "pace": 80,
+          "tackling": 83,
+          "dribbling": 61,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "RVR-06",
+        "name": "Ulric Underhill",
+        "short_name": "Underhill",
+        "shirt_number": 4,
+        "position": "MF",
+        "role": "CDM",
+        "ratings": {
+          "passing": 76,
+          "finishing": 59,
+          "pace": 72,
+          "tackling": 74,
+          "dribbling": 68,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "RVR-07",
+        "name": "Leif Brightmore",
+        "short_name": "Brightmore",
+        "shirt_number": 8,
+        "position": "MF",
+        "role": "RCM",
+        "ratings": {
+          "passing": 85,
+          "finishing": 62,
+          "pace": 81,
+          "tackling": 78,
+          "dribbling": 72,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "RVR-08",
+        "name": "Niko Orrell",
+        "short_name": "Orrell",
+        "shirt_number": 10,
+        "position": "MF",
+        "role": "LCM",
+        "ratings": {
+          "passing": 86,
+          "finishing": 72,
+          "pace": 85,
+          "tackling": 79,
+          "dribbling": 72,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "RVR-09",
+        "name": "Gael Draycott",
+        "short_name": "Draycott",
+        "shirt_number": 7,
+        "position": "FW",
+        "role": "RW",
+        "ratings": {
+          "passing": 75,
+          "finishing": 86,
+          "pace": 89,
+          "tackling": 54,
+          "dribbling": 83,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "RVR-10",
+        "name": "Otto Ironside",
+        "short_name": "Ironside",
+        "shirt_number": 9,
+        "position": "FW",
+        "role": "ST",
+        "ratings": {
+          "passing": 69,
+          "finishing": 84,
+          "pace": 83,
+          "tackling": 60,
+          "dribbling": 66,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "RVR-11",
+        "name": "Oskar Haverford",
+        "short_name": "Haverford",
+        "shirt_number": 11,
+        "position": "FW",
+        "role": "LW",
+        "ratings": {
+          "passing": 69,
+          "finishing": 79,
+          "pace": 78,
+          "tackling": 51,
+          "dribbling": 80,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "RVR-12",
+        "name": "Pavel Nakamura-Bell",
+        "short_name": "Nakamura-Bell",
+        "shirt_number": 13,
+        "position": "GK",
+        "role": "GK",
+        "ratings": {
+          "passing": 69,
+          "finishing": 15,
+          "pace": 74,
+          "tackling": 36,
+          "dribbling": 38,
+          "goalkeeping": 79
+        }
+      },
+      {
+        "player_id": "RVR-13",
+        "name": "Pavel Pellerin",
+        "short_name": "Pellerin",
+        "shirt_number": 15,
+        "position": "DF",
+        "role": "CB",
+        "ratings": {
+          "passing": 74,
+          "finishing": 42,
+          "pace": 57,
+          "tackling": 81,
+          "dribbling": 62,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "RVR-14",
+        "name": "Yusuf Faraday",
+        "short_name": "Faraday",
+        "shirt_number": 22,
+        "position": "DF",
+        "role": "FB",
+        "ratings": {
+          "passing": 72,
+          "finishing": 40,
+          "pace": 61,
+          "tackling": 84,
+          "dribbling": 60,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "RVR-15",
+        "name": "Soren Ellery",
+        "short_name": "Ellery",
+        "shirt_number": 16,
+        "position": "MF",
+        "role": "CM",
+        "ratings": {
+          "passing": 88,
+          "finishing": 49,
+          "pace": 65,
+          "tackling": 69,
+          "dribbling": 59,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "RVR-16",
+        "name": "Wim Eskildsen",
+        "short_name": "Eskildsen",
+        "shirt_number": 14,
+        "position": "MF",
+        "role": "CAM",
+        "ratings": {
+          "passing": 71,
+          "finishing": 50,
+          "pace": 58,
+          "tackling": 65,
+          "dribbling": 63,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "RVR-17",
+        "name": "Otto Halvorsen",
+        "short_name": "Halvorsen",
+        "shirt_number": 17,
+        "position": "FW",
+        "role": "W",
+        "ratings": {
+          "passing": 68,
+          "finishing": 73,
+          "pace": 65,
+          "tackling": 53,
+          "dribbling": 81,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "RVR-18",
+        "name": "Yori Kowalczyk",
+        "short_name": "Kowalczyk",
+        "shirt_number": 19,
+        "position": "FW",
+        "role": "ST",
+        "ratings": {
+          "passing": 66,
+          "finishing": 69,
+          "pace": 75,
+          "tackling": 42,
+          "dribbling": 72,
+          "goalkeeping": 10
+        }
+      }
+    ]
+  },
+  {
+    "team_id": "HLC",
+    "name": "Harlow Cross",
+    "short_name": "HLC",
+    "primary_colour": "#065F46",
+    "secondary_colour": "#F0FDF4",
+    "formation": "4-3-3",
+    "attack_rating": 70,
+    "defence_rating": 80,
+    "pre_match_goal_rate": 1.2,
+    "players": [
+      {
+        "player_id": "HLC-01",
+        "name": "Yanis Ullmann",
+        "short_name": "Ullmann",
+        "shirt_number": 1,
+        "position": "GK",
+        "role": "GK",
+        "ratings": {
+          "passing": 72,
+          "finishing": 15,
+          "pace": 84,
+          "tackling": 36,
+          "dribbling": 42,
+          "goalkeeping": 71
+        }
+      },
+      {
+        "player_id": "HLC-02",
+        "name": "Wren Kessler",
+        "short_name": "Kessler",
+        "shirt_number": 2,
+        "position": "DF",
+        "role": "RB",
+        "ratings": {
+          "passing": 73,
+          "finishing": 35,
+          "pace": 74,
+          "tackling": 89,
+          "dribbling": 78,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "HLC-03",
+        "name": "Nuno Carwen",
+        "short_name": "Carwen",
+        "shirt_number": 5,
+        "position": "DF",
+        "role": "RCB",
+        "ratings": {
+          "passing": 72,
+          "finishing": 38,
+          "pace": 76,
+          "tackling": 85,
+          "dribbling": 66,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "HLC-04",
+        "name": "Petr Northcott",
+        "short_name": "Northcott",
+        "shirt_number": 6,
+        "position": "DF",
+        "role": "LCB",
+        "ratings": {
+          "passing": 81,
+          "finishing": 45,
+          "pace": 73,
+          "tackling": 84,
+          "dribbling": 76,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "HLC-05",
+        "name": "Leif Mendhall",
+        "short_name": "Mendhall",
+        "shirt_number": 3,
+        "position": "DF",
+        "role": "LB",
+        "ratings": {
+          "passing": 72,
+          "finishing": 44,
+          "pace": 73,
+          "tackling": 82,
+          "dribbling": 69,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "HLC-06",
+        "name": "Lazlo Eversley",
+        "short_name": "Eversley",
+        "shirt_number": 4,
+        "position": "MF",
+        "role": "CDM",
+        "ratings": {
+          "passing": 81,
+          "finishing": 67,
+          "pace": 76,
+          "tackling": 64,
+          "dribbling": 62,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "HLC-07",
+        "name": "Dario Okonkwo-Reid",
+        "short_name": "Okonkwo-Reid",
+        "shirt_number": 8,
+        "position": "MF",
+        "role": "RCM",
+        "ratings": {
+          "passing": 79,
+          "finishing": 66,
+          "pace": 74,
+          "tackling": 74,
+          "dribbling": 69,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "HLC-08",
+        "name": "Basil Tolliver",
+        "short_name": "Tolliver",
+        "shirt_number": 10,
+        "position": "MF",
+        "role": "LCM",
+        "ratings": {
+          "passing": 83,
+          "finishing": 62,
+          "pace": 85,
+          "tackling": 85,
+          "dribbling": 59,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "HLC-09",
+        "name": "Pavel Trevanion",
+        "short_name": "Trevanion",
+        "shirt_number": 7,
+        "position": "FW",
+        "role": "RW",
+        "ratings": {
+          "passing": 70,
+          "finishing": 75,
+          "pace": 83,
+          "tackling": 52,
+          "dribbling": 87,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "HLC-10",
+        "name": "Idris Lindqvist",
+        "short_name": "Lindqvist",
+        "shirt_number": 9,
+        "position": "FW",
+        "role": "ST",
+        "ratings": {
+          "passing": 78,
+          "finishing": 85,
+          "pace": 78,
+          "tackling": 60,
+          "dribbling": 75,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "HLC-11",
+        "name": "Nils Bellweather",
+        "short_name": "Bellweather",
+        "shirt_number": 11,
+        "position": "FW",
+        "role": "LW",
+        "ratings": {
+          "passing": 70,
+          "finishing": 88,
+          "pace": 74,
+          "tackling": 62,
+          "dribbling": 75,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "HLC-12",
+        "name": "Tobin Gallardo-Penn",
+        "short_name": "Gallardo-Penn",
+        "shirt_number": 13,
+        "position": "GK",
+        "role": "GK",
+        "ratings": {
+          "passing": 68,
+          "finishing": 15,
+          "pace": 71,
+          "tackling": 34,
+          "dribbling": 41,
+          "goalkeeping": 70
+        }
+      },
+      {
+        "player_id": "HLC-13",
+        "name": "Soren Upshaw",
+        "short_name": "Upshaw",
+        "shirt_number": 15,
+        "position": "DF",
+        "role": "CB",
+        "ratings": {
+          "passing": 66,
+          "finishing": 34,
+          "pace": 75,
+          "tackling": 79,
+          "dribbling": 66,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "HLC-14",
+        "name": "Cyrus Saltmarsh",
+        "short_name": "Saltmarsh",
+        "shirt_number": 22,
+        "position": "DF",
+        "role": "FB",
+        "ratings": {
+          "passing": 70,
+          "finishing": 31,
+          "pace": 73,
+          "tackling": 70,
+          "dribbling": 64,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "HLC-15",
+        "name": "Bruno Whitlock",
+        "short_name": "Whitlock",
+        "shirt_number": 16,
+        "position": "MF",
+        "role": "CM",
+        "ratings": {
+          "passing": 72,
+          "finishing": 58,
+          "pace": 68,
+          "tackling": 73,
+          "dribbling": 60,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "HLC-16",
+        "name": "Pavel Nantes-Okafor",
+        "short_name": "Nantes-Okafor",
+        "shirt_number": 14,
+        "position": "MF",
+        "role": "CAM",
+        "ratings": {
+          "passing": 73,
+          "finishing": 58,
+          "pace": 65,
+          "tackling": 72,
+          "dribbling": 64,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "HLC-17",
+        "name": "Mateo Thornbury",
+        "short_name": "Thornbury",
+        "shirt_number": 17,
+        "position": "FW",
+        "role": "W",
+        "ratings": {
+          "passing": 67,
+          "finishing": 78,
+          "pace": 70,
+          "tackling": 46,
+          "dribbling": 66,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "HLC-18",
+        "name": "Niko Dunmore",
+        "short_name": "Dunmore",
+        "shirt_number": 19,
+        "position": "FW",
+        "role": "ST",
+        "ratings": {
+          "passing": 63,
+          "finishing": 89,
+          "pace": 80,
+          "tackling": 45,
+          "dribbling": 72,
+          "goalkeeping": 10
+        }
+      }
+    ]
+  },
+  {
+    "team_id": "MDU",
+    "name": "Marsh Dock United",
+    "short_name": "MDU",
+    "primary_colour": "#6D28D9",
+    "secondary_colour": "#FACC15",
+    "formation": "4-3-3",
+    "attack_rating": 72,
+    "defence_rating": 66,
+    "pre_match_goal_rate": 1.35,
+    "players": [
+      {
+        "player_id": "MDU-01",
+        "name": "Marek Quennell",
+        "short_name": "Quennell",
+        "shirt_number": 1,
+        "position": "GK",
+        "role": "GK",
+        "ratings": {
+          "passing": 69,
+          "finishing": 15,
+          "pace": 67,
+          "tackling": 35,
+          "dribbling": 39,
+          "goalkeeping": 70
+        }
+      },
+      {
+        "player_id": "MDU-02",
+        "name": "Jonah Pickering-Lowe",
+        "short_name": "Pickering-Lowe",
+        "shirt_number": 2,
+        "position": "DF",
+        "role": "RB",
+        "ratings": {
+          "passing": 71,
+          "finishing": 37,
+          "pace": 69,
+          "tackling": 77,
+          "dribbling": 62,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "MDU-03",
+        "name": "Lazlo Hartsell",
+        "short_name": "Hartsell",
+        "shirt_number": 5,
+        "position": "DF",
+        "role": "RCB",
+        "ratings": {
+          "passing": 61,
+          "finishing": 43,
+          "pace": 72,
+          "tackling": 75,
+          "dribbling": 63,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "MDU-04",
+        "name": "Xavi Jarrow",
+        "short_name": "Jarrow",
+        "shirt_number": 6,
+        "position": "DF",
+        "role": "LCB",
+        "ratings": {
+          "passing": 78,
+          "finishing": 34,
+          "pace": 70,
+          "tackling": 73,
+          "dribbling": 73,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "MDU-05",
+        "name": "Niko Gillow",
+        "short_name": "Gillow",
+        "shirt_number": 3,
+        "position": "DF",
+        "role": "LB",
+        "ratings": {
+          "passing": 68,
+          "finishing": 36,
+          "pace": 68,
+          "tackling": 78,
+          "dribbling": 69,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "MDU-06",
+        "name": "Basil Juhasz",
+        "short_name": "Juhasz",
+        "shirt_number": 4,
+        "position": "MF",
+        "role": "CDM",
+        "ratings": {
+          "passing": 73,
+          "finishing": 53,
+          "pace": 73,
+          "tackling": 74,
+          "dribbling": 66,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "MDU-07",
+        "name": "Hale Oddie",
+        "short_name": "Oddie",
+        "shirt_number": 8,
+        "position": "MF",
+        "role": "RCM",
+        "ratings": {
+          "passing": 85,
+          "finishing": 66,
+          "pace": 65,
+          "tackling": 66,
+          "dribbling": 72,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "MDU-08",
+        "name": "Ivo Varga",
+        "short_name": "Varga",
+        "shirt_number": 10,
+        "position": "MF",
+        "role": "LCM",
+        "ratings": {
+          "passing": 72,
+          "finishing": 55,
+          "pace": 70,
+          "tackling": 71,
+          "dribbling": 60,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "MDU-09",
+        "name": "Lucan Jessop",
+        "short_name": "Jessop",
+        "shirt_number": 7,
+        "position": "FW",
+        "role": "RW",
+        "ratings": {
+          "passing": 68,
+          "finishing": 69,
+          "pace": 78,
+          "tackling": 50,
+          "dribbling": 73,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "MDU-10",
+        "name": "Gael Rookwood",
+        "short_name": "Rookwood",
+        "shirt_number": 9,
+        "position": "FW",
+        "role": "ST",
+        "ratings": {
+          "passing": 69,
+          "finishing": 77,
+          "pace": 71,
+          "tackling": 51,
+          "dribbling": 75,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "MDU-11",
+        "name": "Ivo Vickery",
+        "short_name": "Vickery",
+        "shirt_number": 11,
+        "position": "FW",
+        "role": "LW",
+        "ratings": {
+          "passing": 81,
+          "finishing": 81,
+          "pace": 82,
+          "tackling": 54,
+          "dribbling": 71,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "MDU-12",
+        "name": "Wren Blackwood",
+        "short_name": "Blackwood",
+        "shirt_number": 13,
+        "position": "GK",
+        "role": "GK",
+        "ratings": {
+          "passing": 60,
+          "finishing": 15,
+          "pace": 76,
+          "tackling": 24,
+          "dribbling": 26,
+          "goalkeeping": 70
+        }
+      },
+      {
+        "player_id": "MDU-13",
+        "name": "Iker Larkspur",
+        "short_name": "Larkspur",
+        "shirt_number": 15,
+        "position": "DF",
+        "role": "CB",
+        "ratings": {
+          "passing": 62,
+          "finishing": 35,
+          "pace": 57,
+          "tackling": 75,
+          "dribbling": 57,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "MDU-14",
+        "name": "Ivo Yelland",
+        "short_name": "Yelland",
+        "shirt_number": 22,
+        "position": "DF",
+        "role": "FB",
+        "ratings": {
+          "passing": 62,
+          "finishing": 36,
+          "pace": 58,
+          "tackling": 69,
+          "dribbling": 54,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "MDU-15",
+        "name": "Valen Sedgewick",
+        "short_name": "Sedgewick",
+        "shirt_number": 16,
+        "position": "MF",
+        "role": "CM",
+        "ratings": {
+          "passing": 71,
+          "finishing": 45,
+          "pace": 64,
+          "tackling": 59,
+          "dribbling": 59,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "MDU-16",
+        "name": "Gael Calloway",
+        "short_name": "Calloway",
+        "shirt_number": 14,
+        "position": "MF",
+        "role": "CAM",
+        "ratings": {
+          "passing": 80,
+          "finishing": 59,
+          "pace": 61,
+          "tackling": 69,
+          "dribbling": 60,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "MDU-17",
+        "name": "Nuno Kittredge",
+        "short_name": "Kittredge",
+        "shirt_number": 17,
+        "position": "FW",
+        "role": "W",
+        "ratings": {
+          "passing": 63,
+          "finishing": 78,
+          "pace": 69,
+          "tackling": 43,
+          "dribbling": 67,
+          "goalkeeping": 10
+        }
+      },
+      {
+        "player_id": "MDU-18",
+        "name": "Fabian Dewhurst",
+        "short_name": "Dewhurst",
+        "shirt_number": 19,
+        "position": "FW",
+        "role": "ST",
+        "ratings": {
+          "passing": 66,
+          "finishing": 72,
+          "pace": 68,
+          "tackling": 44,
+          "dribbling": 71,
+          "goalkeeping": 10
+        }
+      }
+    ]
+  }
+]

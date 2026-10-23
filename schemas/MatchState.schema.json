@@ -1,0 +1,332 @@
+{
+  "$defs": {
+    "MatchPhase": {
+      "enum": [
+        "control_home",
+        "control_away",
+        "chaos",
+        "balanced"
+      ],
+      "title": "MatchPhase",
+      "type": "string"
+    },
+    "PlayerLiveStats": {
+      "additionalProperties": false,
+      "properties": {
+        "player_id": {
+          "title": "Player Id",
+          "type": "string"
+        },
+        "team_id": {
+          "title": "Team Id",
+          "type": "string"
+        },
+        "minutes": {
+          "default": 0.0,
+          "title": "Minutes",
+          "type": "number"
+        },
+        "touches": {
+          "default": 0,
+          "title": "Touches",
+          "type": "integer"
+        },
+        "passes": {
+          "default": 0,
+          "title": "Passes",
+          "type": "integer"
+        },
+        "passes_completed": {
+          "default": 0,
+          "title": "Passes Completed",
+          "type": "integer"
+        },
+        "pass_accuracy": {
+          "default": 0.0,
+          "title": "Pass Accuracy",
+          "type": "number"
+        },
+        "avg_pass_difficulty": {
+          "default": 0.0,
+          "title": "Avg Pass Difficulty",
+          "type": "number"
+        },
+        "key_passes": {
+          "default": 0,
+          "title": "Key Passes",
+          "type": "integer"
+        },
+        "shots": {
+          "default": 0,
+          "title": "Shots",
+          "type": "integer"
+        },
+        "xg": {
+          "default": 0.0,
+          "title": "Xg",
+          "type": "number"
+        },
+        "goals": {
+          "default": 0,
+          "title": "Goals",
+          "type": "integer"
+        },
+        "tackles_won": {
+          "default": 0,
+          "title": "Tackles Won",
+          "type": "integer"
+        },
+        "interceptions": {
+          "default": 0,
+          "title": "Interceptions",
+          "type": "integer"
+        },
+        "distance_km": {
+          "default": 0.0,
+          "title": "Distance Km",
+          "type": "number"
+        },
+        "top_speed_kmh": {
+          "default": 0.0,
+          "title": "Top Speed Kmh",
+          "type": "number"
+        },
+        "sprints": {
+          "default": 0,
+          "title": "Sprints",
+          "type": "integer"
+        },
+        "rating": {
+          "default": 6.0,
+          "maximum": 10,
+          "minimum": 0,
+          "title": "Rating",
+          "type": "number"
+        }
+      },
+      "required": [
+        "player_id",
+        "team_id"
+      ],
+      "title": "PlayerLiveStats",
+      "type": "object"
+    },
+    "TeamLiveStats": {
+      "additionalProperties": false,
+      "properties": {
+        "team_id": {
+          "title": "Team Id",
+          "type": "string"
+        },
+        "goals": {
+          "default": 0,
+          "title": "Goals",
+          "type": "integer"
+        },
+        "xg": {
+          "default": 0.0,
+          "title": "Xg",
+          "type": "number"
+        },
+        "shots": {
+          "default": 0,
+          "title": "Shots",
+          "type": "integer"
+        },
+        "shots_on_target": {
+          "default": 0,
+          "title": "Shots On Target",
+          "type": "integer"
+        },
+        "passes": {
+          "default": 0,
+          "title": "Passes",
+          "type": "integer"
+        },
+        "passes_completed": {
+          "default": 0,
+          "title": "Passes Completed",
+          "type": "integer"
+        },
+        "pass_accuracy": {
+          "default": 0.0,
+          "title": "Pass Accuracy",
+          "type": "number"
+        },
+        "avg_pass_difficulty": {
+          "default": 0.0,
+          "title": "Avg Pass Difficulty",
+          "type": "number"
+        },
+        "possession_pct": {
+          "default": 0.0,
+          "title": "Possession Pct",
+          "type": "number"
+        },
+        "final_third_entries": {
+          "default": 0,
+          "title": "Final Third Entries",
+          "type": "integer"
+        },
+        "box_entries": {
+          "default": 0,
+          "title": "Box Entries",
+          "type": "integer"
+        },
+        "corners": {
+          "default": 0,
+          "title": "Corners",
+          "type": "integer"
+        },
+        "fouls": {
+          "default": 0,
+          "title": "Fouls",
+          "type": "integer"
+        },
+        "yellow_cards": {
+          "default": 0,
+          "title": "Yellow Cards",
+          "type": "integer"
+        },
+        "red_cards": {
+          "default": 0,
+          "title": "Red Cards",
+          "type": "integer"
+        },
+        "pressure_index": {
+          "default": 0.0,
+          "description": "0-100, exponentially decayed attacking threat",
+          "title": "Pressure Index",
+          "type": "number"
+        },
+        "control_index": {
+          "default": 0.0,
+          "description": "0-100, sustained possession quality, last 5 min",
+          "title": "Control Index",
+          "type": "number"
+        },
+        "max_shot_speed_kmh": {
+          "default": 0.0,
+          "title": "Max Shot Speed Kmh",
+          "type": "number"
+        }
+      },
+      "required": [
+        "team_id"
+      ],
+      "title": "TeamLiveStats",
+      "type": "object"
+    },
+    "WinProbability": {
+      "additionalProperties": false,
+      "properties": {
+        "home": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Home",
+          "type": "number"
+        },
+        "draw": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Draw",
+          "type": "number"
+        },
+        "away": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Away",
+          "type": "number"
+        }
+      },
+      "required": [
+        "home",
+        "draw",
+        "away"
+      ],
+      "title": "WinProbability",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "match_id": {
+      "title": "Match Id",
+      "type": "string"
+    },
+    "seq": {
+      "description": "Seq of the last event applied",
+      "title": "Seq",
+      "type": "integer"
+    },
+    "period": {
+      "title": "Period",
+      "type": "integer"
+    },
+    "clock_ms": {
+      "title": "Clock Ms",
+      "type": "integer"
+    },
+    "score_home": {
+      "title": "Score Home",
+      "type": "integer"
+    },
+    "score_away": {
+      "title": "Score Away",
+      "type": "integer"
+    },
+    "home": {
+      "$ref": "#/$defs/TeamLiveStats"
+    },
+    "away": {
+      "$ref": "#/$defs/TeamLiveStats"
+    },
+    "win_prob": {
+      "$ref": "#/$defs/WinProbability"
+    },
+    "phase": {
+      "$ref": "#/$defs/MatchPhase",
+      "default": "balanced"
+    },
+    "chaos_index": {
+      "default": 0.0,
+      "description": "0-100: turnover rate + short possessions + long-ball share",
+      "title": "Chaos Index",
+      "type": "number"
+    },
+    "tempo_ppm": {
+      "default": 0.0,
+      "description": "Passes per minute, rolling 5 min",
+      "title": "Tempo Ppm",
+      "type": "number"
+    },
+    "momentum": {
+      "default": 0.0,
+      "description": "+ = home on top, - = away on top",
+      "maximum": 100,
+      "minimum": -100,
+      "title": "Momentum",
+      "type": "number"
+    },
+    "players": {
+      "additionalProperties": {
+        "$ref": "#/$defs/PlayerLiveStats"
+      },
+      "title": "Players",
+      "type": "object"
+    }
+  },
+  "required": [
+    "match_id",
+    "seq",
+    "period",
+    "clock_ms",
+    "score_home",
+    "score_away",
+    "home",
+    "away",
+    "win_prob"
+  ],
+  "title": "MatchState",
+  "type": "object"
+}

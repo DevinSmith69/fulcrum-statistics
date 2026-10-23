@@ -1,0 +1,48 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "enum": [
+        "hello",
+        "event",
+        "state",
+        "moment",
+        "insight",
+        "cue",
+        "recap",
+        "match_end",
+        "error",
+        "pong"
+      ],
+      "title": "Type",
+      "type": "string"
+    },
+    "match_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Match Id"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "title": "Payload",
+      "type": "object"
+    },
+    "ts": {
+      "format": "date-time",
+      "title": "Ts",
+      "type": "string"
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "title": "ServerMessage",
+  "type": "object"
+}

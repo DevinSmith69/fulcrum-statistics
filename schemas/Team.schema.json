@@ -1,0 +1,180 @@
+{
+  "$defs": {
+    "Player": {
+      "additionalProperties": false,
+      "properties": {
+        "player_id": {
+          "title": "Player Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "short_name": {
+          "title": "Short Name",
+          "type": "string"
+        },
+        "shirt_number": {
+          "title": "Shirt Number",
+          "type": "integer"
+        },
+        "position": {
+          "$ref": "#/$defs/Position"
+        },
+        "role": {
+          "description": "Formation slot, e.g. 'LCB', 'CDM', 'RW', 'ST'",
+          "title": "Role",
+          "type": "string"
+        },
+        "ratings": {
+          "$ref": "#/$defs/PlayerRatings"
+        }
+      },
+      "required": [
+        "player_id",
+        "name",
+        "short_name",
+        "shirt_number",
+        "position",
+        "role",
+        "ratings"
+      ],
+      "title": "Player",
+      "type": "object"
+    },
+    "PlayerRatings": {
+      "additionalProperties": false,
+      "description": "0-100 ratings that drive the simulator.",
+      "properties": {
+        "passing": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Passing",
+          "type": "integer"
+        },
+        "finishing": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Finishing",
+          "type": "integer"
+        },
+        "pace": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Pace",
+          "type": "integer"
+        },
+        "tackling": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Tackling",
+          "type": "integer"
+        },
+        "dribbling": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Dribbling",
+          "type": "integer"
+        },
+        "goalkeeping": {
+          "default": 10,
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Goalkeeping",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "passing",
+        "finishing",
+        "pace",
+        "tackling",
+        "dribbling"
+      ],
+      "title": "PlayerRatings",
+      "type": "object"
+    },
+    "Position": {
+      "enum": [
+        "GK",
+        "DF",
+        "MF",
+        "FW"
+      ],
+      "title": "Position",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "team_id": {
+      "title": "Team Id",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "short_name": {
+      "maxLength": 4,
+      "title": "Short Name",
+      "type": "string"
+    },
+    "primary_colour": {
+      "description": "Hex, e.g. #1E3A8A",
+      "title": "Primary Colour",
+      "type": "string"
+    },
+    "secondary_colour": {
+      "title": "Secondary Colour",
+      "type": "string"
+    },
+    "formation": {
+      "examples": [
+        "4-3-3"
+      ],
+      "title": "Formation",
+      "type": "string"
+    },
+    "attack_rating": {
+      "maximum": 100,
+      "minimum": 0,
+      "title": "Attack Rating",
+      "type": "integer"
+    },
+    "defence_rating": {
+      "maximum": 100,
+      "minimum": 0,
+      "title": "Defence Rating",
+      "type": "integer"
+    },
+    "pre_match_goal_rate": {
+      "description": "Expected goals per 90 vs an average opponent; seeds the WP model",
+      "title": "Pre Match Goal Rate",
+      "type": "number"
+    },
+    "players": {
+      "description": "Starting XI first (11), then substitutes",
+      "items": {
+        "$ref": "#/$defs/Player"
+      },
+      "title": "Players",
+      "type": "array"
+    }
+  },
+  "required": [
+    "team_id",
+    "name",
+    "short_name",
+    "primary_colour",
+    "secondary_colour",
+    "formation",
+    "attack_rating",
+    "defence_rating",
+    "pre_match_goal_rate",
+    "players"
+  ],
+  "title": "Team",
+  "type": "object"
+}

@@ -1,0 +1,57 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "match_id": {
+      "title": "Match Id",
+      "type": "string"
+    },
+    "home_team_id": {
+      "title": "Home Team Id",
+      "type": "string"
+    },
+    "away_team_id": {
+      "title": "Away Team Id",
+      "type": "string"
+    },
+    "seed": {
+      "default": 42,
+      "title": "Seed",
+      "type": "integer"
+    },
+    "speed": {
+      "default": 10.0,
+      "description": "Sim-time multiplier. 1 = real time",
+      "exclusiveMinimum": 0,
+      "title": "Speed",
+      "type": "number"
+    },
+    "language_default": {
+      "default": "en",
+      "title": "Language Default",
+      "type": "string"
+    },
+    "venue": {
+      "default": "Fulcrum Park",
+      "title": "Venue",
+      "type": "string"
+    },
+    "emit_tracking": {
+      "default": true,
+      "title": "Emit Tracking",
+      "type": "boolean"
+    },
+    "tracking_hz": {
+      "default": 1.0,
+      "exclusiveMinimum": 0,
+      "maximum": 10,
+      "title": "Tracking Hz",
+      "type": "number"
+    }
+  },
+  "required": [
+    "home_team_id",
+    "away_team_id"
+  ],
+  "title": "MatchConfig",
+  "type": "object"
+}

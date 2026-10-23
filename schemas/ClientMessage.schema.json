@@ -1,0 +1,94 @@
+{
+  "$defs": {
+    "Persona": {
+      "enum": [
+        "analyst",
+        "casual",
+        "club_fan",
+        "player_lens"
+      ],
+      "title": "Persona",
+      "type": "string"
+    },
+    "ViewerPrefs": {
+      "additionalProperties": false,
+      "properties": {
+        "persona": {
+          "$ref": "#/$defs/Persona",
+          "default": "casual"
+        },
+        "language": {
+          "default": "en",
+          "title": "Language",
+          "type": "string"
+        },
+        "favourite_team_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Favourite Team Id"
+        },
+        "followed_player_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Followed Player Id"
+        }
+      },
+      "title": "ViewerPrefs",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "enum": [
+        "subscribe",
+        "update_prefs",
+        "ping"
+      ],
+      "title": "Type",
+      "type": "string"
+    },
+    "match_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Match Id"
+    },
+    "prefs": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ViewerPrefs"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "title": "ClientMessage",
+  "type": "object"
+}

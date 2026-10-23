@@ -1,0 +1,211 @@
+{
+  "$defs": {
+    "Fact": {
+      "additionalProperties": false,
+      "description": "An atomic, verifiable fact. Agents may ONLY quote numbers that appear here.",
+      "properties": {
+        "key": {
+          "examples": [
+            "wp_home_before"
+          ],
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "examples": [
+            "Home win probability before"
+          ],
+          "title": "Label",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "examples": [
+            "%",
+            "km/h",
+            "m",
+            "xG"
+          ],
+          "title": "Unit"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "value"
+      ],
+      "title": "Fact",
+      "type": "object"
+    },
+    "MomentType": {
+      "enum": [
+        "goal",
+        "big_chance",
+        "wp_swing",
+        "pressure_shift",
+        "phase_change",
+        "tempo_change",
+        "red_card",
+        "speed_record",
+        "elite_pass",
+        "player_milestone",
+        "momentum_run",
+        "half_time",
+        "full_time"
+      ],
+      "title": "MomentType",
+      "type": "string"
+    },
+    "WinProbability": {
+      "additionalProperties": false,
+      "properties": {
+        "home": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Home",
+          "type": "number"
+        },
+        "draw": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Draw",
+          "type": "number"
+        },
+        "away": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Away",
+          "type": "number"
+        }
+      },
+      "required": [
+        "home",
+        "draw",
+        "away"
+      ],
+      "title": "WinProbability",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "default": "1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "moment_id": {
+      "title": "Moment Id",
+      "type": "string"
+    },
+    "match_id": {
+      "title": "Match Id",
+      "type": "string"
+    },
+    "type": {
+      "$ref": "#/$defs/MomentType"
+    },
+    "significance": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Significance",
+      "type": "number"
+    },
+    "period": {
+      "title": "Period",
+      "type": "integer"
+    },
+    "clock_ms": {
+      "title": "Clock Ms",
+      "type": "integer"
+    },
+    "seq_start": {
+      "title": "Seq Start",
+      "type": "integer"
+    },
+    "seq_end": {
+      "title": "Seq End",
+      "type": "integer"
+    },
+    "team_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Team Id"
+    },
+    "player_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Player Ids",
+      "type": "array"
+    },
+    "wp_before": {
+      "$ref": "#/$defs/WinProbability"
+    },
+    "wp_after": {
+      "$ref": "#/$defs/WinProbability"
+    },
+    "facts": {
+      "description": "The fact pack \u2014 the only numbers agents may use",
+      "items": {
+        "$ref": "#/$defs/Fact"
+      },
+      "title": "Facts",
+      "type": "array"
+    },
+    "trigger": {
+      "description": "Human-readable rule that fired, e.g. 'abs(dWP_home) >= 0.05 within 60s'",
+      "title": "Trigger",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "match_id",
+    "type",
+    "significance",
+    "period",
+    "clock_ms",
+    "seq_start",
+    "seq_end",
+    "wp_before",
+    "wp_after",
+    "facts",
+    "trigger"
+  ],
+  "title": "Moment",
+  "type": "object"
+}

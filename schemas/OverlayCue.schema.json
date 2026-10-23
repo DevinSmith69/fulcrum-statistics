@@ -1,0 +1,233 @@
+{
+  "$defs": {
+    "OverlayAnchor": {
+      "enum": [
+        "top_left",
+        "top_right",
+        "bottom_left",
+        "bottom_right",
+        "bottom_center"
+      ],
+      "title": "OverlayAnchor",
+      "type": "string"
+    },
+    "OverlayStat": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        }
+      },
+      "required": [
+        "label",
+        "value"
+      ],
+      "title": "OverlayStat",
+      "type": "object"
+    },
+    "OverlayTemplate": {
+      "enum": [
+        "lower_third",
+        "stat_card",
+        "wp_swing",
+        "player_tag",
+        "pressure_bar",
+        "recap_card"
+      ],
+      "title": "OverlayTemplate",
+      "type": "string"
+    },
+    "Persona": {
+      "enum": [
+        "analyst",
+        "casual",
+        "club_fan",
+        "player_lens"
+      ],
+      "title": "Persona",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "default": "1.0.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "cue_id": {
+      "title": "Cue Id",
+      "type": "string"
+    },
+    "match_id": {
+      "title": "Match Id",
+      "type": "string"
+    },
+    "moment_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Moment Id"
+    },
+    "insight_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Insight Id"
+    },
+    "template": {
+      "$ref": "#/$defs/OverlayTemplate"
+    },
+    "anchor": {
+      "$ref": "#/$defs/OverlayAnchor",
+      "default": "bottom_left"
+    },
+    "priority": {
+      "description": "5 = interrupt everything (goal)",
+      "maximum": 5,
+      "minimum": 1,
+      "title": "Priority",
+      "type": "integer"
+    },
+    "sync_clock_ms": {
+      "description": "Match clock the cue is synced to",
+      "title": "Sync Clock Ms",
+      "type": "integer"
+    },
+    "sync_seq": {
+      "title": "Sync Seq",
+      "type": "integer"
+    },
+    "show_at_clock_ms": {
+      "title": "Show At Clock Ms",
+      "type": "integer"
+    },
+    "duration_ms": {
+      "maximum": 30000,
+      "minimum": 1000,
+      "title": "Duration Ms",
+      "type": "integer"
+    },
+    "persona": {
+      "$ref": "#/$defs/Persona"
+    },
+    "language": {
+      "default": "en",
+      "title": "Language",
+      "type": "string"
+    },
+    "perspective_team_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Perspective Team Id"
+    },
+    "perspective_player_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Perspective Player Id"
+    },
+    "team_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Team Id"
+    },
+    "player_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Player Id"
+    },
+    "headline": {
+      "title": "Headline",
+      "type": "string"
+    },
+    "body": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Body"
+    },
+    "stats": {
+      "items": {
+        "$ref": "#/$defs/OverlayStat"
+      },
+      "title": "Stats",
+      "type": "array"
+    }
+  },
+  "required": [
+    "match_id",
+    "template",
+    "priority",
+    "sync_clock_ms",
+    "sync_seq",
+    "show_at_clock_ms",
+    "duration_ms",
+    "persona",
+    "headline"
+  ],
+  "title": "OverlayCue",
+  "type": "object"
+}

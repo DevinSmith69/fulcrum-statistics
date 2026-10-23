@@ -1,0 +1,34 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "clock_ms": {
+      "title": "Clock Ms",
+      "type": "integer"
+    },
+    "seq": {
+      "title": "Seq",
+      "type": "integer"
+    },
+    "home": {
+      "title": "Home",
+      "type": "number"
+    },
+    "draw": {
+      "title": "Draw",
+      "type": "number"
+    },
+    "away": {
+      "title": "Away",
+      "type": "number"
+    }
+  },
+  "required": [
+    "clock_ms",
+    "seq",
+    "home",
+    "draw",
+    "away"
+  ],
+  "title": "WinProbPoint",
+  "type": "object"
+}

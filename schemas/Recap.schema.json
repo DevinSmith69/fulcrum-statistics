@@ -1,0 +1,78 @@
+{
+  "$defs": {
+    "CheckStatus": {
+      "enum": [
+        "passed",
+        "repaired",
+        "fallback"
+      ],
+      "title": "CheckStatus",
+      "type": "string"
+    },
+    "Persona": {
+      "enum": [
+        "analyst",
+        "casual",
+        "club_fan",
+        "player_lens"
+      ],
+      "title": "Persona",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "match_id": {
+      "title": "Match Id",
+      "type": "string"
+    },
+    "persona": {
+      "$ref": "#/$defs/Persona"
+    },
+    "language": {
+      "default": "en",
+      "title": "Language",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "summary": {
+      "title": "Summary",
+      "type": "string"
+    },
+    "key_moment_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Key Moment Ids",
+      "type": "array"
+    },
+    "player_of_the_match_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Player Of The Match Id"
+    },
+    "check_status": {
+      "$ref": "#/$defs/CheckStatus"
+    }
+  },
+  "required": [
+    "match_id",
+    "persona",
+    "title",
+    "summary",
+    "key_moment_ids",
+    "check_status"
+  ],
+  "title": "Recap",
+  "type": "object"
+}
