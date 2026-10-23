@@ -193,8 +193,8 @@ TEMPLATES: dict[MomentType, dict[str, list[Template]]] = {
             T(
                 "Pressure flips to {team}",
                 "{team_poss} pressure index goes from {pressure_index_team_before} to {pressure_index_team_after} "
-                "while {opp} fall from {pressure_index_opp_before} to {pressure_index_opp_after}. {shots_last_5} shots and "
-                "{box_entries_last_5} box entries in the recent spell.",
+                "while {opp} fall from {pressure_index_opp_before} to {pressure_index_opp_after}. "
+                "{shots_last_5} shots and {box_entries_last_5} box entries in the recent spell.",
                 "{team} have taken over: pressure index up to {pressure_index_team_after}.",
             ),
             T(
