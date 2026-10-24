@@ -35,7 +35,7 @@ from typing import Protocol
 from agent_framework import Case, Default, Executor, Workflow, WorkflowBuilder, WorkflowContext, handler
 from pydantic import BaseModel
 
-from fulcrum.contracts import CheckStatus, Explanation, Insight
+from fulcrum.contracts import CheckStatus, Explanation, Insight, InsightVariant
 from fulcrum.llm import LLMClient
 from fulcrum.telemetry import current_trace_id
 
@@ -58,13 +58,22 @@ class OrchestratorConfig:
 
     call_timeout_s: float = 6.0  # per LLM call (AI_PROMPT_DESIGN §5)
     total_budget_s: float = 15.0  # whole run; later calls get min(call_timeout, remaining)
-    # The recap runs once at full time on the stronger (reasoning) deployment, which needs ~10-20 s; it is
+    # The recap runs once at full time on the stronger (reasoning) deployment, which needs ~25-40 s; it is
     # not on the live moment path, so it gets its own, longer budget.
-    recap_call_timeout_s: float = 40.0
-    recap_budget_s: float = 75.0
+    recap_call_timeout_s: float = 60.0
+    recap_budget_s: float = 110.0
     max_attempts: int = 2  # first try + one repair
     review_enabled: bool = field(default_factory=lambda: os.getenv("FULCRUM_LLM_REVIEW", "0") == "1")
+    # Write the four persona variants as four concurrent Editor calls (one variant each) instead of one call
+    # that writes all four: same tokens in, a quarter of the tokens out per call, so roughly half the wall
+    # time on Foundry. Off by default offline (tests script one Editor call); on with FULCRUM_LLM=foundry.
+    editor_fanout: bool = field(default_factory=lambda: _editor_fanout_default())
     review_min_significance: float = 0.6
+
+
+def _editor_fanout_default() -> bool:
+    default = "1" if os.getenv("FULCRUM_LLM", "fake") == "foundry" else "0"
+    return (os.getenv("FULCRUM_EDITOR_FANOUT") or default) == "1"  # empty = unset
 
 
 class LLMTimeout(TimeoutError):
@@ -153,21 +162,43 @@ class PersonaEditorStep:
         ctx.error = None
         assert ctx.explanation is not None, "persona_editor runs after a successful analyst"
         issues = ctx.issues if ctx.attempt > 1 else []
+        pairs = required_variants(ctx.home.team_id, ctx.away.team_id)
         try:
-            out = await call_llm(
-                self.llm,
-                PERSONA_EDITOR,
-                user=editor_prompt(ctx, ctx.explanation, issues),
-                schema=EditorOutput,
-                config=self.config,
-                deadline=ctx._cache.get("deadline"),
-            )
+            if self.config.editor_fanout:
+                outs = await asyncio.gather(*(self._call(ctx, issues, only=pair) for pair in pairs))
+                variants = [_pick(out.variants, pair) for out, pair in zip(outs, pairs, strict=True)]
+                variants = [v for v in variants if v is not None]
+            else:
+                variants = list((await self._call(ctx, issues)).variants)
         except Exception as e:  # noqa: BLE001
             _record_failure(ctx, PERSONA_EDITOR.agent_name, e)
             return
-        order = {pair: i for i, pair in enumerate(required_variants(ctx.home.team_id, ctx.away.team_id))}
-        variants = [v.model_copy(update={"language": "en"}) for v in out.variants]  # we always ask for English
+        order = {pair: i for i, pair in enumerate(pairs)}
+        variants = [v.model_copy(update={"language": "en"}) for v in variants]  # we always ask for English
         ctx.variants = sorted(variants, key=lambda v: order.get((str(v.persona), v.perspective_team_id), 99))
+
+    async def _call(
+        self, ctx: MomentContext, issues: list[str], only: tuple[str, str | None] | None = None
+    ) -> EditorOutput:
+        assert ctx.explanation is not None
+        return await call_llm(
+            self.llm,
+            PERSONA_EDITOR,
+            user=editor_prompt(ctx, ctx.explanation, issues, only=only),
+            schema=EditorOutput,
+            config=self.config,
+            deadline=ctx._cache.get("deadline"),
+        )
+
+
+def _pick(variants: list[InsightVariant], pair: tuple[str, str | None]) -> InsightVariant | None:
+    """The variant a single-variant Editor call was asked for; a mislabelled one is relabelled, none is None."""
+    for v in variants:
+        if (str(v.persona), v.perspective_team_id) == pair:
+            return v
+    if not variants:
+        return None
+    return variants[0].model_copy(update={"persona": pair[0], "perspective_team_id": pair[1]})
 
 
 @dataclass

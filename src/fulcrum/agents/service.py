@@ -22,6 +22,7 @@ from fulcrum.contracts import (
     TOPIC_EVENTS,
     TOPIC_INSIGHTS,
     TOPIC_MOMENTS,
+    Explanation,
     Insight,
     InsightsEnvelope,
     InsightVariant,
@@ -38,14 +39,23 @@ from fulcrum.llm import LLMClient
 
 from .context import MatchContextStore, foreign_names, load_teams
 from .orchestrator import ExplainMomentWorkflow, MomentProcessor, OrchestratorConfig
+from .prompts import FACT_REVIEWER, MOMENT_ANALYST, PERSONA_EDITOR, PromptSpec
 from .recap import RecapService
-from .schemas import MomentContext
+from .schemas import EditorOutput, MomentContext, ReviewOutput
 from .translate import Translator
 
 log = logging.getLogger("fulcrum.agents")
 
 CONSUMER_GROUP = "agents"
 MAX_PENDING = 50  # per match: moments waiting for their teams to be known
+
+# Roles with a fixed system prompt, published as Foundry prompt agents by FoundryLLM (llm/foundry.py).
+_PROMPT_AGENTS: tuple[tuple[PromptSpec, type], ...] = (
+    (MOMENT_ANALYST, Explanation),
+    (PERSONA_EDITOR, EditorOutput),
+    (FACT_REVIEWER, ReviewOutput),
+)
+PROMPT_AGENT_ROLES = tuple((spec.agent_name, spec.system, spec.version, schema) for spec, schema in _PROMPT_AGENTS)
 
 
 class AgentService:
@@ -84,7 +94,8 @@ class AgentService:
         """Subscribe to the input topics (queues are registered before this returns, so nothing is missed)."""
         if (warm_up := getattr(self.llm, "warm_up", None)) is not None:
             try:
-                await warm_up()  # FoundryLLM: token + clients, so the first moment isn't a cold start
+                # FoundryLLM: token + clients (so the first moment isn't a cold start) + prompt agents
+                await warm_up(PROMPT_AGENT_ROLES)
             except Exception:
                 log.exception("agents: LLM warm-up failed; the first calls may time out")
         topics = [(TOPIC_MOMENTS, Moment, self._on_moment)]

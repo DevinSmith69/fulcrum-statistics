@@ -338,3 +338,78 @@ async def test_processor_survives_a_failing_result_handler(caplog):
 async def test_every_moment_type_completes_with_default_fake(mtype):
     ctx = await wf(FakeLLM()).run(make_context(make_moment(mtype)))
     assert_valid_output(ctx)
+
+
+# --------------------------------------------------------------------------- Editor fan-out
+
+
+async def test_editor_fanout_writes_one_variant_per_call():
+    llm = ScriptedLLM(GOOD)
+    ctx = await wf(llm, editor_fanout=True).run(make_context(make_moment(MomentType.GOAL)))
+    assert ctx.status == CheckStatus.PASSED
+    assert llm.agents_called() == ["moment_analyst"] + ["persona_editor"] * 4
+    editor_users = [c["user"] for c in llm.calls[1:]]
+    required = [u.split("VARIANTS REQUIRED (language en)\n")[1] for u in editor_users]
+    assert required == [
+        "- persona analyst",
+        "- persona casual",
+        f"- persona club_fan, perspective_team_id {HOME} (Northbridge Athletic)",
+        f"- persona club_fan, perspective_team_id {AWAY} (Riverside Rovers)",
+    ]
+    # each call returned all four canned variants; only the one asked for is kept
+    assert [(v.persona, v.perspective_team_id) for v in ctx.variants] == [
+        ("analyst", None),
+        ("casual", None),
+        ("club_fan", HOME),
+        ("club_fan", AWAY),
+    ]
+    assert_valid_output(ctx)
+
+
+async def test_editor_fanout_calls_run_concurrently():
+    llm = ScriptedLLM(GOOD, delays={"persona_editor": 0.1})
+    ctx = await wf(llm, editor_fanout=True, call_timeout_s=0.25, total_budget_s=0.25).run(make_context())
+    assert ctx.status == CheckStatus.PASSED  # 4 × 0.1 s in sequence would blow the 0.25 s budget
+
+
+async def test_editor_fanout_relabels_a_mislabelled_variant():
+    only_casual = goal_variants()
+    only_casual["variants"] = [only_casual["variants"][1]]  # every call answers with the casual variant
+    llm = ScriptedLLM({"moment_analyst": GOAL_ANALYST, "persona_editor": only_casual})
+    ctx = await wf(llm, editor_fanout=True).run(make_context())
+    assert [(v.persona, v.perspective_team_id) for v in ctx.variants] == [
+        ("analyst", None),
+        ("casual", None),
+        ("club_fan", HOME),
+        ("club_fan", AWAY),
+    ]
+
+
+async def test_editor_fanout_failure_retries_then_passes():
+    llm = ScriptedLLM(GOOD)
+    original = llm.structured
+    failures = {"left": 1}
+
+    async def flaky(**kw):
+        if kw["agent_name"] == "persona_editor" and failures["left"]:
+            failures["left"] -= 1
+            raise RuntimeError("boom")
+        return await original(**kw)
+
+    llm.structured = flaky
+    ctx = await wf(llm, editor_fanout=True).run(make_context())
+    assert ctx.status == CheckStatus.REPAIRED  # an LLM error is a failed attempt, retried once
+    assert ctx.trace == ["analyst", "persona_editor", "persona_editor", "fact_checker", "cue_producer"]
+    assert "persona_editor: RuntimeError: boom" in ctx.notes[0]
+
+
+def test_editor_fanout_default_follows_the_llm(monkeypatch):
+    monkeypatch.delenv("FULCRUM_EDITOR_FANOUT", raising=False)
+    monkeypatch.setenv("FULCRUM_LLM", "fake")
+    assert OrchestratorConfig().editor_fanout is False
+    monkeypatch.setenv("FULCRUM_LLM", "foundry")
+    assert OrchestratorConfig().editor_fanout is True
+    monkeypatch.setenv("FULCRUM_EDITOR_FANOUT", "")  # as copied from .env.example
+    assert OrchestratorConfig().editor_fanout is True
+    monkeypatch.setenv("FULCRUM_EDITOR_FANOUT", "0")
+    assert OrchestratorConfig().editor_fanout is False

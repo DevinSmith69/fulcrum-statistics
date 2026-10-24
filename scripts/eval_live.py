@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import statistics
 import sys
 import time
@@ -23,7 +24,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from fulcrum.agents.service import AgentService
+from fulcrum.agents.service import PROMPT_AGENT_ROLES, AgentService
 from fulcrum.bus.base import MemoryBus
 from fulcrum.contracts import MatchConfig, MatchEvent, MomentType, Persona
 from fulcrum.engine.match import MatchEngine
@@ -48,7 +49,7 @@ async def run(path: Path, limit: int | None) -> dict:
     engine: MatchEngine | None = None
     contexts = []
     match_id = ""
-    await llm.warm_up()
+    await llm.warm_up(PROMPT_AGENT_ROLES)
     recap_s, recap = 0.0, None
     try:
         for item in read_jsonl(path):
@@ -96,6 +97,7 @@ async def run(path: Path, limit: int | None) -> dict:
         a["input_tokens"] += call.input_tokens
         a["output_tokens"] += call.output_tokens
         a["seconds"] += call.seconds
+        a[f"via_{call.via}"] += 1
     n = len(contexts) or 1
     return {
         "recording": str(path),
@@ -108,6 +110,7 @@ async def run(path: Path, limit: int | None) -> dict:
             "mean": round(statistics.mean(latencies), 1) if latencies else 0,
         },
         "llm": {k: {kk: round(vv, 2) for kk, vv in v.items()} for k, v in by_agent.items()},
+        "prompt_agents": {p.name: p.version for p in llm.published.values()},
         "tokens_total": sum(c.input_tokens + c.output_tokens for c in llm.calls),
         "recap": {
             "seconds": round(recap_s, 2),
@@ -126,6 +129,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json", type=Path, default=None, help="also write the report here")
     args = ap.parse_args(argv)
     load_dotenv()
+    os.environ["FULCRUM_LLM"] = "foundry"  # the deployed defaults that depend on it (e.g. the Editor fan-out)
     sys.stdout.reconfigure(encoding="utf-8")  # headlines contain arrows; the Windows console defaults to cp1252
     configure_telemetry("eval")
     report = asyncio.run(run(args.recording, args.limit))

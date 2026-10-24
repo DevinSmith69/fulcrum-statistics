@@ -2,47 +2,66 @@
   "recording": "data\\matches\\sample_seed11.jsonl",
   "moments": 30,
   "status_counts": {
-    "passed": 28,
-    "repaired": 2
+    "passed": 27,
+    "repaired": 2,
+    "fallback": 1
   },
   "status_rates_pct": {
-    "passed": 93.3,
-    "repaired": 6.7
+    "passed": 90.0,
+    "repaired": 6.7,
+    "fallback": 3.3
   },
   "latency_ms": {
-    "p50": 4195,
-    "p95": 6717,
-    "mean": 4612.4
+    "p50": 3641,
+    "p95": 6011,
+    "mean": 4157.5
   },
   "llm": {
     "moment_analyst": {
-      "calls": 31.0,
-      "failed": 0.0,
-      "input_tokens": 38035.0,
-      "output_tokens": 4166.0,
-      "seconds": 43.85
-    },
-    "persona_editor": {
       "calls": 32.0,
       "failed": 0.0,
-      "input_tokens": 48698.0,
-      "output_tokens": 16156.0,
-      "seconds": 94.32
+      "input_tokens": 39352.0,
+      "output_tokens": 4307.0,
+      "seconds": 45.87,
+      "via_prompt_agent": 32.0
+    },
+    "persona_editor": {
+      "calls": 132.0,
+      "failed": 0.0,
+      "input_tokens": 200137.0,
+      "output_tokens": 24041.0,
+      "seconds": 233.32,
+      "via_prompt_agent": 132.0
     },
     "match_reporter": {
       "calls": 1.0,
       "failed": 0.0,
-      "input_tokens": 4202.0,
-      "output_tokens": 3299.0,
-      "seconds": 26.09
+      "input_tokens": 4233.0,
+      "output_tokens": 3283.0,
+      "seconds": 29.04,
+      "via_local": 1.0
     }
   },
-  "tokens_total": 114556,
-  "recap": {
-    "seconds": 26.09,
-    "status": "passed",
-    "title": "Harlow Cross snatches late 2-2 draw",
-    "summary": "Verdict: Harlow Cross rescued a dramatic 2-2 draw with a stoppage-time equaliser. 41' \u2014 Hartsell\u2019s second yellow (MDU-03) handed Harlow Cross the momentum swing, lifting their win probability from 36% to 49%. 45+2' \u2014 Rookwood (MDU-10) struck before half to make it 0-1, taking Marsh Dock United\u2019s win chance from 14% to 52% (assist: Jessop MDU-09). 90+1' \u2014 Whitlock (HLC-15) levelled to 2-2 with an assist from Tolliver (HLC-08), moving Harlow Cross from 0% to 8% and sending the draw chance to 89%. Standout performer: Bellweather (HLC-11) was the pick with a 9.2 rating \u2014 he forced a 0.76 xG chance at 15' and created the 66' goal that helped turn the game back. What the numbers say: the match finished 2-2, with Harlow Cross piling up 63 % possession, 16 shots and 2.43 xG to Marsh Dock United\u2019s 37 %, 9 shots and 0.73 xG, and the final state left the draw as the full-time result."
+  "prompt_agents": {
+    "fulcrum-moment-analyst": "1",
+    "fulcrum-persona-editor": "1",
+    "fulcrum-fact-reviewer": "1"
   },
-  "fallback_notes": {}
+  "tokens_total": 275353,
+  "recap": {
+    "seconds": 29.04,
+    "status": "passed",
+    "title": "Whitlock\u2019s late strike snatches a 2-2 draw for Harlow Cross",
+    "summary": "Harlow Cross rescued a 2-2 draw in stoppage time after a rollercoaster where advantage kept switching hands. At 41' Hartsell\u2019s red card left Marsh Dock United down to ten and nudged Harlow Cross\u2019 win chance from 36% to 49%, shifting the momentum. At 55' Oddie\u2019s strike made it 0-2 and pushed Marsh Dock United\u2019s win probability from 59% to 88%, seemingly closing the contest. Then at 90+1' Whitlock\u2019s late finish made it 2-2 and collapsed Marsh Dock United\u2019s win chance from 91% to 2%, vaulting the draw to 89%. Bellweather was the standout: they produced a 0.76 xG chance at 15' and set up Okonkwo-Reid\u2019s 66' goal, finishing the game as the top-rated performer with a 9.2. What the numbers say: Harlow Cross led the counting stats with 2.43 xG, 16 shots and 63% possession to Marsh Dock United\u2019s 0.73 xG, 9 shots and 37%; at full time (90+8') the match finished 2-2 with win probabilities at 0% / 100% / 0% for home/draw/away. "
+  },
+  "fallback_notes": {
+    "b28f268a01ad4ba0ba5a8a9f52ca9c75": [
+      "attempt 1: fact-check: explanation.why_it_matters: number '10' is not in FACTS",
+      "attempt 1: fact-check: variants[analyst].body: number '10' is not in FACTS",
+      "attempt 1: fact-check: variants[casual].body: number '10' is not in FACTS",
+      "attempt 1: fact-check: variants[club_fan:HLC].body: number '10' is not in FACTS",
+      "attempt 2: fact-check: explanation.why_it_matters: number '10' is not in FACTS",
+      "fallback: templates used after attempt 2 (explanation.why_it_matters: number '10' is not in FACTS)"
+    ]
+  }
 }

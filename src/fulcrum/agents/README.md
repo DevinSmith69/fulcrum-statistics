@@ -41,25 +41,39 @@ Design reference: `docs/AI_PROMPT_DESIGN.md`. Wire formats: `docs/API_CONTRACT.m
   Reporter runs on `FOUNDRY_MODEL_DEPLOYMENT_RECAP` (`strong`, gpt-5-mini, no temperature); every other role runs
   on `FOUNDRY_MODEL_DEPLOYMENT` (`fast`, gpt-5.4-mini; temperature 0.4 for the Editor, 0.2 otherwise). Auth is
   `DefaultAzureCredential`. `AgentService.start()` calls `warm_up()` so the first moment isn't a cold start.
+- **Foundry prompt agents:** at warm-up the roles with a fixed system prompt (`PROMPT_AGENT_ROLES`: Analyst,
+  Editor, Reviewer) are published to the Foundry project as versioned prompt agents (`fulcrum-moment-analyst`,
+  `fulcrum-persona-editor`, `fulcrum-fact-reviewer`) and called by name via `FoundryAgent`, so they are
+  listed, versioned and traced in the Foundry portal. Model, instructions, temperature and output schema live
+  in the agent definition; a new version is created only when they change (fingerprint + prompt version in the
+  version metadata). The Reporter, Translator and Player Lens have per-call prompts (`{persona}`,
+  `{language}`, `{player}`) and run as local Agent Framework agents, as does any role whose publish failed.
+  `FOUNDRY_PROMPT_AGENTS=0` turns publishing off.
+- **Editor fan-out:** with `FULCRUM_LLM=foundry` the Editor writes the four variants as four concurrent calls,
+  one variant each (`OrchestratorConfig.editor_fanout`, `FULCRUM_EDITOR_FANOUT`). Each call writes a quarter
+  of the text, which takes the Editor from about 2.9 s to about 1.8 s per moment, for about 4× the Editor's
+  input tokens. Tests keep the single-call mode, which the scripted LLM fakes expect.
 - **Tracing:** `fulcrum.telemetry.configure_telemetry()` (agents and api start-up) installs Azure Monitor when
   `APPLICATIONINSIGHTS_CONNECTION_STRING` is set and turns on Agent Framework instrumentation: workflow,
   executor and agent spans. `Insight.agent_trace_id` is the workflow run's trace id. Use
   `FULCRUM_OTEL_CONSOLE=1` to print spans locally.
-- **Recap budget:** 40 s per call and 75 s overall (`recap_call_timeout_s`, `recap_budget_s`). The reasoning
-  model needs about 25 s, and the recap is not on the live path.
+- **Recap budget:** 60 s per call and 110 s overall (`recap_call_timeout_s`, `recap_budget_s`). The reasoning
+  model needs 25–40 s, and the recap is not on the live path.
 
 ### Live evaluation (`scripts/eval_live.py`, AI_PROMPT_DESIGN §7)
 `uv run python scripts/eval_live.py data/matches/sample_seed11.jsonl --json data/eval/sample_seed11.json`
 replays a recording through the engine and explains every moment, in order, on Foundry.
-First full run, 2026-10-24 (sample_seed11, HLC 2-2 MDU):
+Runs on 2026-10-24 (sample_seed11, HLC 2-2 MDU, 30 moments):
 
-| | |
-|---|---|
-| Moments | 30 |
-| Passed / repaired / fallback | 93.3 % / 6.7 % / 0 % |
-| Moment → insight latency | p50 4.2 s · p95 6.7 s (Analyst ≈ 1.4 s + Editor ≈ 2.9 s per call) |
-| Tokens per match | ≈ 115k (Analyst 42k, Editor 65k, recap 7.5k) |
-| Recap (strong) | passed, 26 s |
+| | First run (one Editor call, local agents) | Current (Editor fan-out, prompt agents) |
+|---|---|---|
+| Passed / repaired / fallback | 93.3 % / 6.7 % / 0 % | 90.0 % / 6.7 % / 3.3 % |
+| Moment → insight latency | p50 4.2 s · p95 6.7 s | p50 3.6 s · p95 6.0 s |
+| Tokens per match | ≈ 115k | ≈ 275k (Editor input ×4; still pennies on the mini model) |
+| Recap (strong) | passed, 26 s | passed, 29 s, names only |
+
+The one fallback in the current run was the fact-checker rejecting a "10" that is not in the fact pack, twice;
+the template copy was published instead, as designed. `data/eval/sample_seed11.json` holds the current run.
 
 ## Modules
 

@@ -28,6 +28,7 @@ from fulcrum.contracts import (
     Team,
 )
 
+from .factcheck import required_variants
 from .schemas import MomentContext
 
 DEFAULT_TEAMS_PATH = Path(__file__).resolve().parents[3] / "data" / "teams.json"
@@ -171,14 +172,24 @@ def analyst_prompt(ctx: MomentContext, issues: Sequence[str] = ()) -> str:
     return _with_issues(_common_sections(ctx), issues)
 
 
-def editor_prompt(ctx: MomentContext, explanation: Explanation, issues: Sequence[str] = ()) -> str:
-    """User prompt for the Persona Editor: the explanation plus the same facts/roster/score."""
-    targets = (
-        "VARIANTS REQUIRED (language en)\n"
-        f"- persona analyst\n- persona casual\n"
-        f"- persona club_fan, perspective_team_id {ctx.home.team_id} ({ctx.home.name})\n"
-        f"- persona club_fan, perspective_team_id {ctx.away.team_id} ({ctx.away.name})"
-    )
+def editor_prompt(
+    ctx: MomentContext,
+    explanation: Explanation,
+    issues: Sequence[str] = (),
+    *,
+    only: tuple[str, str | None] | None = None,
+) -> str:
+    """User prompt for the Persona Editor: the explanation plus the same facts/roster/score.
+
+    `only` asks for a single (persona, perspective_team_id) variant (the fan-out mode); default is all four.
+    """
+    names = {ctx.home.team_id: ctx.home.name, ctx.away.team_id: ctx.away.name}
+    pairs = [only] if only is not None else required_variants(ctx.home.team_id, ctx.away.team_id)
+    lines = [
+        f"- persona {persona}" + (f", perspective_team_id {team} ({names.get(team, team)})" if team else "")
+        for persona, team in pairs
+    ]
+    targets = "VARIANTS REQUIRED (language en)\n" + "\n".join(lines)
     sections = [
         "EXPLANATION\n" + explanation.model_dump_json(indent=2),
         *_common_sections(ctx),

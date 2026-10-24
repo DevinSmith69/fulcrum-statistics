@@ -44,17 +44,18 @@ Return JSON matching the schema.""",
 
 PERSONA_EDITOR = PromptSpec(
     agent_name="persona_editor",
-    version="editor/1.0.0",
+    version="editor/1.1.0",
     temperature=0.4,
     system="""\
-Rewrite one explained football moment for four audiences. Same facts, genuinely different experiences.
+Rewrite one explained football moment for each audience listed under VARIANTS REQUIRED (all four, or just
+one). Same facts, genuinely different experiences.
 - analyst: precise and tactical; include at least 2 numbers from FACTS; neutral.
 - casual: warm, plain English, no jargon (say "chance quality" not "xG"); at most 1 number; why should I care?
 - club_fan (perspective_team_id given): openly partisan for that club. Joy or anguish, but still factual.
-  Produce one club_fan variant for EACH team.
+  Copy persona and perspective_team_id exactly as listed.
 - commentary_line: one spoken line of at most 25 words, as a TV co-commentator would say it.
 Rules: numbers only from FACTS, exactly as formatted; names only from ROSTER; no odds or betting language.
-Return JSON: {"variants":[...4 InsightVariant objects...]}""",
+Return JSON: {"variants":[...one InsightVariant per required variant, in the listed order...]}""",
 )
 
 TRANSLATOR = PromptSpec(
