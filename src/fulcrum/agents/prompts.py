@@ -26,7 +26,7 @@ class PromptSpec:
 
 MOMENT_ANALYST = PromptSpec(
     agent_name="moment_analyst",
-    version="analyst/1.0.0",
+    version="analyst/1.1.0",
     system="""\
 You are the Moment Analyst for a live football studio. A deterministic engine has detected a moment
 and quantified it. Your job: explain WHY it matters to the match, not just what happened.
@@ -35,7 +35,7 @@ Rules:
 - Name only players/teams listed in ROSTER.
 - Pick ONE tactical_tag: control | chaos | pressure_shift | rhythm | individual_brilliance | set_piece | turning_point.
 - why_it_matters: 1–2 sentences linking the moment to a change in the match (probability, pressure,
-  control, tempo). Cause → effect.
+  control, tempo). Cause → effect. At most 300 characters: longer text is cut off mid-word.
 - headline: ≤ 90 chars, punchy, no clichés like "game-changer".
 - key_fact_keys: the FACT keys you relied on.
 - Never mention odds, betting, prices or markets.
@@ -44,7 +44,7 @@ Return JSON matching the schema.""",
 
 PERSONA_EDITOR = PromptSpec(
     agent_name="persona_editor",
-    version="editor/1.1.0",
+    version="editor/1.2.0",
     temperature=0.4,
     system="""\
 Rewrite one explained football moment for each audience listed under VARIANTS REQUIRED (all four, or just
@@ -54,16 +54,20 @@ one). Same facts, genuinely different experiences.
 - club_fan (perspective_team_id given): openly partisan for that club. Joy or anguish, but still factual.
   Copy persona and perspective_team_id exactly as listed.
 - commentary_line: one spoken line of at most 25 words, as a TV co-commentator would say it.
+- Lengths: headline ≤ 80 characters; body 2 short sentences, ≤ 240 characters, ending with a full stop.
+  Anything past 300 characters is cut off mid-word, so stay well under.
 Rules: numbers only from FACTS, exactly as formatted; names only from ROSTER; no odds or betting language.
 Return JSON: {"variants":[...one InsightVariant per required variant, in the listed order...]}""",
 )
 
 TRANSLATOR = PromptSpec(
     agent_name="translator",
-    version="translator/1.0.0",
+    version="translator/1.1.0",
     system="""\
 Translate each variant into {language}. Keep tone and persona. Keep all numbers, player and team names
-EXACTLY as in the source. Respect max lengths (headline 90, body 300, commentary_line 160). Return JSON.""",
+EXACTLY as in the source. Respect max lengths (headline 90, body 300, commentary_line 160): translations
+often run longer than English, so tighten the wording to fit, as complete sentences; never let text run past
+the limit, because it is cut off mid-word. Return JSON.""",
 )
 
 PLAYER_LENS = PromptSpec(

@@ -20,7 +20,7 @@ export function CheckBadge({ status }: { status: CheckStatus }) {
   );
 }
 
-function Item({ m, insight, feed, lang, dense }: { m: Moment; insight?: Insight; feed: MatchFeed; lang: string; dense: boolean }) {
+function Item({ m, insight, feed, lang, dense, newest }: { m: Moment; insight?: Insight; feed: MatchFeed; lang: string; dense: boolean; newest: boolean }) {
   const team = m.team_id === feed.home?.team_id ? feed.home : m.team_id === feed.away?.team_id ? feed.away : null;
   const v = insight?.variants[0];
   const major = m.type === "goal" || m.type === "red_card" || m.type === "full_time";
@@ -42,7 +42,8 @@ function Item({ m, insight, feed, lang, dense }: { m: Moment; insight?: Insight;
       {v ? (
         <>
           <p className={`font-display mt-1.5 font-semibold leading-snug text-ink-50 ${dense ? "text-base" : "text-lg"}`}>{v.headline}</p>
-          {!dense && <p className="mt-1 text-sm leading-snug text-ink-300">{v.body}</p>}
+          {/* Dense (split view): the body is where personas differ, so keep it, clamped except for the newest. */}
+          <p className={`mt-1 text-sm leading-snug text-ink-300 ${dense && !newest ? "line-clamp-3" : ""}`}>{v.body}</p>
           {insight?.latency_ms != null && !dense && (
             <p className="mt-1.5 text-[11px] text-ink-500">Explained in {(insight.latency_ms / 1000).toFixed(1)} s</p>
           )}
@@ -65,8 +66,8 @@ export function InsightFeed({ feed, lang, limit = 30, dense = false }: { feed: M
   }
   return (
     <ul className="flex flex-col gap-2">
-      {items.map((m) => (
-        <Item key={m.moment_id} m={m} insight={m.moment_id ? feed.insights[m.moment_id] : undefined} feed={feed} lang={lang} dense={dense} />
+      {items.map((m, i) => (
+        <Item key={m.moment_id} m={m} insight={m.moment_id ? feed.insights[m.moment_id] : undefined} feed={feed} lang={lang} dense={dense} newest={i === 0} />
       ))}
     </ul>
   );

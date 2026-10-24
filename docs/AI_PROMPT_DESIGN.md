@@ -129,7 +129,7 @@ Runs on the Explanation and every variant (and every translation). Fail if any o
 5. **Length** violations (pydantic will also catch these).
 
 Outcome: pass → `PASSED`. Fail → one retry with the issues appended to the prompt ("Fix these issues: …") → pass →
-`REPAIRED`. Still failing, an LLM error, or a timeout (> 6 s) → `FALLBACK` using templates. Every fallback is
+`REPAIRED`. Still failing, an LLM error, or a timeout (> 8 s per call) → `FALLBACK` using templates. Every fallback is
 logged with reasons (these are great for the demo: "self-correcting agents").
 
 **LLM reviewer** (significance ≥ 0.6, env `FULCRUM_LLM_REVIEW=1`): "Does any sentence claim something not

@@ -26,7 +26,7 @@ def codes(issues) -> list[str]:
     return [i.code for i in issues]
 
 
-def variant(persona="analyst", team=None, language="en", headline="H", body="B", line="L") -> InsightVariant:
+def variant(persona="analyst", team=None, language="en", headline="H", body="B.", line="L") -> InsightVariant:
     return InsightVariant(
         persona=persona, perspective_team_id=team, language=language, headline=headline, body=body, commentary_line=line
     )
@@ -267,7 +267,7 @@ def test_commentary_word_limit(sheet):
 
 def test_length_limits_on_constructed_models(sheet):
     v = InsightVariant.model_construct(
-        persona="casual", language="en", perspective_team_id=None, headline="x" * 91, body="ok", commentary_line="ok"
+        persona="casual", language="en", perspective_team_id=None, headline="x" * 91, body="ok.", commentary_line="ok"
     )
     assert codes(check_variant(v, sheet)) == ["too_long"]
 
@@ -287,9 +287,9 @@ def test_variant_set_requires_exactly_four():
 
 def test_check_insight_copy_flags_explanation_vs_variants(sheet):
     expl = Explanation(
-        headline="Brennick hits 0.99 xG", why_it_matters="ok", tactical_tag="turning_point", key_fact_keys=["xg"]
+        headline="Brennick hits 0.99 xG", why_it_matters="ok.", tactical_tag="turning_point", key_fact_keys=["xg"]
     )
-    vs = [variant("analyst"), variant("casual"), variant("club_fan", HOME), variant("club_fan", AWAY, body="72%")]
+    vs = [variant("analyst"), variant("casual"), variant("club_fan", HOME), variant("club_fan", AWAY, body="72%.")]
     res = check_insight_copy(expl, vs, sheet, home_id=HOME, away_id=AWAY)
     assert not res.passed and res.explanation_failed
     assert res.messages == [
@@ -298,3 +298,13 @@ def test_check_insight_copy_flags_explanation_vs_variants(sheet):
     ]
     res2 = check_insight_copy(None, vs, sheet, home_id=HOME, away_id=AWAY)
     assert not res2.explanation_failed and len(res2.issues) == 1
+
+
+def test_copy_cut_off_mid_sentence_is_flagged(sheet):
+    # Foundry enforces the 300-char body limit while the model writes, so over-long copy arrives cut mid-word
+    cut = variant(body="Northbridge drop back, which leaves space and turns the pressure balance sharply away, a")
+    assert codes(check_variant(cut, sheet)) == ["cut_off"]
+    for ending in ("ends here.", "what a goal!", "really?", "he said “wow.”", "(late on)", "y luego…"):
+        assert codes(check_variant(variant(body=ending), sheet)) == [], ending
+    expl = Explanation(headline="H", why_it_matters="It shifts the game", tactical_tag="chaos", key_fact_keys=[])
+    assert [i.code for i in check_explanation(expl, sheet)] == ["cut_off"]

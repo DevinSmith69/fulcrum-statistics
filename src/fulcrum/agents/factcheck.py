@@ -225,6 +225,18 @@ def _length(text: str, limit: int, where: str) -> list[Issue]:
     return []
 
 
+# Sentence-final characters (incl. closing quotes/brackets). The services enforce the contract's max lengths
+# while the model writes, so an over-long body comes back cut off mid-word; that must be caught and repaired.
+SENTENCE_END = (".", "!", "?", "…", '"', "'", "”", "’", ")", "»")
+
+
+def cut_off(text: str, where: str) -> list[Issue]:
+    """Flag copy that does not end a sentence: it was cut off at a max length while being generated."""
+    if text.strip() and not text.rstrip().endswith(SENTENCE_END):
+        return [Issue("cut_off", where, "ends mid-sentence (cut off at the length limit); write it shorter")]
+    return []
+
+
 def variant_label(v: InsightVariant) -> str:
     """Stable label used in issue locations, e.g. `variants[club_fan:NBA]`."""
     suffix = v.perspective_team_id or v.perspective_player_id
@@ -237,6 +249,7 @@ def check_explanation(expl: Explanation, sheet: FactSheet) -> list[Issue]:
     issues += sheet.check_text(expl.why_it_matters, "explanation.why_it_matters")
     issues += _length(expl.headline, MAX_HEADLINE, "explanation.headline")
     issues += _length(expl.why_it_matters, MAX_WHY, "explanation.why_it_matters")
+    issues += cut_off(expl.why_it_matters, "explanation.why_it_matters")
     for key in expl.key_fact_keys:
         if key not in sheet.keys:
             issues.append(Issue("unknown_fact_key", "explanation.key_fact_keys", f"'{key}' is not a FACT key"))
@@ -251,6 +264,7 @@ def check_variant(v: InsightVariant, sheet: FactSheet, where: str | None = None)
         text = getattr(v, attr)
         issues += sheet.check_text(text, f"{where}.{attr}", language=v.language)
         issues += _length(text, limit, f"{where}.{attr}")
+    issues += cut_off(v.body, f"{where}.body")
     words = len(v.commentary_line.split())
     if words > MAX_COMMENTARY_WORDS:
         issues.append(Issue("too_long", f"{where}.commentary_line", f"{words} words, max {MAX_COMMENTARY_WORDS}"))

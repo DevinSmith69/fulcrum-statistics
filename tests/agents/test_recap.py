@@ -121,3 +121,11 @@ async def test_recap_player_ids_in_text_are_repaired():
     recap = await RecapService(llm).recap(**args())
     assert recap.check_status == CheckStatus.REPAIRED
     assert "use names, not ids: NBA-10" in llm.calls[1]["user"]
+
+
+async def test_recap_cut_off_mid_sentence_is_repaired():
+    bad = {**GOOD, "summary": GOOD["summary"].rstrip(".") + " and then Brenn"}
+    llm = ScriptedLLM({"match_reporter": [bad, GOOD]})
+    recap = await RecapService(llm).recap(**args())
+    assert recap.check_status == CheckStatus.REPAIRED
+    assert "recap.summary: ends mid-sentence" in llm.calls[1]["user"]

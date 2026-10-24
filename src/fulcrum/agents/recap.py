@@ -18,7 +18,7 @@ from fulcrum.contracts import CheckStatus, Insight, Moment, MomentType, Persona,
 from fulcrum.llm import LLMClient
 
 from .context import fact_map, moment_minute, recap_prompt
-from .factcheck import FactSheet, Issue
+from .factcheck import FactSheet, Issue, cut_off
 from .orchestrator import LLMTimeout, OrchestratorConfig, call_llm
 from .prompts import MATCH_REPORTER
 from .schemas import RecapOutput
@@ -63,6 +63,7 @@ def check_recap(
         issues.append(Issue("too_long", "recap.title", f"{len(out.title)} chars, max {MAX_TITLE}"))
     if len(out.summary) > MAX_SUMMARY:
         issues.append(Issue("too_long", "recap.summary", f"{len(out.summary)} chars, max {MAX_SUMMARY}"))
+    issues += cut_off(out.summary, "recap.summary")
     for field_name, text in (("recap.title", out.title), ("recap.summary", out.summary)):
         leaked = sorted({pid for pid in player_ids if pid in text})
         if leaked:

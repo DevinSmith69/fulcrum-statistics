@@ -15,7 +15,7 @@ condition=...)` calls, evaluated in order (first match wins). Nothing else carri
 Failure policy:
 - fact-check failure → one repair attempt with the issues appended to the prompt;
 - LLM error → counts as a failed attempt (retried once, then fallback);
-- timeout (per call, default 6 s, and bounded by the run's total budget) → straight to fallback, because
+- timeout (per call, default 8 s, and bounded by the run's total budget) → straight to fallback, because
   the latency budget is already spent;
 - an unexpected exception inside a step → fallback (the demo must never stall on a bug).
 Every fallback is logged with its reasons and recorded in `Insight.check_notes`.
@@ -56,7 +56,7 @@ MAX_STEPS = 16
 class OrchestratorConfig:
     """Tunables for one workflow run."""
 
-    call_timeout_s: float = 6.0  # per LLM call (AI_PROMPT_DESIGN §5)
+    call_timeout_s: float = 8.0  # per LLM call (AI_PROMPT_DESIGN §5; 6 s timed out ~4% under concurrent matches)
     total_budget_s: float = 15.0  # whole run; later calls get min(call_timeout, remaining)
     # The recap runs once at full time on the stronger (reasoning) deployment, which needs ~25-40 s; it is
     # not on the live moment path, so it gets its own, longer budget.

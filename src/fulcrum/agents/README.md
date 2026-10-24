@@ -22,7 +22,7 @@ Design reference: `docs/AI_PROMPT_DESIGN.md`. Wire formats: `docs/API_CONTRACT.m
 | `repaired` | attempt 1 failed (fact-check issues or an LLM error), attempt 2 verified |
 | `fallback` | templates used; `Insight.check_notes` says why (also logged as a warning) |
 
-- **Timeouts:** 6 s per LLM call, 15 s per run (`OrchestratorConfig`). A timeout skips the repair and goes
+- **Timeouts:** 8 s per LLM call (6 s timed out on ~4% of moments with 2–3 matches running at once), 15 s per run (`OrchestratorConfig`). A timeout skips the repair and goes
   straight to fallback, because the latency budget is already spent.
 - **Ordering:** `MomentProcessor` runs one worker per match, so moments are explained in order, and different
   matches run in parallel.
