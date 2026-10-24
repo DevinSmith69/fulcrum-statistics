@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { BroadcastAudioButtons } from "../components/AudioControls";
 import { CueInspector } from "../components/CueInspector";
 import { OverlayLayer } from "../components/OverlayLayer";
-import { Pitch } from "../components/Pitch";
+import { StagedPitch } from "../components/PitchReplay";
 import { KitStripe } from "../components/TeamMark";
 import { matchClock } from "../lib/format";
 import type { AudioPrefs, Commentary } from "../lib/useCommentary";
@@ -64,8 +64,7 @@ export function BroadcastView({ feed, prefs, audio, onAudioChange, commentary }:
   return (
     <div ref={rootRef} className="group fixed inset-0 z-40 flex bg-black">
       <div className="relative min-w-0 flex-1">
-        <Pitch model={feed.pitch} followedPlayerId={prefs.followed_player_id} />
-        <OverlayLayer feed={feed} />
+        <StagedPitch feed={feed} followedPlayerId={prefs.followed_player_id} overlay={<OverlayLayer feed={feed} />} />
         <div className="absolute left-1/2 top-5 -translate-x-1/2">
           <ScoreBug feed={feed} />
         </div>

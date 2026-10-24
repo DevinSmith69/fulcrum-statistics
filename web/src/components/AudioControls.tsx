@@ -25,7 +25,8 @@ export function LiveRegion({ commentary }: { commentary: Commentary }) {
   );
 }
 
-const isTyping = (t: EventTarget | null) =>
+/** Whether a key press is going into a text field (shortcuts must ignore it). */
+export const isTyping = (t: EventTarget | null) =>
   t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement || (t instanceof HTMLElement && t.isContentEditable);
 
 /** Keyboard shortcuts: V voice on/off, D audio description on/off, S stop talking. */

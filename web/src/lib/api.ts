@@ -1,5 +1,6 @@
 import { API_URL, DEFAULT_FIXTURE } from "./config";
 import type { AskAnswer, AskRequest, MatchEvent, MatchSummary, Team, ViewerPrefs } from "../types";
+import { demoFixture, type ControlAction, type ControlState } from "./director";
 import { pickMatch, requestedMatchId } from "./matchPick";
 import type { EvalLatest } from "./quality";
 
@@ -52,6 +53,15 @@ export const fetchEvalLatest = () => getJson<EvalLatest>("/api/eval/latest");
 /** Ask the studio: the Studio Analyst answers from this match's data only (fact-checked). Throws "<status> …". */
 export const askStudio = (matchId: string, body: AskRequest) =>
   getJson<AskAnswer>(`/api/matches/${encodeURIComponent(matchId)}/ask`, { method: "POST", body: JSON.stringify(body) });
+
+/** Demo director: the match's live pacing. Throws "501 …" when the match is simulated out of process. */
+export const fetchControl = (matchId: string) => getJson<ControlState>(`/api/matches/${encodeURIComponent(matchId)}/control`);
+/** Demo director: set speed, pause / resume, or run fast to the next big moment. */
+export const postControl = (matchId: string, body: ControlAction) =>
+  getJson<ControlState>(`/api/matches/${encodeURIComponent(matchId)}/control`, { method: "POST", body: JSON.stringify(body) });
+/** Start the demo fixture (seed 11, HLC v MDU) at `speed`. */
+export const startDemoMatch = (speed: number) =>
+  getJson<{ match_id: string }>("/api/matches", { method: "POST", body: JSON.stringify(demoFixture(speed)) });
 
 /** URL of the machine-readable overlay cue feed for a graphics partner (shown in the cue inspector). */
 export function overlayCuesUrl(matchId: string, prefs: ViewerPrefs) {

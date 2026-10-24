@@ -74,6 +74,18 @@ The API base comes from `VITE_API_URL` (default `http://localhost:8000`); the We
   of play behind the moment (`seq_start`…`seq_end`, widened to the whole possession, never past a kick-off) from
   `/events` (cached per match) and replays it on a mini pitch with the normal `Pitch` renderer and its own
   `PitchModel`, ringing the moment's `player_ids`. Plays twice, then closes; `Esc` closes early.
+- **Replay on the main pitch** (`src/components/PitchReplay.tsx`, playback shared with the mini replay in
+  `src/lib/useMomentReplay.ts`): in Match Studio (from `lg` width) and Broadcast, a card's Replay swaps the big
+  pitch to the run of play with a REPLAY badge and the moment caption, then returns to live; `R` replays the
+  newest big moment, `Esc` goes back to live (it no longer exits Broadcast while a replay is on). The live pitch
+  stays mounted underneath and its overlay cues are hidden during the replay.
+- **Demo director** (`src/components/DemoPanel.tsx`, `src/lib/useDirector.ts`, `src/lib/director.ts`;
+  API_CONTRACT §2 "Match controls"): a control bar in Match Studio and Broadcast, off by default — open the page
+  with `?demo=1` or press `C`. New demo match (seed 11, Harlow Cross v Marsh Dock United, at the selected speed;
+  navigates to `?match=<id>&demo=1`), speed 1×/5×/10×/30×/60×, pause / resume, next moment (runs fast to the next
+  goal, red card or big chance). Shortcuts: `Space` pause/resume, `]` / `[` faster / slower, `N` next moment,
+  `C` hide/show the bar (shortcuts stay on while hidden, for clean recordings). Controls are disabled (501) when
+  the match is simulated out of process, and against the mock.
 - Voice and accessibility: `src/lib/speechQueue.ts` (one line at a time; goals and red cards pre-empt; lines older
   than 15 s of match time *and* 4 s of wall time are dropped; de-duped; bounded), `src/lib/describe.ts`
   (audio-description phrasing in en/es/fr/pt/de, no LLM), `src/lib/speech.ts` (Azure neural voice through

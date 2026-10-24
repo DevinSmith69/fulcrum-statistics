@@ -10,6 +10,21 @@ const NOT_REPLAYABLE = new Set<MomentType>(["half_time", "full_time"]);
 
 export const isReplayable = (m: Pick<Moment, "type">) => !NOT_REPLAYABLE.has(m.type);
 
+/**
+ * The moment the "R" shortcut replays on the main pitch: the newest replayable moment at least `minSignificance`
+ * big (goals, red cards, big chances by default), else the newest replayable one. `null` if there is none.
+ */
+export function latestReplayable<M extends Pick<Moment, "type" | "significance">>(moments: readonly M[], minSignificance = 0.65): M | null {
+  let fallback: M | null = null;
+  for (let i = moments.length - 1; i >= 0; i--) {
+    const m = moments[i];
+    if (!isReplayable(m)) continue;
+    if (m.significance >= minSignificance) return m;
+    fallback ??= m;
+  }
+  return fallback;
+}
+
 /** An event the pitch can draw (it has a location). */
 const onPitch = (ev: MatchEvent) => ev.x != null && ev.y != null;
 

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Header, type Route } from "./components/Header";
 import { AudioSettings, LiveRegion, useAudioShortcuts } from "./components/AudioControls";
+import { DemoPanel } from "./components/DemoPanel";
+import { ReplayStageProvider } from "./components/PitchReplay";
 import { PrefsDrawer } from "./components/PrefsDrawer";
 import { useAudioPrefs, useCommentary } from "./lib/useCommentary";
 import { useMatchFeed } from "./lib/useMatchFeed";
@@ -10,6 +12,9 @@ import { QualityView } from "./views/QualityView";
 import { RecapView } from "./views/RecapView";
 import { SplitView } from "./views/SplitView";
 import { StudioView } from "./views/StudioView";
+
+/** Match Studio shows the pitch beside the insight rail from `lg` up; below that, cards keep their mini replay. */
+const STUDIO_ROOMY = "(min-width: 1024px)";
 
 function parseRoute(hash: string): Route {
   const r = hash.replace(/^#\/?/, "").split("?")[0];
@@ -52,8 +57,19 @@ function MainShell({ route }: { route: Exclude<Route, "split"> }) {
           )}
         </div>
       )}
-      {route === "studio" && <StudioView feed={feed} prefs={prefs} />}
-      {route === "broadcast" && <BroadcastView feed={feed} prefs={prefs} audio={audio} onAudioChange={setAudio} commentary={commentary} />}
+      {route === "studio" && (
+        <ReplayStageProvider feed={feed} lang={prefs.language ?? "en"} roomyQuery={STUDIO_ROOMY}>
+          <StudioView feed={feed} prefs={prefs} />
+        </ReplayStageProvider>
+      )}
+      {route === "broadcast" && (
+        <ReplayStageProvider feed={feed} lang={prefs.language ?? "en"}>
+          <BroadcastView feed={feed} prefs={prefs} audio={audio} onAudioChange={setAudio} commentary={commentary} />
+        </ReplayStageProvider>
+      )}
+      {(route === "studio" || route === "broadcast") && (
+        <DemoPanel feed={feed} lang={prefs.language ?? "en"} placement={route === "broadcast" ? "top-center" : "bottom-left"} />
+      )}
       {route === "recap" && <RecapView feed={feed} prefs={prefs} />}
       {route === "quality" && <QualityView feed={feed} />}
       {feed.finished && route === "studio" && (

@@ -7,6 +7,7 @@ import type { MatchFeed } from "../lib/useMatchFeed";
 import type { CheckStatus, Insight, Moment } from "../types";
 import { FactText, FactTrailPanel } from "./FactTrail";
 import { MiniReplay } from "./MiniReplay";
+import { useReplayStage } from "./PitchReplay";
 import { KitStripe } from "./TeamMark";
 
 const STATUS: Record<CheckStatus, { label: string; cls: string; title: string }> = {
@@ -36,6 +37,8 @@ function Item({ m, insight, feed, lang, dense, newest, anchor, highlighted }: { 
   const [trailOpen, setTrailOpen] = useState(false);
   const [replayOpen, setReplayOpen] = useState(false);
   const replayBtn = useRef<HTMLButtonElement>(null);
+  const stage = useReplayStage();
+  const onStage = !!m.moment_id && stage?.active?.moment.moment_id === m.moment_id;
   const trailId = useId();
   const minute = minuteLabel(m.clock_ms, m.period, feed.periodStarts);
   return (
@@ -86,12 +89,20 @@ function Item({ m, insight, feed, lang, dense, newest, anchor, highlighted }: { 
               <button
                 ref={replayBtn}
                 type="button"
-                aria-pressed={replayOpen}
-                onClick={() => setReplayOpen((o) => !o)}
-                className={`ml-auto flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-medium ring-1 transition-colors ${replayOpen ? "text-signal ring-signal/50" : "text-ink-300 ring-ink-600 hover:text-ink-50 hover:ring-ink-400"}`}
+                aria-pressed={replayOpen || onStage}
+                title={stage ? "Replay the run of play on the main pitch (R: latest big moment, Esc: back to live)" : undefined}
+                onClick={() => {
+                  // Main pitch when the view has one on screen; otherwise the mini replay inside the card.
+                  if (onStage) stage?.stop();
+                  else if (stage?.roomy()) {
+                    setReplayOpen(false);
+                    stage.play(m);
+                  } else setReplayOpen((o) => !o);
+                }}
+                className={`ml-auto flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-medium ring-1 transition-colors ${replayOpen || onStage ? "text-signal ring-signal/50" : "text-ink-300 ring-ink-600 hover:text-ink-50 hover:ring-ink-400"}`}
               >
                 <span aria-hidden>▶</span>
-                Replay
+                {onStage ? "On pitch" : "Replay"}
               </button>
             )}
           </div>

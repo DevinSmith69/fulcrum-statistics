@@ -51,6 +51,10 @@ without `fulcrum.agents` moments still flow but there are no insights.
   model's latest `MatchState`; 503 without a running agents service, 429 past the per-IP limit
   (`studio.RateLimiter`, `FULCRUM_ASK_RATE`, default `6/30`, `Retry-After` header).
 
+- Match controls (demo director, API_CONTRACT §2 "Match controls"): `GET/POST …/control` drive the
+  `fulcrum.sim.control.MatchControl` that `Pipeline` creates per in-process match (speed, pause / resume, next
+  moment). The hub passes every new moment to `Pipeline.on_moment` (`Hub.moment_listeners`), which ends a
+  running skip. 501 when the match is simulated elsewhere; `/api/health` has `match_controls: bool`.
 - Out of process (Azure, `FULCRUM_INPROCESS` off): with `FULCRUM_SIM_URL` set, `POST /api/matches` forwards the
   config to the sim service (`POST {FULCRUM_SIM_URL}/matches`). If the sim is unreachable or refuses, the API
   answers 502 and does not keep the match registered.
