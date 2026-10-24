@@ -1,7 +1,8 @@
 import { useMemo } from "react";
-import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Line, LineChart, ReferenceDot, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { clockToMinute, fixtureColours, minuteToClock } from "../lib/format";
 import type { MatchFeed } from "../lib/useMatchFeed";
+import { whatIfLabel, whatIfMarkers } from "../lib/whatIf";
 
 const DRAW = "#a7b0c0";
 const TICKS = [0, 15, 30, 45, 60, 75, 90];
@@ -28,6 +29,8 @@ export function WinProbChart({ feed, height = 190, showHeader = true }: { feed: 
   }, [winprob]);
 
   const goals = moments.filter((m) => m.type === "goal" || m.type === "red_card");
+  // Big chances: a faint dashed tick from the team's line up to its win % had the chance gone in (engine fact).
+  const whatIfs = useMemo(() => whatIfMarkers(moments, home?.team_id, away?.team_id), [moments, home?.team_id, away?.team_id]);
   const domainMax = Math.max(minuteToClock(90, periodStarts), state?.clock_ms ?? 0);
   const now = state?.win_prob;
 
@@ -104,6 +107,34 @@ export function WinProbChart({ feed, height = 190, showHeader = true }: { feed: 
             <Line type="monotone" dataKey="draw" stroke={DRAW} strokeWidth={1.5} strokeDasharray="4 4" dot={false} isAnimationActive={false} />
             <Line type="monotone" dataKey="home" stroke={colours.home} strokeWidth={2} dot={false} isAnimationActive={false} />
             <Line type="monotone" dataKey="away" stroke={colours.away} strokeWidth={2} dot={false} isAnimationActive={false} />
+            {whatIfs.map((w) => {
+              const c = colours[w.side];
+              const text = whatIfLabel(w, (w.side === "home" ? home : away)?.short_name);
+              return [
+                <ReferenceLine
+                  key={`${w.momentId}-tick`}
+                  segment={[{ x: w.clock, y: w.now }, { x: w.clock, y: w.ifScored }]}
+                  stroke={c}
+                  strokeOpacity={0.5}
+                  strokeWidth={1.5}
+                  strokeDasharray="2 2"
+                  ifOverflow="hidden"
+                />,
+                <ReferenceDot
+                  key={`${w.momentId}-dot`}
+                  x={w.clock}
+                  y={w.ifScored}
+                  ifOverflow="hidden"
+                  shape={(p: { cx?: number; cy?: number }) => (
+                    <g className="cursor-help" role="img" aria-label={text}>
+                      <title>{text}</title>
+                      <circle cx={p.cx} cy={p.cy} r={8} fill="transparent" />
+                      <circle cx={p.cx} cy={p.cy} r={3} fill="#0b1018" stroke={c} strokeOpacity={0.8} strokeWidth={1.5} strokeDasharray="2 1.5" />
+                    </g>
+                  )}
+                />,
+              ];
+            })}
           </LineChart>
         </ResponsiveContainer>
       </div>
