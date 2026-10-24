@@ -18,8 +18,9 @@ Pure, deterministic, synchronous core; the bus is only touched in `service.py`.
 ## Usage
 ```python
 from fulcrum.engine.match import MatchEngine
+
 engine = MatchEngine(match_id, home_team, away_team)
-out = engine.process_event(event)        # EngineOutput(state | None, moments, winprob point)
+out = engine.process_event(event)  # EngineOutput(state | None, moments, winprob point)
 ```
 ```bash
 uv run python scripts/print_moments.py tests/fixtures/handmade_nba_rvr.jsonl          # timeline for tuning

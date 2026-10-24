@@ -63,8 +63,13 @@ def pick_variants(variants: list[InsightVariant], prefs: ViewerPrefs) -> list[In
     return sorted(chosen, key=rank)
 
 
-async def personalise_insight(insight: Insight, prefs: ViewerPrefs, translator: Translator) -> Insight:
-    """A copy of `insight` carrying exactly one variant for this viewer (translated if needed)."""
+async def personalise_insight(
+    insight: Insight, prefs: ViewerPrefs, translator: Translator, *, translate: bool = True
+) -> Insight:
+    """A copy of `insight` carrying exactly one variant for this viewer (translated if needed).
+
+    `translate=False`: use cached translations only, else English (no LLM call).
+    """
     chosen = pick_variants(insight.variants, prefs)
     if not chosen:
         return insight.model_copy(update={"variants": []})
@@ -78,7 +83,7 @@ async def personalise_insight(insight: Insight, prefs: ViewerPrefs, translator: 
     if in_lang:
         return insight.model_copy(update={"variants": in_lang[:1]})
     source = [v for v in same_slot if v.language == "en"] or same_slot
-    translated = await translator.variants(insight, source[:1], prefs.language)
+    translated = await translator.variants(insight, source[:1], prefs.language, fetch=translate)
     return insight.model_copy(update={"variants": translated[:1]})
 
 

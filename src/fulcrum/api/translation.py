@@ -48,12 +48,19 @@ class Translator:
             log.exception("agents.%s%s failed; serving English", name, args)
             return None
 
-    async def variants(self, insight: Insight, variants: list[InsightVariant], language: str) -> list[InsightVariant]:
-        """`variants` (normally English) rendered in `language`, matched slot by slot."""
+    async def variants(
+        self, insight: Insight, variants: list[InsightVariant], language: str, *, fetch: bool = True
+    ) -> list[InsightVariant]:
+        """`variants` (normally English) rendered in `language`, matched slot by slot.
+
+        `fetch=False` only uses the cache (no agent/LLM call) — for bulk catch-up snapshots.
+        """
         if not variants or all(v.language == language for v in variants):
             return variants
         key = (insight.insight_id, language)
         if key not in self._variants:
+            if not fetch:
+                return variants
             got = await self._hook("translate", insight.insight_id, language)
             if not got:
                 return variants  # not cached: a later request may succeed

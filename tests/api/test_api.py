@@ -317,3 +317,60 @@ def test_dev_mode_post_starts_pipeline_with_replay_fallback(monkeypatch):
         state = c.get("/api/matches/dev-1/state").json()
         assert (state["match_id"], state["score_home"], state["score_away"]) == ("dev-1", 1, 1)
         assert len(c.get("/api/matches/dev-1/moments").json()) >= 12
+
+
+class CountingAgents:
+    """Stand-in for AgentService's on-demand hooks."""
+
+    def __init__(self) -> None:
+        self.translate_calls = 0
+
+    async def translate(self, insight_id, language):
+        self.translate_calls += 1
+        return []  # → English fallback
+
+    async def translate_cues(self, insight_id, language):
+        return []
+
+    async def recap(self, match_id, persona, language):
+        return Recap(
+            match_id=match_id,
+            persona=persona,
+            language=language,
+            title=f"{persona}-{language} recap",
+            summary="s",
+            key_moment_ids=[],
+            check_status=CheckStatus.PASSED,
+        )
+
+
+def test_hello_after_full_time_bounds_translation_and_sends_recap(client):
+    create_match(client)
+    agents = CountingAgents()
+    client.app.state.translator.agents = agents
+    for k in range(8):
+        publish(client, TOPIC_INSIGHTS, InsightsEnvelope.wrap(make_insight(f"m-{k}", 60_000 * k)))
+    casual = Recap(
+        match_id=MID,
+        persona=Persona.CASUAL,
+        title="casual-en recap",
+        summary="s",
+        key_moment_ids=[],
+        check_status=CheckStatus.FALLBACK,
+    )
+    publish(client, TOPIC_INSIGHTS, InsightsEnvelope.wrap(casual))
+    publish(client, TOPIC_EVENTS, MatchEvent(match_id=MID, seq=0, period=2, clock_ms=5_700_000, type="match_end"))
+    wait_for(lambda: client.get("/api/matches").json()[0]["status"] == "finished")
+    wait_for(lambda: len(client.get(f"/api/matches/{MID}/insights").json()) == 8)
+
+    with client.websocket_connect("/ws") as ws:
+        ws.send_json({"type": "subscribe", "match_id": MID, "prefs": {"persona": "analyst", "language": "es"}})
+        hello = ws.receive_json()
+        assert hello["type"] == "hello" and len(hello["payload"]["insights"]) == 8
+        assert agents.translate_calls == 5  # only the newest insights are translated on demand
+        recap = ws.receive_json()
+        assert recap["type"] == "recap" and recap["payload"]["title"] == "analyst-es recap"  # lazily generated
+    assert (
+        client.get(f"/api/matches/{MID}/recap", params={"persona": "analyst", "language": "es"}).json()["title"]
+        == "analyst-es recap"
+    )

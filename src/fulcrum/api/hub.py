@@ -40,6 +40,9 @@ from .translation import Translator
 log = logging.getLogger("fulcrum.api.hub")
 GROUPS = {TOPIC_EVENTS: "api-feed", TOPIC_STATE: "api", TOPIC_MOMENTS: "api", TOPIC_INSIGHTS: "api"}
 CONNECTION_QUEUE_MAX = 5_000
+# A catch-up snapshot translates only the newest insights on demand (one LLM call each); older ones use
+# cached translations or English, so switching language never stalls the live feed for long.
+HELLO_TRANSLATE_LATEST = 5
 
 
 def dump(model: BaseModel) -> dict[str, Any]:
@@ -74,7 +77,12 @@ class Connection:
 
     async def hello(self, rm: MatchReadModel) -> None:
         """Catch-up snapshot for the current prefs (API_CONTRACT §3 `hello`)."""
-        insights = [await ps.personalise_insight(i, self.prefs, self.hub.translator) for i in rm.insights.values()]
+        items = list(rm.insights.values())
+        cutoff = len(items) - HELLO_TRANSLATE_LATEST
+        insights = [
+            await ps.personalise_insight(i, self.prefs, self.hub.translator, translate=n >= cutoff)
+            for n, i in enumerate(items)
+        ]
         await self.send(
             "hello",
             {
@@ -103,6 +111,11 @@ class Connection:
         if kind == "hello":
             if rm is not None:
                 await self.hello(rm)
+                if rm.status == "finished" and rm.recaps:  # a (re)subscribe after full time gets its recap too
+                    best = await self.hub.best_recap(rm, self.prefs)
+                    if best is not None:
+                        self._recap_sent = True
+                        await self.send("recap", dump(best))
         elif kind in ("pong", "error"):
             await self.send(kind, item)
         elif kind == "event":
