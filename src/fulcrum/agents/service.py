@@ -45,6 +45,7 @@ from .translate import Translator
 log = logging.getLogger("fulcrum.agents")
 
 CONSUMER_GROUP = "agents"
+MAX_PENDING = 50  # per match: moments waiting for their teams to be known
 
 
 class AgentService:
@@ -72,7 +73,8 @@ class AgentService:
         self.translator = Translator(llm, self.config)
         self.recaps = RecapService(llm, self.config)
         self._seen: set[str] = set()
-        self._insights: dict[str, tuple[Moment, Insight]] = {}
+        self._insights: dict[str, tuple[Moment, Insight, str]] = {}  # id -> (moment, insight, score)
+        self._pending: dict[str, list[Moment]] = {}
         self._tasks: list[asyncio.Task[None]] = []
 
     # ------------------------------------------------------------------ lifecycle
@@ -122,9 +124,16 @@ class AgentService:
     def register_match(self, config: MatchConfig) -> None:
         """Tell the agents which teams play `config.match_id` (call when a match starts)."""
         self.store.register_match(config)
+        self._retry_pending(config.match_id)
 
     async def _on_event(self, event: MatchEvent) -> None:
         self.store.apply_event(event)
+        if event.match_id in self._pending:
+            self._retry_pending(event.match_id)
+
+    def _retry_pending(self, match_id: str) -> None:
+        for moment in self._pending.pop(match_id, []):
+            self.submit(moment)
 
     async def _on_moment(self, moment: Moment) -> None:
         self.submit(moment)
@@ -135,9 +144,16 @@ class AgentService:
             return None
         ctx = self.store.build_context(moment)
         if ctx is None:
+            # Topics are consumed independently, so a moment can beat match_start: hold it until teams are known.
+            pending = self._pending.setdefault(moment.match_id, [])
+            if all(m.moment_id != moment.moment_id for m in pending):
+                if len(pending) >= MAX_PENDING:
+                    dropped = pending.pop(0)
+                    log.warning("agents: dropping moment %s, still no teams for %s", dropped.moment_id, moment.match_id)
+                pending.append(moment)
             log.warning(
-                "agents: skipping moment %s — unknown teams for match %s (register_match or add home_team/away_team "
-                "facts)",
+                "agents: holding moment %s — unknown teams for match %s (register_match, match_start extra or "
+                "home_team/away_team facts)",
                 moment.moment_id,
                 moment.match_id,
             )
@@ -152,7 +168,7 @@ class AgentService:
         assert ctx.insight is not None
         moment, insight = ctx.moment, ctx.insight
         self.store.record(moment, insight)
-        self._insights[insight.insight_id] = (moment, insight)
+        self._insights[insight.insight_id] = (moment, insight, ctx.score)
         await self.bus.publish(TOPIC_INSIGHTS, moment.match_id, InsightsEnvelope.wrap(insight))
         for cue in ctx.cues:
             await self.bus.publish(TOPIC_INSIGHTS, moment.match_id, InsightsEnvelope.wrap(cue))
@@ -176,6 +192,10 @@ class AgentService:
         found = self._insights.get(insight_id)
         return found[1] if found else None
 
+    def pending(self, match_id: str) -> list[Moment]:
+        """Moments held because the match's teams are not known yet."""
+        return list(self._pending.get(match_id, []))
+
     def _teams(self, match_id: str) -> tuple[Team, Team] | None:
         mc = self.store.get(match_id)
         return (mc.home, mc.away) if mc.home and mc.away else None
@@ -186,10 +206,16 @@ class AgentService:
         teams = self._teams(found[0].match_id) if found else None
         if found is None or teams is None:
             return []
-        moment, insight = found
+        moment, insight, score = found
         home, away = teams
         return await self.translator.translate(
-            insight, moment, home, away, language, foreign_names=foreign_names(home, away, self.store.league)
+            insight,
+            moment,
+            home,
+            away,
+            language,
+            foreign_names=foreign_names(home, away, self.store.league),
+            score=score,
         )
 
     async def translate_cues(self, insight_id: str, language: str) -> list[OverlayCue]:
@@ -198,10 +224,16 @@ class AgentService:
         teams = self._teams(found[0].match_id) if found else None
         if found is None or teams is None:
             return []
-        moment, insight = found
+        moment, insight, score = found
         home, away = teams
         return await self.translator.cues(
-            insight, moment, home, away, language, foreign_names=foreign_names(home, away, self.store.league)
+            insight,
+            moment,
+            home,
+            away,
+            language,
+            foreign_names=foreign_names(home, away, self.store.league),
+            score=score,
         )
 
     async def recap(self, match_id: str, persona: Persona | str = Persona.CASUAL, language: str = "en") -> Recap | None:

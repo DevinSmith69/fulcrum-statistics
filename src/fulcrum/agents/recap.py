@@ -4,7 +4,7 @@ Lazy and cached per (match_id, persona, language). Input: the full-time moment's
 moments of the match by significance (in chronological order) with their insights. The copy may quote any
 number from those moments' fact packs (and their minutes), the final score, and names from the two rosters.
 Fact-checked, repaired once, then a deterministic fallback built from already-checked insight headlines
-(English; cached like a generated recap so repeated requests stay cheap).
+(English; not cached, so a later request retries the LLM).
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from collections.abc import Sequence
 from fulcrum.contracts import CheckStatus, Insight, Moment, MomentType, Persona, Recap, Team
 from fulcrum.llm import LLMClient
 
-from .context import fact_map, fmt_value, moment_minute, recap_prompt
+from .context import fact_map, moment_minute, recap_prompt
 from .factcheck import FactSheet, Issue
 from .orchestrator import LLMTimeout, OrchestratorConfig, call_llm
 from .prompts import MATCH_REPORTER
@@ -102,8 +102,9 @@ def fallback_recap(
         parts.append(f"The turning points: {points}.")
     facts = fact_map(full_time.facts)
     potm = _player_id(facts["top_player_1"].value, home, away) if "top_player_1" in facts else None
-    if "top_player_1" in facts:
-        parts.append(f"Standout performer: {fmt_value(facts['top_player_1'].value)}.")
+    if potm is not None:
+        name = next(p.short_name for p in (*home.players, *away.players) if p.player_id == potm)
+        parts.append(f"Standout performer: {name}.")
     summary = " ".join(parts)
     if len(summary) > MAX_SUMMARY:
         summary = parts[0]
@@ -198,8 +199,8 @@ class RecapService:
                 return recap
             issues, status = [str(p) for p in problems], CheckStatus.REPAIRED
             log.info("recap %s attempt %d failed checks: %s", key, attempt, issues)
-        log.warning("recap %s fell back to template", key)
-        recap = fallback_recap(
+        log.warning("recap %s fell back to template (not cached, so a later request retries)", key)
+        return fallback_recap(
             match_id=full_time.match_id,
             persona=persona,
             full_time=full_time,
@@ -208,5 +209,3 @@ class RecapService:
             away=away,
             score=score,
         )
-        self._cache[key] = recap
-        return recap

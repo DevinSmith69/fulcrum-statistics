@@ -55,12 +55,16 @@ agents behind `LLMClient`.
 ## Fact-checker rules (`factcheck.py`)
 1. **Numbers.** Every numeric token must equal (numerically, after normalising decimal commas) one of: a fact
    value, a number inside a string fact or a fact label (`"2-1"`, `"67'"`, "last 5 min"), the score, or the
-   moment minute. Sign is ignored, so a `-12` delta may be written "dropped 12". Small scorelines (`1-0`,
-   digits 0–3) are allowed as phrases.
+   moment minute. Sign is ignored, so a `-12` delta may be written "dropped 12". "11,240" is one number.
+   Scorelines get no free pass: each digit must be a fact-pack number. This is stricter than §5.1, so a
+   wrong score is rejected.
 2. **Fact keys.** Every key in `key_fact_keys` must exist in the fact pack.
-3. **Names.** No real club or competition from the denylist. No team or player from the fictional league who
-   is not in this match (names are unique league-wide).
+3. **Names.** No real club or competition from the denylist (any case; hyphens and NBSPs tolerated). No team
+   or player from the fictional league who is not in this match, in any case, including a foreign team's
+   first word (names are unique league-wide).
 4. **Betting language.** Checked in English and in the copy's own language.
+
+Template fallback copy is itself fact-checked candidate by candidate, so FALLBACK output always passes.
 5. **Lengths.** Headline ≤ 90, body ≤ 300, commentary ≤ 160 chars and ≤ 25 words. The editor must return
    exactly analyst, casual, club_fan(home) and club_fan(away).
 

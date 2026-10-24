@@ -4,8 +4,9 @@ Format: `- [ ] (WSx → WSy) what you need, why, which contract/fixture you code
 ## WS3a (agents, offline) — 2026-10-24
 - [ ] (WS3 → WS2) Every `Moment` should carry `home_team` / `away_team` facts (team name, or team_id; the agents
   resolve by id, name or short_name, and `home_team_id` / `away_team_id` also work). Better still, call
-  `AgentService.register_match(config)` when `POST /api/matches` starts a match. If neither happens, the agents
-  skip the moment and log a warning. Coded against MODEL_SPEC §4 "Every moment also carries minute, score,
+  `AgentService.register_match(config)` when `POST /api/matches` starts a match. A `match_start` event whose
+  `extra` holds `home_team_id` / `away_team_id` also works. Until the teams are known, the agents hold the
+  match's moments (up to 50) and process them as soon as the teams arrive. Coded against MODEL_SPEC §4 "Every moment also carries minute, score,
   home_team, away_team".
 - [ ] (WS3 → WS2) Put player **short names** (e.g. `"Brennick"`) in player facts (`scorer`, `shooter`, `player`,
   `passer`, `recipient`, `assist`). A player_id still works because templates map ids to short names, but the
@@ -41,18 +42,26 @@ Format: `- [ ] (WSx → WSy) what you need, why, which contract/fixture you code
 - **Repair scope:** if only variants failed, only the Persona Editor re-runs. If the explanation failed, the
   Analyst and the Editor both re-run.
 - **Number matching is numeric, not string:** `0.30` matches a fact stored as `0.3`, `0,34` matches `0.34`,
-  and signs are ignored. Numbers inside string facts and fact labels are allowed. Both the "minute being
-  played" and "completed minutes" readings of the moment clock are allowed, unless a `minute` fact pins it.
-- **Unknown-name rule:** we check against a denylist (real clubs and competitions) plus league names not in
-  this match. We do not flag arbitrary capitalised words, which would false-positive on sentence starts.
-- **Banned terms** are checked in English plus the copy's own language, not all five languages, to avoid
-  cross-language false positives such as German "Quote".
+  and signs are ignored. "11,240" is read as one number. Numbers inside string facts and fact labels are
+  allowed. Both the "minute being played" and "completed minutes" readings of the moment clock are allowed.
+- **Scorelines get no free pass**, which deviates from §5.1. Every digit in "3-2" must be a fact-pack number.
+  The §5.1 allowance (any 0–3 scoreline) would let a wrong score through, and the real score and the
+  previous score digits are normally in the pack anyway.
+- **Unknown-name rule:** we check against a denylist (real clubs and competitions, any case, hyphen- and
+  NBSP-tolerant) plus league names not in this match (any case, including a foreign team's first word,
+  e.g. "Harlow"). We do not flag arbitrary capitalised words, which would false-positive on sentence starts.
+- **Banned terms** are checked in English plus the copy's own language. German "Quote" and French "cote"
+  are not banned, because both also mean an ordinary rate or rating.
+- **Template fallback is self-verifying:** each candidate template is fact-checked and skipped on failure,
+  ending in slot-free copy. So a bad string fact (e.g. a `cause_event` naming a foreign player) can never
+  reach FALLBACK copy.
+- **REPAIRED** also covers "attempt 1 hit an LLM error, attempt 2 passed". `check_notes` says which happened.
 - **Cue choices the contract leaves open:** big_chance → stat_card(3); red_card → lower_third(4) +
   wp_swing(3); tempo_change → pressure_bar(2); half_time → recap_card(4); player_tag anchored top-left.
   `wp_swing` cue headlines are a fixed localised label ("Win probability · Team"), and the body is the
   variant's commentary line.
 - **Translations** that fail checks twice return the English variants and are not cached, so a later
-  request can retry. Recap fallbacks *are* cached, because they are generated once per persona and language
-  at full time.
+  request can retry. Recap fallbacks are not cached either. Translations are checked against the same score
+  the English copy used.
 - **Fake LLM in dev:** `get_llm()` returns an empty `FakeLLM`, so `make dev` shows template copy marked
   `fallback` for every moment. That is intended; real copy arrives with WS3b.

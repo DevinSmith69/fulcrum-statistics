@@ -72,8 +72,13 @@ class Translator:
         language: str,
         *,
         foreign_names: Sequence[str] = (),
+        score: str | None = None,
     ) -> list[InsightVariant]:
-        """`insight.variants` (English) in `language`. Never raises; falls back to English."""
+        """`insight.variants` (English) in `language`. Never raises; falls back to English.
+
+        Pass the `score` the English copy was checked with (default: the moment's `score` fact) so the
+        translation is held to exactly the same numbers.
+        """
         lang = normalise_language(language)
         source = [v for v in insight.variants if v.language == "en"] or list(insight.variants)
         if lang == "en" or lang.startswith("en-"):
@@ -83,7 +88,7 @@ class Translator:
             return self._cache[key]
         task = self._inflight.get(key)
         if task is None:  # concurrent requests for the same key share one LLM call
-            task = asyncio.create_task(self._translate(insight, moment, home, away, source, lang, foreign_names))
+            task = asyncio.create_task(self._translate(insight, moment, source, lang, foreign_names, score))
             self._inflight[key] = task
             task.add_done_callback(lambda _t, k=key: self._inflight.pop(k, None))
         return await asyncio.shield(task)
@@ -97,10 +102,11 @@ class Translator:
         language: str,
         *,
         foreign_names: Sequence[str] = (),
+        score: str | None = None,
     ) -> list[OverlayCue]:
         """Overlay cues for the translated variants (cached alongside the translation)."""
         lang = normalise_language(language)
-        variants = await self.translate(insight, moment, home, away, lang, foreign_names=foreign_names)
+        variants = await self.translate(insight, moment, home, away, lang, foreign_names=foreign_names, score=score)
         if variants and variants[0].language == "en":
             return build_cues(insight, moment, home, away, variants)
         key = (insight.insight_id, lang)
@@ -112,14 +118,13 @@ class Translator:
         self,
         insight: Insight,
         moment: Moment,
-        home: Team,
-        away: Team,
         source: list[InsightVariant],
         lang: str,
         foreign_names: Sequence[str],
+        score: str | None,
     ) -> list[InsightVariant]:
-        score_fact = fact_map(moment.facts).get("score")
-        score = fmt_value(score_fact.value) if score_fact else None
+        if score is None and (score_fact := fact_map(moment.facts).get("score")) is not None:
+            score = fmt_value(score_fact.value)
         sheet = FactSheet.build(moment.facts, score=score, clock_ms=moment.clock_ms, foreign_names=foreign_names)
         deadline = time.monotonic() + self.config.total_budget_s
         issues: list[str] = []

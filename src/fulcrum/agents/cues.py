@@ -43,6 +43,7 @@ class CueSpec:
     anchor: OverlayAnchor
     stat_keys: tuple[str, ...] = ()  # fact keys or team-relative aliases (`wp_team_after`)
     text: str = "variant"  # "variant": headline/body from the variant; "wp": WP label + commentary line
+    wp_side: str = "team"  # whose win probability a "wp" cue shows: the moment's team or its opponent
 
 
 LT, WP, SC, PB, RC, PT = (
@@ -86,7 +87,7 @@ CUE_MAP: dict[MomentType, tuple[CueSpec, ...]] = {
     MomentType.BIG_CHANCE: (CueSpec(SC, 3, 7000, BR, ("xg", "distance_m", "team_xg_total")),),
     MomentType.RED_CARD: (
         CueSpec(LT, 4, 8000, BL),
-        CueSpec(WP, 3, 6000, TR, ("wp_opp_before", "wp_opp_after", "wp_opp_delta"), text="wp"),
+        CueSpec(WP, 3, 6000, TR, ("wp_opp_before", "wp_opp_after", "wp_opp_delta"), text="wp", wp_side="opp"),
     ),
     MomentType.TEMPO_CHANGE: (CueSpec(PB, 2, 6000, TL, ("tempo_ppm", "tempo_match_avg")),),
     MomentType.HALF_TIME: (CueSpec(RC, 4, 10000, BC, ("xg_home", "xg_away", "possession_home", "possession_away")),),
@@ -175,6 +176,7 @@ def build_cues(
     variants = list(insight.variants if variants is None else variants)
     specs = CUE_MAP.get(MomentType(moment.type), (CueSpec(LT, 3, 6000, BL),))
     team_names = {home.team_id: home.name, away.team_id: away.name}
+    opponent = {home.team_id: away.team_id, away.team_id: home.team_id}
     cues: list[OverlayCue] = []
     for spec in specs:
         stats = select_stats(moment, home, away, spec.stat_keys, insight.explanation.key_fact_keys)
@@ -183,7 +185,8 @@ def build_cues(
                 continue
             if spec.text == "wp":
                 label = WP_LABEL.get(v.language.split("-")[0], WP_LABEL["en"])
-                team = team_names.get(moment.team_id or "")
+                side_id = opponent.get(moment.team_id or "") if spec.wp_side == "opp" else moment.team_id
+                team = team_names.get(side_id or "")
                 headline, body = (f"{label} · {team}" if team else label), v.commentary_line
             else:
                 headline, body = v.headline, v.body

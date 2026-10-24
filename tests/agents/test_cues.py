@@ -126,3 +126,10 @@ def test_translated_variants_make_translated_cues():
     assert {c.language for c in cues} == {"es"}
     wp = by_template(cues)["wp_swing"][0]
     assert wp.headline.startswith("Probabilidad de victoria")
+
+
+def test_red_card_wp_cue_names_the_team_whose_numbers_it_shows():
+    ctx, insight = insight_for(MomentType.RED_CARD)  # RVR player sent off; NBA's WP rises 45 → 58
+    wp = by_template(build_cues(insight, ctx.moment, ctx.home, ctx.away))["wp_swing"][0]
+    assert wp.headline == "Win probability · Northbridge Athletic"
+    assert [s.value for s in wp.stats] == ["45", "58", "13"]
