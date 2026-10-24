@@ -14,7 +14,7 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
-from typing import Any, Literal
+from typing import Any
 
 import httpx
 from dotenv import load_dotenv
@@ -36,7 +36,6 @@ from fulcrum.contracts import (
     MatchEvent,
     MatchState,
     Moment,
-    MomentType,
     OverlayCue,
     Persona,
     Recap,
@@ -45,7 +44,7 @@ from fulcrum.contracts import (
 )
 from fulcrum.engine.service import EngineService
 from fulcrum.engine.teams import load_teams
-from fulcrum.sim.control import DEFAULT_SKIP_SIGNIFICANCE, MAX_SPEED, MIN_SPEED, MatchControl
+from fulcrum.sim.control import ControlError, ControlRequest, MatchControl, apply
 from fulcrum.telemetry import configure_telemetry
 from fulcrum.topology import Topology, parse_topology, resolve_topology
 
@@ -72,19 +71,6 @@ class SpeechRequest(BaseModel):
     language: str = "en"
 
 
-class ControlRequest(BaseModel):
-    """`POST /api/matches/{id}/control` (demo director, API_CONTRACT §2 "Match controls")."""
-
-    action: Literal["set_speed", "pause", "resume", "next_moment", "cancel_skip"]
-    speed: float | None = Field(default=None, ge=MIN_SPEED, le=MAX_SPEED, description="set_speed: sim-time multiplier")
-    min_significance: float = Field(
-        default=DEFAULT_SKIP_SIGNIFICANCE, ge=0, le=1, description="next_moment: stop on a moment at least this big"
-    )
-    types: list[MomentType] | None = Field(
-        default=None, description="next_moment: stop on these moment types instead of by significance"
-    )
-
-
 def _env_flag(name: str, default: bool) -> bool:
     raw = os.getenv(name)
     return default if raw is None else raw.strip().lower() in ("1", "true", "yes", "on")
@@ -109,6 +95,61 @@ async def start_on_sim(app: FastAPI, sim_url: str, config: MatchConfig) -> None:
         raise HTTPException(502, f"sim service unreachable: {exc}") from exc
     if r.status_code >= 400:
         raise HTTPException(502, f"sim refused the match ({r.status_code}): {r.text[:200]}")
+
+
+def _remote_sim_url(app: FastAPI) -> str | None:
+    """The sim service URL when matches are simulated out of this process (split / hybrid), else None."""
+    topology = getattr(app.state, "topology", None)
+    if topology is None or topology.api_runs_sim:
+        return None
+    return os.getenv("FULCRUM_SIM_URL") or None
+
+
+async def _sim_request(app: FastAPI, method: str, path: str, body: Any = None) -> httpx.Response:
+    url = f"{_remote_sim_url(app) or ''}".rstrip("/") + path
+    client: httpx.AsyncClient | None = getattr(app.state, "sim_client", None)
+    if client is not None:
+        return await client.request(method, url, json=body)
+    async with httpx.AsyncClient(timeout=10) as c:
+        return await c.request(method, url, json=body)
+
+
+async def _sim_control(app: FastAPI, method: str, match_id: str, body: Any = None) -> dict[str, Any]:
+    """Forward a demo-director call to the sim service; remember a running skip so moments get passed on."""
+    try:
+        r = await _sim_request(app, method, f"/matches/{match_id}/control", body)
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, f"sim service unreachable: {exc}") from exc
+    if r.status_code >= 400:
+        detail = r.json().get("detail") if "json" in r.headers.get("content-type", "") else r.text[:200]
+        raise HTTPException(r.status_code if r.status_code in (404, 409, 422) else 502, detail)
+    snap = r.json()
+    _track_skip(app, match_id, snap)
+    return snap
+
+
+def _track_skip(app: FastAPI, match_id: str, snap: dict[str, Any]) -> None:
+    skips: set[str] = app.state.remote_skips
+    (skips.add if snap.get("skipping") else skips.discard)(match_id)
+
+
+async def _forward_moment(app: FastAPI, moment: Moment) -> None:
+    """While a remote skip runs, the sim service (which has no engine) learns about each moment from us."""
+    try:
+        r = await _sim_request(app, "POST", f"/matches/{moment.match_id}/moment", moment.model_dump(mode="json"))
+        if r.status_code < 400:
+            _track_skip(app, moment.match_id, r.json())
+    except httpx.HTTPError as exc:
+        log.warning("could not pass moment %s to the sim service: %s", moment.moment_id, exc)
+
+
+_BG: set[asyncio.Task[Any]] = set()
+
+
+def _spawn_bg(coro: Any) -> None:
+    task = asyncio.create_task(coro)
+    _BG.add(task)
+    task.add_done_callback(_BG.discard)
 
 
 def create_app(
@@ -154,6 +195,12 @@ def create_app(
             pipeline = Pipeline(the_bus, registry, engine, translator, run_sim=sim, run_agents=agents)
             hub.moment_listeners.append(pipeline.on_moment)
         app.state.topology = the_topology
+        app.state.remote_skips = set()
+        if not the_topology.api_runs_sim and os.getenv("FULCRUM_SIM_URL"):
+            # demo director, sim elsewhere: pass moments on while a skip runs (ends the skip there)
+            hub.moment_listeners.append(
+                lambda m: _spawn_bg(_forward_moment(app, m)) if m.match_id in app.state.remote_skips else None
+            )
         app.state.bus, app.state.registry, app.state.hub = the_bus, registry, hub
         app.state.translator, app.state.pipeline = translator, pipeline
         app.state.speech = speech if speech is not None else SpeechSynth.from_env()
@@ -263,7 +310,7 @@ def _router() -> APIRouter:
             "agents_error": None if pipeline is None else pipeline.agents_error,
             "speech": request.app.state.speech is not None,
             # Demo director (speed / pause / next moment) needs the simulator running in this process.
-            "match_controls": pipeline is not None and pipeline.run_sim,
+            "match_controls": (pipeline is not None and pipeline.run_sim) or _remote_sim_url(request.app) is not None,
         }
 
     @r.get("/eval/latest")
@@ -372,42 +419,36 @@ def _router() -> APIRouter:
             raise HTTPException(404, "recap not ready yet")
         return best
 
-    def control(request: Request, match_id: str) -> MatchControl:
+    def local_control(request: Request, match_id: str) -> MatchControl | None:
         match(request, match_id)  # 404 first
         pipeline: Pipeline | None = request.app.state.pipeline
-        ctl = pipeline.control(match_id) if pipeline is not None else None
-        if ctl is None:
-            raise HTTPException(
-                501,
-                "match controls need the simulator running inside the API process (FULCRUM_INPROCESS); "
-                "this match is simulated elsewhere",
-            )
-        return ctl
+        return pipeline.control(match_id) if pipeline is not None else None
+
+    def no_controls() -> HTTPException:
+        return HTTPException(
+            501, "match controls need the simulator in this process or a sim service (FULCRUM_SIM_URL)"
+        )
 
     @r.get("/matches/{match_id}/control")
     async def get_control(request: Request, match_id: str) -> dict[str, Any]:
         """Demo director: the match's live pacing (speed, paused, skipping)."""
-        return control(request, match_id).snapshot()
+        if (ctl := local_control(request, match_id)) is not None:
+            return ctl.snapshot()
+        if _remote_sim_url(request.app) is None:
+            raise no_controls()
+        return await _sim_control(request.app, "GET", match_id)
 
     @r.post("/matches/{match_id}/control")
     async def post_control(request: Request, match_id: str, body: ControlRequest) -> dict[str, Any]:
         """Demo director: set speed, pause / resume, or run fast to the next significant moment."""
-        ctl = control(request, match_id)
-        if ctl.finished:
-            raise HTTPException(409, "the match has finished")
-        if body.action == "set_speed":
-            if body.speed is None:
-                raise HTTPException(422, "set_speed requires speed")
-            ctl.set_speed(body.speed)
-        elif body.action == "pause":
-            ctl.pause()
-        elif body.action == "resume":
-            ctl.resume()
-        elif body.action == "next_moment":
-            ctl.skip_to_next(body.min_significance, body.types)
-        else:
-            ctl.cancel_skip()
-        return ctl.snapshot()
+        if (ctl := local_control(request, match_id)) is not None:
+            try:
+                return apply(ctl, body)
+            except ControlError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+        if _remote_sim_url(request.app) is None:
+            raise no_controls()
+        return await _sim_control(request.app, "POST", match_id, body.model_dump(mode="json"))
 
     @r.post("/matches/{match_id}/ask", response_model=AskAnswer)
     async def ask(request: Request, match_id: str, body: AskRequest) -> AskAnswer:

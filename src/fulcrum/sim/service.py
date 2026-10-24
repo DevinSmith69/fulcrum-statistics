@@ -5,6 +5,9 @@
 * `POST /matches` with a `MatchConfig` starts that match on the bus (202). Internal ingress only; the API calls
   it for `POST /api/matches` when it runs out of process (`FULCRUM_SIM_URL`, see docs/HANDOFFS.md).
 * `GET /matches` lists running/finished matches, `GET /health` is the probe.
+* Demo director in the split / hybrid topologies: `GET|POST /matches/{id}/control` (same body and snapshot as
+  the API's `…/control`, which forwards here), and `POST /matches/{id}/moment`, through which the API passes the
+  engine's moments while a "next moment" skip runs (the engine is not in this process).
 * `FULCRUM_SIM_AUTOSTART=1` starts one match on boot, so a fresh deployment has a live match without anyone
   calling the API. `FULCRUM_SIM_HOME` / `_AWAY` / `_SEED` / `_SPEED` choose it (defaults NBA, RVR, 7, 10).
   `FULCRUM_SIM_LOOP=1` keeps going: the next seed starts `FULCRUM_SIM_GAP_S` (default 60) after full time.
@@ -26,8 +29,9 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from fulcrum.bus import Bus, get_bus
-from fulcrum.contracts import EventType, MatchConfig, MatchEvent
+from fulcrum.contracts import EventType, MatchConfig, MatchEvent, Moment
 
+from .control import MAX_SPEED, MIN_SPEED, ControlError, ControlRequest, MatchControl, apply
 from .players import load_teams
 from .runner import run_match
 
@@ -66,6 +70,7 @@ class SimService:
         self.bus = bus or get_bus()
         self.teams = load_teams()
         self.tasks: dict[str, asyncio.Task[tuple[int, int]]] = {}
+        self.controls: dict[str, MatchControl] = {}  # demo director: per-match speed / pause / skip
 
     def start(self, config: MatchConfig) -> None:
         """Start `config` in the background. Raises ValueError for unknown teams or a duplicate running match."""
@@ -77,7 +82,13 @@ class SimService:
             raise ValueError(f"match '{config.match_id}' is already running")
         bus = TeamTaggingBus(self.bus, config)
         home, away = self.teams[config.home_team_id], self.teams[config.away_team_id]
-        task = asyncio.create_task(run_match(config, home=home, away=away, bus=bus), name=f"sim-{config.match_id}")
+        # Controllable pacing for real-time-ish matches; speed 0 ("as fast as possible", tests/replays) stays raw.
+        control = MatchControl(config.match_id, config.speed) if MIN_SPEED <= config.speed <= MAX_SPEED else None
+        if control is not None:
+            self.controls[config.match_id] = control
+        task = asyncio.create_task(
+            run_match(config, home=home, away=away, bus=bus, control=control), name=f"sim-{config.match_id}"
+        )
         task.add_done_callback(lambda t, mid=config.match_id: self._done(mid, t))
         self.tasks[config.match_id] = task
         log.info("sim: started %s (%s v %s, seed %s)", config.match_id, home.team_id, away.team_id, config.seed)
@@ -158,6 +169,30 @@ def create_app(bus: Bus | None = None) -> FastAPI:
         except ValueError as exc:
             raise HTTPException(409 if "already running" in str(exc) else 422, str(exc)) from exc
         return {"match_id": config.match_id}
+
+    def control(match_id: str) -> MatchControl:
+        ctl = app.state.sim.controls.get(match_id)
+        if ctl is None:
+            raise HTTPException(404, f"no match '{match_id}' in this simulator")
+        return ctl
+
+    @app.get("/matches/{match_id}/control")
+    async def get_control(match_id: str) -> dict[str, Any]:
+        return control(match_id).snapshot()
+
+    @app.post("/matches/{match_id}/control")
+    async def post_control(match_id: str, body: ControlRequest) -> dict[str, Any]:
+        try:
+            return apply(control(match_id), body)
+        except ControlError as exc:
+            raise HTTPException(exc.status, str(exc)) from exc
+
+    @app.post("/matches/{match_id}/moment")
+    async def moment(match_id: str, body: Moment) -> dict[str, Any]:
+        """The API's engine saw `body`: ends a running skip if it qualifies. Returns the control snapshot."""
+        ctl = control(match_id)
+        ctl.on_moment(body)
+        return ctl.snapshot()
 
     return app
 

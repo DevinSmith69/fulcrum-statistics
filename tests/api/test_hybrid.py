@@ -114,3 +114,29 @@ def test_topology_from_env_and_legacy_flag(monkeypatch):
     with TestClient(create_app(MemoryBus(), run_sim=False)) as c:
         h = c.get("/api/health").json()
         assert (h["topology"], h["in_process"]) == ("inprocess", True)
+
+
+def test_demo_director_controls_a_match_on_the_sim_service(hybrid):
+    """Speed / pause / next moment are forwarded to the sim service; moments from the API's engine end a skip."""
+    assert hybrid.get("/api/health").json()["match_controls"] is True
+    cfg = {**CONFIG, "match_id": "hybrid-ctl", "speed": 1}  # real-time pacing, so the match is still running
+    assert hybrid.post("/api/matches", json=cfg).status_code == 201
+    base = "/api/matches/hybrid-ctl/control"
+    snap = hybrid.get(base).json()
+    assert snap["available"] and snap["speed"] == 1.0 and not snap["paused"]
+    assert hybrid.post(base, json={"action": "set_speed", "speed": 30}).json()["speed"] == 30.0
+    assert hybrid.post(base, json={"action": "pause"}).json()["paused"] is True
+    assert hybrid.post(base, json={"action": "set_speed"}).status_code == 422
+    # skip to the first big moment: the sim runs fast until the API's engine sees one and passes it on
+    snap = hybrid.post(base, json={"action": "next_moment", "min_significance": 0.65}).json()
+    assert snap["skipping"] is True and "hybrid-ctl" in hybrid.app.state.remote_skips
+    wait_for(lambda: hybrid.get(base).json()["last_skip"] is not None, timeout=60)
+    after = hybrid.get(base).json()
+    assert after["skipping"] is False and after["last_skip"]["significance"] >= 0.65
+    wait_for(lambda: "hybrid-ctl" not in hybrid.app.state.remote_skips, timeout=10)
+    hybrid.post(base, json={"action": "pause"})
+
+
+def test_controls_for_an_unknown_match_on_the_sim_are_404(hybrid):
+    hybrid.app.state.registry.get_or_create("ghost")  # the API knows it, the sim never started it
+    assert hybrid.get("/api/matches/ghost/control").status_code == 404

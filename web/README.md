@@ -84,8 +84,8 @@ The API base comes from `VITE_API_URL` (default `http://localhost:8000`); the We
   with `?demo=1` or press `C`. New demo match (seed 11, Harlow Cross v Marsh Dock United, at the selected speed;
   navigates to `?match=<id>&demo=1`), speed 1×/5×/10×/30×/60×, pause / resume, next moment (runs fast to the next
   goal, red card or big chance). Shortcuts: `Space` pause/resume, `]` / `[` faster / slower, `N` next moment,
-  `C` hide/show the bar (shortcuts stay on while hidden, for clean recordings). Controls are disabled (501) when
-  the match is simulated out of process, and against the mock.
+  `C` hide/show the bar (shortcuts stay on while hidden, for clean recordings). Controls also work when the match
+  runs on the sim service (the API forwards them); they are disabled (501) only without one, and against the mock.
 - Voice and accessibility: `src/lib/speechQueue.ts` (one line at a time; goals and red cards pre-empt; lines older
   than 15 s of match time *and* 4 s of wall time are dropped; de-duped; bounded), `src/lib/describe.ts`
   (audio-description phrasing in en/es/fr/pt/de, no LLM), `src/lib/speech.ts` (Azure neural voice through

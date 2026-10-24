@@ -88,10 +88,13 @@ to start).
   phase/tempo/pressure notes) — or, with `types`, a moment of one of those types — then drops back to
   `speed` and records it in `last_skip`. It also resumes a paused match. `cancel_skip` stops early.
   Moments passed on the way are still detected and explained (agents explain in arrival order).
-- `GET /api/health` → `"match_controls": true` when this API process runs the simulator (in-process mode).
+- `GET /api/health` → `"match_controls": true` when this API process runs the simulator (in-process) or forwards
+  matches to a sim service (`FULCRUM_SIM_URL`, split / hybrid): the API then proxies these calls to the sim's
+  `GET|POST /matches/{id}/control`, and while a skip runs it passes each new moment to the sim's
+  `POST /matches/{id}/moment` (the sim has no engine), which ends the skip there.
 - Errors: 404 unknown match · 422 bad body (`set_speed` without `speed`, speed out of range) · 409 the match has
-  finished · **501** when the match is not simulated in this process (out-of-process topology: the sim
-  Container App paces itself; the overlay disables its controls).
+  finished · 502 the sim service is unreachable · **501** when there is neither an in-process simulator nor a
+  sim service (the overlay then disables its controls).
 
 The API keeps per-match read models in memory (dict of match_id → ring buffers). Persistence is a stretch
 goal (Cosmos DB) — do not build it before Sunday evening.

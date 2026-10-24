@@ -17,7 +17,9 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field
 
 from fulcrum.contracts import Moment, MomentType
 
@@ -176,3 +178,43 @@ def _check_speed(speed: float) -> float:
     if not MIN_SPEED <= speed <= MAX_SPEED:
         raise ValueError(f"speed must be between {MIN_SPEED} and {MAX_SPEED}")
     return speed
+
+
+class ControlRequest(BaseModel):
+    """`POST …/control` body (API_CONTRACT §2 "Match controls"); shared by the API and the sim service."""
+
+    action: Literal["set_speed", "pause", "resume", "next_moment", "cancel_skip"]
+    speed: float | None = Field(default=None, ge=MIN_SPEED, le=MAX_SPEED, description="set_speed: sim-time multiplier")
+    min_significance: float = Field(
+        default=DEFAULT_SKIP_SIGNIFICANCE, ge=0, le=1, description="next_moment: stop on a moment at least this big"
+    )
+    types: list[MomentType] | None = Field(
+        default=None, description="next_moment: stop on these moment types instead of by significance"
+    )
+
+
+class ControlError(ValueError):
+    """A control request that can't apply: `status` is the HTTP status to answer with (409 / 422)."""
+
+    def __init__(self, status: int, message: str) -> None:
+        super().__init__(message)
+        self.status = status
+
+
+def apply(ctl: MatchControl, body: ControlRequest) -> dict[str, Any]:
+    """Apply one control action and return the new snapshot. Raises ControlError (409 finished, 422 bad input)."""
+    if ctl.finished:
+        raise ControlError(409, "the match has finished")
+    if body.action == "set_speed":
+        if body.speed is None:
+            raise ControlError(422, "set_speed requires speed")
+        ctl.set_speed(body.speed)
+    elif body.action == "pause":
+        ctl.pause()
+    elif body.action == "resume":
+        ctl.resume()
+    elif body.action == "next_moment":
+        ctl.skip_to_next(body.min_significance, body.types)
+    else:
+        ctl.cancel_skip()
+    return ctl.snapshot()

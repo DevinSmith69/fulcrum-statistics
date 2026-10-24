@@ -55,7 +55,8 @@ without `fulcrum.agents` moments still flow but there are no insights.
 - Match controls (demo director, API_CONTRACT §2 "Match controls"): `GET/POST …/control` drive the
   `fulcrum.sim.control.MatchControl` that `Pipeline` creates per in-process match (speed, pause / resume, next
   moment). The hub passes every new moment to `Pipeline.on_moment` (`Hub.moment_listeners`), which ends a
-  running skip. 501 when the match is simulated elsewhere; `/api/health` has `match_controls: bool`.
+  running skip. With a sim service (split / hybrid) the calls are forwarded to it, and moments are passed on
+  while a skip runs; 501 only without either. `/api/health` has `match_controls: bool`.
 - split / hybrid topology: with `FULCRUM_SIM_URL` set, `POST /api/matches` forwards the
   config to the sim service (`POST {FULCRUM_SIM_URL}/matches`). If the sim is unreachable or refuses, the API
   answers 502 and does not keep the match registered.
