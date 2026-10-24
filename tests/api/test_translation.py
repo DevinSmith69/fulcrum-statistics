@@ -147,3 +147,28 @@ async def test_player_lens_falls_back_to_casual_when_agents_fail_or_cache_only()
     assert [v.headline for v in out.variants] == ["casual-en"]
     out = await personalise_insight(INSIGHT, _lens_prefs("NBA-10"), Translator(LensAgents()), translate=False)
     assert [v.headline for v in out.variants] == ["casual-en"]  # cache-only snapshot never calls the LLM
+
+
+async def test_player_lens_failure_and_wrong_language_are_not_cached():
+    from fulcrum.api.personalise import personalise_insight
+
+    class Flaky(LensAgents):
+        def __init__(self):
+            super().__init__()
+            self.fail_next = True
+
+        async def player_lens(self, insight_id, player_id, language):
+            if self.fail_next:
+                self.fail_next = False
+                self.calls.append((insight_id, player_id, language))
+                raise RuntimeError("lens timed out")
+            return await super().player_lens(insight_id, player_id, "en")  # translation fell back to English
+
+    agents = Flaky()
+    tr = Translator(agents)
+    first = await personalise_insight(INSIGHT, _lens_prefs("NBA-10", "es"), tr)
+    assert [v.headline for v in first.variants] == ["casual-en"]  # failed: casual, not cached
+    second = await personalise_insight(INSIGHT, _lens_prefs("NBA-10", "es"), tr)
+    assert [v.headline for v in second.variants] == ["lens-en"]  # served, but English is not cached as "es"
+    await personalise_insight(INSIGHT, _lens_prefs("NBA-10", "es"), tr)
+    assert len(agents.calls) == 3

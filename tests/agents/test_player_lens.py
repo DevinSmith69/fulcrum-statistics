@@ -67,10 +67,16 @@ async def test_invented_number_is_repaired_then_passes():
     assert "number '0.52' is not in FACTS" in llm.calls[1]["user"]
 
 
-async def test_failing_twice_falls_back_to_none():
+async def test_failing_twice_raises_so_the_miss_is_not_cached():
+    import pytest
+
+    from fulcrum.agents.player_lens import PlayerLensUnavailable
+
     bad = {**BRENNICK, "body": "Brennick scored with a 0.52 xG chance. It lifts Northbridge to 71%."}
-    v, llm = await lens(ScriptedLLM({"player_lens": bad}))
-    assert v is None and len(llm.calls) == 2
+    llm = ScriptedLLM({"player_lens": bad})
+    with pytest.raises(PlayerLensUnavailable):
+        await lens(llm)
+    assert len(llm.calls) == 2
 
 
 async def test_service_player_lens_translates_through_the_translator():

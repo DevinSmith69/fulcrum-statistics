@@ -89,7 +89,10 @@ class Translator:
             got = await self._hook("player_lens", insight.insight_id, player_id, language)
             if got is None:  # the hook raised: don't cache, a later request may succeed
                 return None
-            self._lens[key] = next((v for v in got if v.perspective_player_id == player_id), None)
+            lensed = next((v for v in got if v.perspective_player_id == player_id), None)
+            if lensed is not None and lensed.language != language:
+                return lensed  # the translation fell back to English: serve it, but let a later request retry
+            self._lens[key] = lensed
         return self._lens[key]
 
     async def cue(self, cue: OverlayCue, language: str) -> OverlayCue:

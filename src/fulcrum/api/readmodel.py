@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from fulcrum.contracts import (
+    CheckStatus,
     EventType,
     Insight,
     MatchConfig,
@@ -117,7 +118,12 @@ class MatchReadModel:
         return True
 
     def add_recap(self, recap: Recap) -> None:
-        self.recaps[(str(recap.persona), recap.language)] = recap
+        """Store a recap; a template fallback never replaces a checked recap for the same persona + language."""
+        key = (str(recap.persona), recap.language)
+        old = self.recaps.get(key)
+        if old is not None and old.check_status != CheckStatus.FALLBACK and recap.check_status == CheckStatus.FALLBACK:
+            return
+        self.recaps[key] = recap
 
     # ------------------------------------------------------------------ readers
 

@@ -197,7 +197,13 @@ class SpeechSynth:
             self._client = httpx.AsyncClient(timeout=10)
         self.calls += 1
         try:
-            r = await self._client.post(self.config.url, content=ssml.encode("utf-8"), headers=await self._headers())
+            headers = await self._headers()
+        except SpeechError:
+            raise
+        except Exception as exc:  # noqa: BLE001 — azure-identity errors (or a missing extra) -> 502, not 500
+            raise SpeechError(f"speech auth failed: {type(exc).__name__}: {exc}") from exc
+        try:
+            r = await self._client.post(self.config.url, content=ssml.encode("utf-8"), headers=headers)
         except httpx.HTTPError as exc:
             raise SpeechError(f"speech service unreachable: {exc}") from exc
         if r.status_code != 200 or not r.content:

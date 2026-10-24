@@ -162,3 +162,13 @@ async def test_social_posts_with_invented_numbers_or_stray_hashtags_are_repaired
 
 
 NBA_ID_POST = "Brennick (NBA-10) was everywhere. #NBARVR"
+
+
+async def test_concurrent_requests_share_one_reporter_call():
+    import asyncio
+
+    llm = ScriptedLLM({"match_reporter": GOOD}, delays={"match_reporter": 0.05})
+    svc = RecapService(llm)
+    a = args()
+    got = await asyncio.gather(*(svc.recap(**a) for _ in range(5)))
+    assert len(llm.calls) == 1 and all(r == got[0] for r in got)

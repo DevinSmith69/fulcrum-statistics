@@ -51,7 +51,7 @@ from .hub import Connection, Hub
 from .pipeline import Pipeline
 from .readmodel import MatchReadModel, Registry
 from .speech import MAX_TEXT_CHARS, SpeechError, SpeechSynth, voice_for
-from .studio import RateLimiter
+from .studio import DEFAULT_SPEECH_RATE, RateLimiter, client_key
 from .translation import Translator
 
 log = logging.getLogger("fulcrum.api")
@@ -133,6 +133,9 @@ def create_app(
         app.state.translator, app.state.pipeline = translator, pipeline
         app.state.speech = speech if speech is not None else SpeechSynth.from_env()
         app.state.ask_limiter = RateLimiter.from_env()
+        app.state.ask_global = RateLimiter(60, 60)  # all clients together: a ceiling on LLM spend
+        app.state.speech_limiter = RateLimiter.from_env("FULCRUM_SPEECH_RATE", DEFAULT_SPEECH_RATE)
+        app.state.speech_global = RateLimiter(600, 60)
         if pipeline is not None:
             pipeline.prestart()  # agents warm up now, not on the first match
         try:
@@ -325,8 +328,8 @@ def _router() -> APIRouter:
             raise HTTPException(
                 503, "the agents service is not running, so the studio can't answer questions right now"
             )
-        client = request.client.host if request.client else "unknown"
-        wait = request.app.state.ask_limiter.allow(client)
+        client = client_key(request.headers, request.client.host if request.client else None)
+        wait = request.app.state.ask_limiter.allow(client) or request.app.state.ask_global.allow("*")
         if wait is not None:
             raise HTTPException(
                 429,
@@ -367,6 +370,10 @@ def _router() -> APIRouter:
         synth: SpeechSynth | None = request.app.state.speech
         if synth is None:
             raise HTTPException(503, "Azure Speech is not configured; use the browser's speech synthesis")
+        client = client_key(request.headers, request.client.host if request.client else None)
+        wait = request.app.state.speech_limiter.allow(client) or request.app.state.speech_global.allow("*")
+        if wait is not None:
+            raise HTTPException(429, "too many speech requests", headers={"Retry-After": str(int(wait) + 1)})
         try:
             audio = await synth.synthesize(body.text, body.language)
         except SpeechError as exc:

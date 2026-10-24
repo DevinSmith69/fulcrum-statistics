@@ -2,9 +2,10 @@
 
 `PlayerLens.variant` returns a `player_lens` InsightVariant for (insight, player), written in English and
 fact-checked exactly like the Editor's copy (one repair). It only runs when the player is in
-`moment.player_ids`, i.e. directly involved; otherwise, and whenever the LLM fails, it returns None and the
-viewer gets the casual variant. Successes are cached per (insight_id, player_id); concurrent requests for the
-same key share one LLM call. Other languages go through the Translator (see `AgentService.player_lens`).
+`moment.player_ids`, i.e. directly involved; otherwise it returns None and the viewer gets the casual variant.
+An LLM failure raises `PlayerLensUnavailable` (the API then serves casual and retries on a later request).
+Successes are cached per (insight_id, player_id); concurrent requests for the same key share one LLM call.
+Other languages go through the Translator (see `AgentService.player_lens`).
 """
 
 from __future__ import annotations
@@ -23,6 +24,10 @@ from .orchestrator import LLMTimeout, OrchestratorConfig, call_llm
 from .prompts import PLAYER_LENS
 
 log = logging.getLogger("fulcrum.agents")
+
+
+class PlayerLensUnavailable(RuntimeError):
+    """The player was involved but no checked lens could be written (LLM failure/timeout); retry later."""
 
 
 class PlayerLens:
@@ -45,7 +50,8 @@ class PlayerLens:
         foreign_names: Sequence[str] = (),
         score: str | None = None,
     ) -> InsightVariant | None:
-        """The English player_lens variant for `player_id`, or None (not involved, or the LLM failed)."""
+        """The English player_lens variant for `player_id`; None if not involved; raises PlayerLensUnavailable if the
+        LLM could not write a checked one (so callers retry later instead of caching the miss)."""
         if player_id not in moment.player_ids:
             return None
         key = (insight.insight_id, player_id)
@@ -56,7 +62,10 @@ class PlayerLens:
             task = asyncio.create_task(self._write(insight, moment, home, away, player_id, foreign_names, score))
             self._inflight[key] = task
             task.add_done_callback(lambda _t, k=key: self._inflight.pop(k, None))
-        return await asyncio.shield(task)
+        got = await asyncio.shield(task)
+        if got is None:  # involved, but the LLM failed: raise so callers don't cache "no lens" for good
+            raise PlayerLensUnavailable(f"player lens {insight.insight_id}/{player_id} failed")
+        return got
 
     async def _write(
         self,

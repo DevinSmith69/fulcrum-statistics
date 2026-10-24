@@ -21,6 +21,7 @@ from fulcrum.contracts import (
     TOPIC_INSIGHTS,
     TOPIC_MOMENTS,
     TOPIC_STATE,
+    CheckStatus,
     EventType,
     Insight,
     InsightsEnvelope,
@@ -47,6 +48,9 @@ HELLO_TRANSLATE_LATEST = 5
 
 def dump(model: BaseModel) -> dict[str, Any]:
     return model.model_dump(mode="json", by_alias=True)
+
+
+_BACKGROUND: set[asyncio.Task[None]] = set()  # background recap writers (strong references)
 
 
 class Connection:
@@ -81,10 +85,13 @@ class Connection:
         """Catch-up snapshot for the current prefs (API_CONTRACT §3 `hello`)."""
         items = list(rm.insights.values())
         cutoff = len(items) - HELLO_TRANSLATE_LATEST
-        insights = [
-            await ps.personalise_insight(i, self.prefs, self.hub.translator, translate=n >= cutoff)
-            for n, i in enumerate(items)
-        ]
+        # Concurrently: the newest few may each need an LLM call (translation / player lens); the rest are cache-only.
+        insights = await asyncio.gather(
+            *(
+                ps.personalise_insight(i, self.prefs, self.hub.translator, translate=n >= cutoff)
+                for n, i in enumerate(items)
+            )
+        )
         await self.send(
             "hello",
             {
@@ -160,7 +167,9 @@ class Connection:
             self._recap_sent = True
             await self.send("recap", dump(nearest))
         if self._recap_task is None:
-            self._recap_task = asyncio.create_task(self._write_recap(rm, self.prefs.model_copy()))
+            self._recap_task = task = asyncio.create_task(self._write_recap(rm, self.prefs.model_copy()))
+            _BACKGROUND.add(task)  # asyncio keeps only weak references; this survives a prefs reset
+            task.add_done_callback(_BACKGROUND.discard)
 
     async def _write_recap(self, rm: MatchReadModel, prefs: ViewerPrefs) -> None:
         try:
@@ -170,6 +179,8 @@ class Connection:
             return
         if got is not None and (str(got.persona), got.language) == (str(prefs.persona), prefs.language):
             self.push("recap_ready", got)
+        elif prefs == self.prefs:
+            self._recap_task = None  # only a stand-in came back: let the next nudge or hello try again
 
     async def _maybe_player_tag(self, rm: MatchReadModel, ev: MatchEvent) -> None:
         last = self._last_player_tag_ms
@@ -216,9 +227,17 @@ class Hub:
             return exact
         if rm.recaps:  # the agents only answer after full time; one recap having arrived proves it
             generated = await self.translator.recap(rm.match_id, prefs.persona, prefs.language)
-            if generated is not None:
+            # Keep only a real answer to what was asked: the agents' template fallback is English casual-ish copy,
+            # and caching it would replace the good casual/en recap published at full time.
+            wanted = (str(prefs.persona), prefs.language)
+            if (
+                generated is not None
+                and generated.check_status != CheckStatus.FALLBACK
+                and (str(generated.persona), generated.language) == wanted
+            ):
                 rm.add_recap(generated)
                 return generated
+            return ps.pick_recap(rm.recaps, prefs) or generated
         return ps.pick_recap(rm.recaps, prefs)
 
     def _fanout(self, match_id: str, kind: str, item: Any) -> None:

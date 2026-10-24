@@ -165,7 +165,7 @@ class PersonaEditorStep:
         pairs = required_variants(ctx.home.team_id, ctx.away.team_id)
         try:
             if self.config.editor_fanout:
-                outs = await asyncio.gather(*(self._call(ctx, issues, only=pair) for pair in pairs))
+                outs = await _gather_or_cancel([self._call(ctx, issues, only=pair) for pair in pairs])
                 variants = [_pick(out.variants, pair) for out, pair in zip(outs, pairs, strict=True)]
                 variants = [v for v in variants if v is not None]
             else:
@@ -192,13 +192,29 @@ class PersonaEditorStep:
 
 
 def _pick(variants: list[InsightVariant], pair: tuple[str, str | None]) -> InsightVariant | None:
-    """The variant a single-variant Editor call was asked for; a mislabelled one is relabelled, none is None."""
+    """The variant a single-variant Editor call was asked for, or None (then the set check asks for a repair).
+
+    A neutral variant with the wrong persona label is relabelled; one written for the *other* club is not, since
+    its partisan copy would cheer for the wrong side.
+    """
     for v in variants:
         if (str(v.persona), v.perspective_team_id) == pair:
             return v
-    if not variants:
+    if not variants or variants[0].perspective_team_id not in (None, pair[1]):
         return None
     return variants[0].model_copy(update={"persona": pair[0], "perspective_team_id": pair[1]})
+
+
+async def _gather_or_cancel[T](coros: list[Awaitable[T]]) -> list[T]:
+    """`asyncio.gather` that cancels the remaining calls as soon as one fails (no tokens spent on a lost run)."""
+    tasks = [asyncio.ensure_future(c) for c in coros]
+    try:
+        return await asyncio.gather(*tasks)
+    except BaseException:
+        for t in tasks:
+            t.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
 
 
 @dataclass

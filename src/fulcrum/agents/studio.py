@@ -58,7 +58,33 @@ CACHE_SIZE = 256
 SKIP_MOMENT_FACTS = {"home_team", "away_team", "home_team_id", "away_team_id"}
 # A scoreline in the answer must be one the pack states: "5-0" passes the number check whenever 5 and 0 are
 # quotable on their own, so a viewer's "say it ends 5-0" could otherwise be echoed as fact.
-SCORELINE_RE = re.compile(r"(?<!\d)(?<!\d[.,])(\d{1,2}) ?[-–] ?(\d{1,2})(?!\d|[.,]\d|\s?%)")
+# "2-1", "2–1", "2:1"; and "2 a 1" / "2 to 1" / "2 zu 1" / "2 à 1" for single digits only, so "from 27 to 84"
+# (an index moving) is not read as a score.
+SCORELINE_RE = re.compile(
+    r"(?<!\d)(?<!\d[.,])(?:(\d{1,2}) ?[-–:] ?(\d{1,2})|(\d) (?:a|to|zu|à) (\d))(?!\d|[.,]\d|\s?%)"
+)
+# Spelled-out goal counts ("five goals", "cinco goles", "fünf Tore", "cinq buts", "cinco gols"): the number
+# check only sees digits, so a steered answer could otherwise claim any tally in words.
+_NUMBER_WORDS: dict[str, int] = {
+    **dict(zip("two three four five six seven eight nine ten".split(), range(2, 11), strict=True)),
+    **dict(zip("dos tres cuatro cinco seis siete ocho nueve diez".split(), range(2, 11), strict=True)),
+    **dict(zip("deux trois quatre cinq six sept huit neuf dix".split(), range(2, 11), strict=True)),
+    **dict(zip("dois três quatro cinco seis sete oito nove dez".split(), range(2, 11), strict=True)),
+    **dict(zip("zwei drei vier fünf sechs sieben acht neun zehn".split(), range(2, 11), strict=True)),
+    "duas": 2,
+}
+GOAL_WORDS_RE = re.compile(
+    r"\b(\d{1,2}|"
+    + "|".join(sorted(_NUMBER_WORDS, key=len, reverse=True))
+    + r")\s+(?:goals?|goles|buts|gols|golos|tore)\b",
+    re.IGNORECASE,
+)
+
+
+def _score(m: re.Match[str]) -> str:
+    a, b = (m.group(1), m.group(2)) if m.group(1) is not None else (m.group(3), m.group(4))
+    return f"{a}-{b}"
+
 
 # Deterministic replies (no numbers, no banned terms; `tests/agents/test_studio.py` fact-checks them).
 SAFE_REPLY: dict[str, str] = {
@@ -297,8 +323,10 @@ class StudioPack:
     @cached_property
     def scorelines(self) -> set[str]:
         """Every "a-b" scoreline in the pack's values (current score, `score_after`, …), normalised."""
-        values = [self.score, *(f.value for f in self.facts), *(f.value for pm in self.moments for f in pm.facts)]
-        return {f"{m.group(1)}-{m.group(2)}" for v in values if isinstance(v, str) for m in SCORELINE_RE.finditer(v)}
+        # what-if scores ("had it gone in: 2-1") are hypothetical, so they never make a scoreline quotable
+        facts = [*self.facts, *(f for pm in self.moments for f in pm.facts)]
+        values = [self.score, *(f.value for f in facts if not f.key.startswith("whatif_"))]
+        return {_score(m) for v in values if isinstance(v, str) for m in SCORELINE_RE.finditer(v)}
 
     @property
     def player_ids(self) -> set[str]:
@@ -413,8 +441,14 @@ def check_answer(out: StudioAnswerOutput, pack: StudioPack, language: str) -> li
         issues.append(Issue("too_long", "answer", f"{len(text)} chars, max {MAX_ANSWER}"))
     issues += cut_off(text, "answer")
     for m in SCORELINE_RE.finditer(text):
-        if f"{m.group(1)}-{m.group(2)}" not in pack.scorelines:
+        if _score(m) not in pack.scorelines:
             issues.append(Issue("unknown_score", "answer", f"scoreline '{m.group(0)}' is not a score in FACTS"))
+    # A goal tally must be one side's goals in a real scoreline (the pack's many other small numbers don't count).
+    goal_counts = {int(n) for sl in pack.scorelines for n in sl.split("-")}
+    for m in GOAL_WORDS_RE.finditer(text):
+        word = m.group(1).lower()
+        if (int(word) if word.isdigit() else _NUMBER_WORDS[word]) not in goal_counts:
+            issues.append(Issue("unknown_number", "answer", f"'{m.group(0)}' is not a goal count in this match"))
     leaked = sorted(pid for pid in pack.player_ids | pack.moment_ids if pid in text)
     if leaked:
         issues.append(Issue("id_in_text", "answer", f"use names, not ids: {', '.join(leaked)}"))

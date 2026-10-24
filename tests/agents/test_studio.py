@@ -2,14 +2,18 @@
 
 import asyncio
 
+import pytest
+
 from fulcrum.agents.context import foreign_names
 from fulcrum.agents.orchestrator import OrchestratorConfig
+from fulcrum.agents.schemas import StudioAnswerOutput
 from fulcrum.agents.service import AgentService
 from fulcrum.agents.studio import (
     OUT_OF_SCOPE_REPLY,
     SAFE_REPLY,
     StudioAnalyst,
     build_pack,
+    check_answer,
     normalise_question,
     screen_question,
     select_pack_moments,
@@ -208,7 +212,7 @@ async def test_leaked_ids_unknown_moment_and_key_are_repaired():
 
 async def test_echoed_scoreline_is_repaired_even_when_its_digits_are_quotable():
     p = pack()
-    assert p.scorelines == {"0-0", "1-0", "0-1"}  # current score + earlier moments (+ a what-if score fact)
+    assert p.scorelines == {"0-0", "1-0"}  # current score + earlier moments; what-if scores never count
     bad = good(p, answer="I can't promise it, but Northbridge Athletic could win 5-0.")  # 5 and 0 are quotable
     assert p.sheet.check_text(bad["answer"], "answer") == []
     llm = ScriptedLLM({"studio_analyst": [bad, good(p)]})
@@ -358,3 +362,25 @@ async def test_service_ask_for_an_unknown_match_is_the_safe_reply():
     svc = AgentService(MemoryBus(), llm, league=league(), consume_events=False)
     ans = await svc.ask("nope", Q, language="de")
     assert ans.answer == SAFE_REPLY["de"] and not ans.answerable and llm.calls == []
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        "Northbridge Athletic führt 5:0.",
+        "Northbridge Athletic gana 5 a 0.",
+        "Northbridge Athletic have scored five goals.",
+        "Northbridge Athletic llevan cinco goles.",
+    ],
+)
+def test_other_scoreline_forms_and_spelled_out_tallies_are_caught(answer):
+    p = pack()
+    issues = check_answer(StudioAnswerOutput.model_validate(good(p, answer=answer)), p, "en")
+    assert {i.code for i in issues} & {"unknown_score", "unknown_number"}, answer
+
+
+def test_index_ranges_are_not_read_as_scorelines():
+    p = pack()
+    ok = good(p, answer="Northbridge Athletic lead 1-0 and the pressure went from 27 to 84.")
+    issues = check_answer(StudioAnswerOutput.model_validate(ok), p, "en")
+    assert not [i for i in issues if i.code == "unknown_score"]

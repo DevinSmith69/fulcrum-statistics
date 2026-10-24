@@ -413,3 +413,34 @@ def test_editor_fanout_default_follows_the_llm(monkeypatch):
     assert OrchestratorConfig().editor_fanout is True
     monkeypatch.setenv("FULCRUM_EDITOR_FANOUT", "0")
     assert OrchestratorConfig().editor_fanout is False
+
+
+async def test_editor_fanout_does_not_relabel_the_other_clubs_fan_copy():
+    away_fan = goal_variants()
+    away_fan["variants"] = [away_fan["variants"][3]]  # every call answers with the away fan's copy
+    llm = ScriptedLLM({"moment_analyst": GOAL_ANALYST, "persona_editor": away_fan})
+    ctx = await wf(llm, editor_fanout=True).run(make_context())
+    # the home-fan slot must not get away-fan copy relabelled; the missing variant triggers a repair/fallback
+    assert ctx.status != CheckStatus.PASSED
+    assert any("missing the club_fan" in n for n in ctx.notes)
+
+
+async def test_editor_fanout_cancels_the_other_calls_when_one_fails():
+    started, finished = [], []
+    llm = ScriptedLLM(GOOD)
+    original = llm.structured
+
+    async def slow_or_fail(**kw):
+        if kw["agent_name"] != "persona_editor":
+            return await original(**kw)
+        n = len(started)
+        started.append(n)
+        if n == 0:
+            raise RuntimeError("boom")
+        await asyncio.sleep(0.2)
+        finished.append(n)
+        return await original(**kw)
+
+    llm.structured = slow_or_fail
+    await wf(llm, editor_fanout=True, max_attempts=1).run(make_context())
+    assert finished == []  # the three siblings were cancelled, not left running

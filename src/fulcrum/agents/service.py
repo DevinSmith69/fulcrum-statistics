@@ -245,8 +245,9 @@ class AgentService:
     async def player_lens(self, insight_id: str, player_id: str, language: str = "en") -> list[InsightVariant]:
         """The moment retold through `player_id`, in `language` (on demand, cached).
 
-        Empty when the id is unknown, the player was not directly involved, or the LLM failed: the caller then
-        serves the casual variant. Non-English goes through the Translator (keyed `<insight_id>~<player_id>`).
+        Empty when the id is unknown or the player was not directly involved (the caller serves the casual
+        variant); raises PlayerLensUnavailable if the LLM failed, so the miss isn't cached.
+        Non-English goes through the Translator (keyed `<insight_id>~<player_id>`).
         """
         found = self._insights.get(insight_id)
         teams = self._teams(found[0].match_id) if found else None

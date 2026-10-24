@@ -9,6 +9,7 @@ Fact-checked, repaired once, then a deterministic fallback built from already-ch
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import time
@@ -157,6 +158,7 @@ class RecapService:
         self.llm = llm
         self.config = config or OrchestratorConfig()
         self._cache: dict[tuple[str, str, str], Recap] = {}
+        self._inflight: dict[tuple[str, str, str], asyncio.Task[Recap]] = {}
 
     def cached(self, match_id: str, persona: str, language: str) -> Recap | None:
         """The cached recap, if generated."""
@@ -179,6 +181,27 @@ class RecapService:
         key = (full_time.match_id, persona, lang)
         if key in self._cache:
             return self._cache[key]
+        task = self._inflight.get(key)
+        if task is None:  # at full time many viewers ask at once: share one 30-60 s reporter call per key
+            task = asyncio.create_task(
+                self._write(key, persona, lang, full_time, history, home, away, score, foreign_names)
+            )
+            self._inflight[key] = task
+            task.add_done_callback(lambda _t, k=key: self._inflight.pop(k, None))
+        return await asyncio.shield(task)
+
+    async def _write(
+        self,
+        key: tuple[str, str, str],
+        persona: str,
+        lang: str,
+        full_time: Moment,
+        history: Sequence[tuple[Moment, Insight | None]],
+        home: Team,
+        away: Team,
+        score: str,
+        foreign_names: Sequence[str],
+    ) -> Recap:
         moments = select_moments(history)
         sheet = recap_sheet(full_time, moments, score, foreign_names)
         moment_ids = {m.moment_id for m, _ in moments}

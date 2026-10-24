@@ -75,7 +75,13 @@ export class SpeechPlayer {
     if (res.status === 503) this.azure = "no";
     if (!res.ok) return "fallback";
     this.azure = "yes";
-    const url = URL.createObjectURL(await res.blob());
+    let blob: Blob;
+    try {
+      blob = await res.blob(); // throws AbortError if stop() / a pre-empting line lands mid-download
+    } catch {
+      return "stopped";
+    }
+    const url = URL.createObjectURL(blob);
     if (abort.signal.aborted) {
       URL.revokeObjectURL(url);
       return "stopped";

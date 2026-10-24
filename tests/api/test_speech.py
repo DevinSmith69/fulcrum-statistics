@@ -144,3 +144,26 @@ def test_voice_overrides_and_ssml(monkeypatch):
     assert voice_for("en") == ("en-GB", "en-GB-SoniaNeural")
     ssml = build_ssml("  It's   1–0 ", "en-GB", "en-GB-SoniaNeural")
     assert "It&apos;s 1–0" in ssml and ssml.startswith("<speak version='1.0'")
+
+
+def test_speech_is_rate_limited_per_client():
+    from fulcrum.api.studio import RateLimiter
+
+    with make_client(keyed_synth(Recorder())) as c:
+        c.app.state.speech_limiter = RateLimiter(2, 60)
+        codes = [c.post("/api/speech", json={"text": f"Line {n}.", "language": "en"}).status_code for n in range(3)]
+        assert codes == [200, 200, 429]
+
+
+async def test_credential_failure_is_a_speech_error(monkeypatch):
+    """azure-identity errors (or the extra missing) must map to SpeechError -> 502, not a 500."""
+    from fulcrum.api.speech import SpeechError
+
+    synth = keyed_synth(Recorder())
+
+    async def boom():
+        raise RuntimeError("no credential")
+
+    monkeypatch.setattr(synth, "_headers", boom)
+    with pytest.raises(SpeechError):
+        await synth.synthesize("Goal!", "en")

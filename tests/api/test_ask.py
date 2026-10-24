@@ -94,3 +94,26 @@ def test_rate_limiter_from_env(monkeypatch):
     assert (rl.max_calls, rl.window_s) == (3, 15.0)
     monkeypatch.setenv("FULCRUM_ASK_RATE", "junk")
     assert RateLimiter.from_env().max_calls == 6
+
+
+def test_spoofed_forwarded_for_does_not_reset_the_limit(client):
+    """The proxy appends the real address last; a client-chosen left-most value must not become the key."""
+    with_agents(client)
+    client.app.state.ask_limiter = RateLimiter(2, 60)
+    codes = [
+        client.post(
+            f"/api/matches/{MID}/ask",
+            json={"question": "Who's on top?"},
+            headers={"X-Forwarded-For": f"spoof-{n}, 203.0.113.7"},
+        ).status_code
+        for n in range(3)
+    ]
+    assert codes == [200, 200, 429]
+
+
+def test_client_key_uses_the_right_most_hop():
+    from fulcrum.api.studio import client_key
+
+    assert client_key({"x-forwarded-for": "1.1.1.1, 2.2.2.2"}, "10.0.0.1") == "2.2.2.2"
+    assert client_key({}, "10.0.0.1") == "10.0.0.1"
+    assert client_key({"x-forwarded-for": " "}, None) == "unknown"
