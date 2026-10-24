@@ -59,6 +59,17 @@ class RecapOutput(BaseModel):
     player_of_the_match_id: str | None = None
 
 
+class StudioAnswerOutput(BaseModel):
+    """Studio Analyst output ("Ask the studio"). Turned into a `fulcrum.contracts.AskAnswer` after fact-checking."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    answer: str = Field(max_length=400, description="1-3 complete sentences in the requested language")
+    cited_moment_ids: list[str] = Field(default_factory=list, description="MOMENT ids the answer relies on")
+    fact_keys: list[str] = Field(default_factory=list, description="FACT keys the answer used")
+    answerable: bool = Field(True, description="False if the CONTEXT PACK cannot answer it, or it is off-topic")
+
+
 class MomentContext(BaseModel):
     """Shared, typed state for one run of the explain-moment workflow.
 

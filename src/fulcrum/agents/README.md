@@ -42,8 +42,9 @@ Design reference: `docs/AI_PROMPT_DESIGN.md`. Wire formats: `docs/API_CONTRACT.m
   on `FOUNDRY_MODEL_DEPLOYMENT` (`fast`, gpt-5.4-mini; temperature 0.4 for the Editor, 0.2 otherwise). Auth is
   `DefaultAzureCredential`. `AgentService.start()` calls `warm_up()` so the first moment isn't a cold start.
 - **Foundry prompt agents:** at warm-up the roles with a fixed system prompt (`PROMPT_AGENT_ROLES`: Analyst,
-  Editor, Reviewer) are published to the Foundry project as versioned prompt agents (`fulcrum-moment-analyst`,
-  `fulcrum-persona-editor`, `fulcrum-fact-reviewer`) and called by name via `FoundryAgent`, so they are
+  Editor, Reviewer, Studio Analyst) are published to the Foundry project as versioned prompt agents
+  (`fulcrum-moment-analyst`, `fulcrum-persona-editor`, `fulcrum-fact-reviewer`, `fulcrum-studio-analyst`) and
+  called by name via `FoundryAgent`, so they are
   listed, versioned and traced in the Foundry portal. Model, instructions, temperature and output schema live
   in the agent definition; a new version is created only when they change (fingerprint + prompt version in the
   version metadata). The Reporter, Translator and Player Lens have per-call prompts (`{persona}`,
@@ -90,6 +91,7 @@ the template copy was published instead, as designed. `data/eval/sample_seed11.j
 | `translate.py` | on-demand translation, cached per (insight, language); fact-checked; falls back to English |
 | `player_lens.py` | on-demand Player Lens: the moment retold through the followed player, only when they are in `moment.player_ids`; fact-checked, one repair, cached per (insight, player); other languages via the Translator; `None` → the viewer gets the casual variant. Exposed as `AgentService.player_lens(insight_id, player_id, language)` and used by the API for `player_lens` viewers |
 | `recap.py` | full-time Match Reporter, cached per (match, persona, language); template fallback |
+| `studio.py` | **Ask the studio**: the Studio Analyst answers a viewer's question from a deterministic context pack (`build_pack`: score, minute, team + top-player live stats from `MatchState`, the most significant + latest moments with their facts, rosters). Betting/real-club questions are refused without an LLM call; the answer is fact-checked against the whole pack (plus leaked ids, unknown moment ids / fact keys, cut-off copy), repaired once, else a safe deterministic reply (`answerable=false`). LRU cache per (match, normalised question, language, persona, team, moments so far). Exposed as `AgentService.ask(...)`, used by `POST /api/matches/{id}/ask` |
 | `service.py` | `AgentService`: `moments` + `match-events` in, `InsightsEnvelope` out on `insights` |
 
 ## Fact-checker rules (`factcheck.py`)
@@ -139,4 +141,5 @@ also consume `match-events` for the recent sequence and score), and `FULCRUM_TEA
 PASSED/REPAIRED/FALLBACK paths, timeouts, the reviewer, crash handling, ordering and concurrency.
 `test_factcheck.py` covers the rules, including decimal commas, denylisted names and banned terms per
 language. `test_templates.py` renders every template and fact-checks it. `test_cues.py`, `test_translate.py`,
-`test_recap.py` and `test_service.py` cover the rest.
+`test_recap.py` and `test_service.py` cover the rest. `test_studio.py` covers Ask the studio: the context pack,
+grounded / repaired / safe-reply paths, timeouts, refusals without an LLM call, and the cache.

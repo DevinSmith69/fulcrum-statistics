@@ -43,6 +43,19 @@ asyncio tasks on the shared `MemoryBus` (`api/app.py` lifespan). In Azure each r
 | GET | `/api/matches/{id}/overlay-cues` | `persona`, `language`, `since_clock_ms` | `OverlayCue[]` — **the machine-readable feed for a broadcast graphics partner** |
 | GET | `/api/matches/{id}/recap` | `persona`, `language` | `Recap` (404 until full time; generated lazily per persona/lang, cached) |
 | POST | `/api/matches/{id}/translate` | `{"insight_id", "language"}` | `InsightVariant[]` (on-demand translation, cached) |
+| POST | `/api/matches/{id}/ask` | `AskRequest` `{"question", "persona"?, "language"?, "favourite_team_id"?}` | `AskAnswer` `{answer, answerable, check_status, cited_moment_ids, fact_keys, persona, language, latency_ms, …}` — **Ask the studio** (see below) |
+
+**Ask the studio** (`POST /api/matches/{id}/ask`): the Studio Analyst agent answers a viewer's question (1–300
+chars) about the live match in `language` (en/es/fr/pt/de, default en) and the `persona`'s tone (default casual;
+`favourite_team_id` sets the club_fan side). It uses only a context pack built from the match so far (score,
+minute, team and top-player live stats from `MatchState`, the most significant + latest moments with their
+facts, rosters), and every number is fact-checked against that pack (one repair). `answerable=false` with
+`check_status="fallback"` is a safe deterministic reply: the question was about betting/odds or a real club
+(refused without an LLM call), or the answer could not be verified. Answers are cached per (match, normalised
+question, language, persona, team, number of moments so far). Errors: 404 unknown match · 422 bad body ·
+429 rate limit (per client IP, `FULCRUM_ASK_RATE`, default `6/30` = 6 questions per 30 s; `Retry-After` header) ·
+503 when no agents service is running in the API process (out-of-process deployments, or the agents failed
+to start).
 
 The API keeps per-match read models in memory (dict of match_id → ring buffers). Persistence is a stretch
 goal (Cosmos DB) — do not build it before Sunday evening.

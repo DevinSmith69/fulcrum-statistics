@@ -1,0 +1,67 @@
+{
+  "$defs": {
+    "Persona": {
+      "enum": [
+        "analyst",
+        "casual",
+        "club_fan",
+        "player_lens"
+      ],
+      "title": "Persona",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Body of `POST /api/matches/{id}/ask` (\"Ask the studio\"): a viewer's question about the live match.",
+  "properties": {
+    "question": {
+      "maxLength": 300,
+      "minLength": 1,
+      "title": "Question",
+      "type": "string"
+    },
+    "persona": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Persona"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Tone of the answer; default casual"
+    },
+    "language": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Answer language (en/es/fr/pt/de); default en",
+      "title": "Language"
+    },
+    "favourite_team_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "For the club_fan persona: whose side to take",
+      "title": "Favourite Team Id"
+    }
+  },
+  "required": [
+    "question"
+  ],
+  "title": "AskRequest",
+  "type": "object"
+}

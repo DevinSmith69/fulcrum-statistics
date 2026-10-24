@@ -37,6 +37,9 @@ without `fulcrum.agents` moments still flow but there are no insights.
   by `seq` / `moment_id` / `insight_id` / `cue_id` — a `hello` and the live stream may overlap by an item.
 - A viewer with no variant for their persona gets the casual one; missing languages are translated on demand
   (English until the agents answer).
+- `POST …/ask` (Ask the studio, `AskRequest` → `AskAnswer`) calls `AgentService.ask` in-process with the read
+  model's latest `MatchState`; 503 without a running agents service, 429 past the per-IP limit
+  (`studio.RateLimiter`, `FULCRUM_ASK_RATE`, default `6/30`, `Retry-After` header).
 
 - Out of process (Azure, `FULCRUM_INPROCESS` off): with `FULCRUM_SIM_URL` set, `POST /api/matches` forwards the
   config to the sim service (`POST {FULCRUM_SIM_URL}/matches`). If the sim is unreachable or refuses, the API
