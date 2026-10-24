@@ -10,8 +10,12 @@ test("?match= wins when the API knows the match", () => {
   assert.equal(pickMatch(matches, "old"), "old");
 });
 
-test("unknown or missing ?match= falls back to the first unfinished match", () => {
-  assert.equal(pickMatch(matches, "nope"), "a");
+test("an unknown ?match= waits (null) instead of following or starting another match", () => {
+  assert.equal(pickMatch(matches, "nope"), null);
+  assert.equal(pickMatch([], "nope"), null);
+});
+
+test("without ?match= it follows the first unfinished match", () => {
   assert.equal(pickMatch(matches, null), "a");
   assert.equal(pickMatch([m("x", "finished"), m("y", "finished")]), "y");
   assert.equal(pickMatch([]), null);

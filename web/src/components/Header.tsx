@@ -28,7 +28,15 @@ export function StatusPill({ status, error }: { status: ConnStatus; error: strin
   return (
     <span title={error ?? undefined} className="flex items-center gap-2 rounded-full px-2.5 py-1 text-xs text-ink-300 ring-1 ring-ink-700">
       <span className={`h-1.5 w-1.5 rounded-full ${live ? "live-dot bg-signal" : status === "offline" ? "bg-ink-500" : "bg-ink-300"}`} />
-      {live ? "Live feed" : status === "connecting" ? "Connecting" : status === "reconnecting" ? "Reconnecting" : "API offline"}
+      {live
+        ? "Live feed"
+        : error?.startsWith("Waiting for")
+          ? "Waiting for match"
+          : status === "connecting"
+            ? "Connecting"
+            : status === "reconnecting"
+              ? "Reconnecting"
+              : "API offline"}
     </span>
   );
 }

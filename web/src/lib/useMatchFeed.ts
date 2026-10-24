@@ -122,7 +122,12 @@ export function useMatchFeed(prefs: ViewerPrefs) {
       try {
         matchId = await resolveMatchId();
       } catch (e) {
-        scheduleRetry(`API unreachable at ${WS_URL.replace(/^ws/, "http").replace(/\/ws$/, "")} (${(e as Error).message})`);
+        const msg = (e as Error).message;
+        scheduleRetry(
+          msg.startsWith("match ")
+            ? `Waiting for ${msg.replace(" not found yet", "")} to start`
+            : `API unreachable at ${WS_URL.replace(/^ws/, "http").replace(/\/ws$/, "")} (${msg})`,
+        );
         return;
       }
       if (closed) return;

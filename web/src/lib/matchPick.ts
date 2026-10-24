@@ -1,11 +1,11 @@
 import type { MatchSummary } from "../types";
 
 /**
- * Which existing match to follow: the one named in `?match=<id>` if the API knows it, else the first unfinished
- * match, else the newest one. `null` means there is none and the caller starts the default fixture.
+ * Which existing match to follow. With `?match=<id>`: that match, or `null` while the API doesn't know it yet
+ * (e.g. just restarted). Without: the first unfinished match, else the newest one, else `null`.
  */
 export function pickMatch(matches: MatchSummary[], requested?: string | null): string | null {
-  if (requested && matches.some((m) => m.match_id === requested)) return requested;
+  if (requested) return matches.some((m) => m.match_id === requested) ? requested : null;
   const live = matches.find((m) => m.status !== "finished") ?? matches[matches.length - 1];
   return live ? live.match_id : null;
 }

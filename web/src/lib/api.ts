@@ -23,12 +23,14 @@ async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
 /** All fictional clubs (data/teams.json via the API). */
 export const fetchTeams = () => getJson<Team[]>("/api/teams");
 
-/** The match to follow: `?match=<id>` if it exists, else the first unfinished match, else the newest one,
- * else start the default fixture. */
+/** The match to follow: `?match=<id>` (waits for it, never starts one), else the first unfinished match, else
+ * the newest one, else start the default fixture. */
 export async function resolveMatchId(): Promise<string> {
   const matches = await getJson<MatchSummary[]>("/api/matches");
-  const picked = pickMatch(matches, requestedMatchId());
+  const requested = requestedMatchId();
+  const picked = pickMatch(matches, requested);
   if (picked) return picked;
+  if (requested) throw new Error(`match ${requested} not found yet`); // the feed retries until it exists
   const created = await getJson<{ match_id: string }>("/api/matches", {
     method: "POST",
     body: JSON.stringify(DEFAULT_FIXTURE),
