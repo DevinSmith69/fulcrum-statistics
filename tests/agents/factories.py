@@ -187,6 +187,7 @@ SPECS: dict[MomentType, tuple[str | None, list[str], str, str, list[Fact]]] = {
             F("shots_last_5", 4, label="Shots in last 5 min"),
             F("opp_shots_last_5", 0, label="Opponent shots in last 5 min"),
             F("xg_last_5", 0.86, "xG", "xG in last 5 min"),
+            F("final_third_possessions_in_row", 5, label="Consecutive possessions reaching the final third"),
         ],
     ),
     MomentType.HALF_TIME: (

@@ -43,20 +43,51 @@ def test_every_moment_type_has_templates_for_core_personas(mtype):
     assert WHY[mtype]
 
 
+RUN_TRIGGERS = [
+    ">= 3 shots in 5 min with 0 opponent shots",
+    ">= 5 consecutive possessions reaching the final third",
+]
+
+
+def _contexts(mtype):
+    """One context per real trigger for momentum runs (their templates are trigger-gated), else one."""
+    if mtype == MomentType.MOMENTUM_RUN:
+        return [make_context(make_moment(mtype, trigger=t)) for t in RUN_TRIGGERS]
+    return [make_context(make_moment(mtype))]
+
+
 @pytest.mark.parametrize("mtype", ALL_TYPES)
 def test_every_template_renders_and_passes_factcheck_on_synthetic_facts(mtype):
-    ctx = make_context(make_moment(mtype))
-    sheet = sheet_for(ctx)
+    contexts = _contexts(mtype)
     for key, templates in TEMPLATES[mtype].items():
         for i, template in enumerate(templates):
-            slots = build_slots(ctx.moment, ctx.home, ctx.away, ctx.score, perspective(key, ctx.moment.team_id))
-            out = render(template, slots)
-            assert out is not None, (
-                f"{mtype}/{key}[{i}] did not render: missing {template.fields - slots.values.keys()}"
-            )
-            headline, body, line = out
-            v = InsightVariant(persona="analyst", headline=headline, body=body, commentary_line=line)
-            assert check_variant(v, sheet) == [], f"{mtype}/{key}[{i}]: {out}"
+            rendered = []
+            for ctx in contexts:
+                slots = build_slots(ctx.moment, ctx.home, ctx.away, ctx.score, perspective(key, ctx.moment.team_id))
+                if (out := render(template, slots)) is not None:
+                    rendered.append((ctx, out))
+            assert rendered, f"{mtype}/{key}[{i}] did not render: missing {template.fields - slots.values.keys()}"
+            for ctx, (headline, body, line) in rendered:
+                v = InsightVariant(persona="analyst", headline=headline, body=body, commentary_line=line)
+                assert check_variant(v, sheet_for(ctx)) == [], f"{mtype}/{key}[{i}]: {(headline, body, line)}"
+
+
+@pytest.mark.parametrize(
+    ("trigger", "expect", "avoid"),
+    [(RUN_TRIGGERS[0], "shots", "possessions"), (RUN_TRIGGERS[1], "final third", "shots")],
+)
+def test_momentum_run_copy_matches_its_trigger(trigger, expect, avoid):
+    """A territory run with 0 shots used to read "Harlow Cross on a run: 0 shots to 0"."""
+    base = make_moment(MomentType.MOMENTUM_RUN)
+    zero_shots = {"shots_last_5": 0, "opp_shots_last_5": 0, "xg_last_5": 0.0}
+    facts = [f.model_copy(update={"value": zero_shots[f.key]}) if f.key in zero_shots else f for f in base.facts]
+    ctx = make_context(make_moment(MomentType.MOMENTUM_RUN, trigger=trigger, facts=facts))
+    explanation = fallback_explanation(ctx)
+    analyst = next(v for v in fallback_variants(ctx) if v.persona == "analyst")
+    text = " ".join([explanation.headline, explanation.why_it_matters, analyst.headline, analyst.body])
+    assert expect in text
+    if trigger == RUN_TRIGGERS[1]:
+        assert "0 shots" not in text
 
 
 @pytest.mark.parametrize("mtype", ALL_TYPES)

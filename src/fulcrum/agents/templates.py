@@ -473,16 +473,24 @@ TEMPLATES: dict[MomentType, dict[str, list[Template]]] = {
         ],
     },
     MomentType.MOMENTUM_RUN: {
+        # `{run_shots}` exists only for shot-triggered runs, `{run_possessions}` only for territory-triggered
+        # ones (see `build_slots`), so the copy always describes what actually triggered the moment.
         "analyst": [
             T(
-                "{team} on a run: {shots_last_5} shots to {opp_shots_last_5}",
-                "{team} have {shots_last_5} shots and {xg_last_5} xG in the recent spell while {opp} have "
+                "{team} on a run: {run_shots} shots to {opp_shots_last_5}",
+                "{team} have {run_shots} shots and {xg_last_5} xG in the recent spell while {opp} have "
                 "{opp_shots_last_5}. The momentum is all one way.",
-                "{shots_last_5} shots to {opp_shots_last_5}: this is all {team}.",
+                "{run_shots} shots to {opp_shots_last_5}: this is all {team}.",
+            ),
+            T(
+                "{team} pinning {opp} back",
+                "{team} have reached the final third on {run_possessions} possessions in a row and {opp} "
+                "can't get out of their half.",
+                "{run_possessions} straight attacks for {team}.",
             ),
             T(
                 "{team} on a run",
-                "{team} have {shots_last_5} shots in the recent spell. The momentum is all one way.",
+                "{team} are dominating the recent spell. The momentum is all one way.",
                 "This is all {team}.",
             ),
         ],
@@ -496,14 +504,24 @@ TEMPLATES: dict[MomentType, dict[str, list[Template]]] = {
         "fan_for": [
             T(
                 "Wave after wave from {us}",
-                "We are all over them! {shots_last_5} shots in this spell and {them} can't get out.",
+                "We are all over them! {run_shots} shots in this spell and {them} can't get out.",
+                "Keep coming, {us}!",
+            ),
+            T(
+                "Wave after wave from {us}",
+                "We are camped in their half! {run_possessions} attacks in a row and {them} can't get out.",
                 "Keep coming, {us}!",
             ),
         ],
         "fan_against": [
             T(
                 "{them} are all over us",
-                "Hold on, {us}! {them} have {shots_last_5} shots in this spell and we can't get out.",
+                "Hold on, {us}! {them} have {run_shots} shots in this spell and we can't get out.",
+                "{us} just need to clear their lines.",
+            ),
+            T(
+                "{them} are all over us",
+                "Hold on, {us}! {them} keep getting into our final third and we can't get out.",
                 "{us} just need to clear their lines.",
             ),
         ],
@@ -654,8 +672,12 @@ WHY: dict[MomentType, list[WhyTemplate]] = {
     ],
     MomentType.MOMENTUM_RUN: [
         WhyTemplate(
-            "{team} have {shots_last_5} shots to {opp_shots_last_5} in the recent spell, so the momentum is "
+            "{team} have {run_shots} shots to {opp_shots_last_5} in the recent spell, so the momentum is "
             "firmly with them."
+        ),
+        WhyTemplate(
+            "{team} have reached the final third on {run_possessions} possessions in a row, so {opp} are "
+            "penned in and the momentum is firmly with them."
         ),
     ],
     MomentType.HALF_TIME: [WhyTemplate("At the break it is {score}, with xG {xg_home} to {xg_away}.")],
@@ -762,6 +784,15 @@ def build_slots(moment: Moment, home: Team, away: Team, score: str, perspective_
     for key in ("phase_before", "phase_after"):
         if key in facts:
             slots.put(f"{key}_desc", _phase_desc(str(facts[key].value), home, away), key)
+    if moment.type == MomentType.MOMENTUM_RUN:
+        # The engine fires a run on shots OR on final-third possessions; only offer the matching slot so a
+        # territory run is never described as "0 shots to 0".
+        if "final third" in moment.trigger and "final_third_possessions_in_row" in facts:
+            slots.put(
+                "run_possessions", slots.values["final_third_possessions_in_row"], "final_third_possessions_in_row"
+            )
+        elif "shots" in moment.trigger and "shots_last_5" in facts:
+            slots.put("run_shots", slots.values["shots_last_5"], "shots_last_5")
     return slots
 
 
