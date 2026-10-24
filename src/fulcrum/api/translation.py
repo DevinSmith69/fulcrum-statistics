@@ -27,6 +27,8 @@ class AgentHooks(Protocol):
 
     # Ask the studio (`POST /api/matches/{id}/ask`) calls the agents directly, not through this facade:
     # async def ask(match_id, question, *, persona, language, favourite_team_id, state) -> AskAnswer
+    # Coach's view (`GET /api/matches/{id}/insights/{insight_id}/coach`) likewise:
+    # async def coach(insight_id, language) -> CoachView | None   (None: unknown / not a goal or big chance)
 
 
 def _slot(x: InsightVariant | OverlayCue) -> tuple[Any, ...]:

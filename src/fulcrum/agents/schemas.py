@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 from fulcrum.contracts import (
     CheckStatus,
     Explanation,
+    Fact,
     Insight,
     InsightVariant,
     Moment,
@@ -69,6 +70,48 @@ class StudioAnswerOutput(BaseModel):
     cited_moment_ids: list[str] = Field(default_factory=list, description="MOMENT ids the answer relies on")
     fact_keys: list[str] = Field(default_factory=list, description="FACT keys the answer used")
     answerable: bool = Field(True, description="False if the CONTEXT PACK cannot answer it, or it is off-topic")
+
+
+class CoachPoint(BaseModel):
+    """One point of the Coach's view: a sentence and the coach_ facts it rests on."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(max_length=300, description="One sentence, at most 200 characters")
+    fact_keys: list[str] = Field(default_factory=list, description="The coach_ FACT keys this point states")
+
+
+class CoachOutput(BaseModel):
+    """Coach output ("Coach's view"). Turned into a `CoachView` after fact-checking."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    points: list[CoachPoint] = Field(description="2 or 3 points, in the order the move happened")
+    takeaway: str = Field(max_length=300, description="One constructive, conditional sentence")
+
+
+class CoachView(BaseModel):
+    """`GET /api/matches/{id}/insights/{insight_id}/coach` (API_CONTRACT §2): the Coach's view of a goal or big
+    chance, from the defending team's side.
+
+    Not a bus message, so it lives here rather than in `fulcrum.contracts`. `check_status="fallback"` means no
+    checked LLM copy is available (no agents, LLM failure, or two failed fact-checks): `points` is empty,
+    `takeaway` null, and clients show `facts` (the moment's coach_ facts) as a plain list.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    match_id: str
+    insight_id: str
+    moment_id: str
+    moment_type: str
+    defending_team_id: str | None = None
+    language: str = "en"
+    check_status: CheckStatus
+    points: list[CoachPoint] = Field(default_factory=list)
+    takeaway: str | None = None
+    facts: list[Fact] = Field(default_factory=list, description="The coach_ facts the view is based on")
+    latency_ms: int | None = None
 
 
 class MomentContext(BaseModel):

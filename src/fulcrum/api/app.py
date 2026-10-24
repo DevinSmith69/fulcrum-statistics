@@ -25,6 +25,8 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field, ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from fulcrum.agents.coach import coach_eligible, defending_team_id, fallback_view
+from fulcrum.agents.schemas import CoachView
 from fulcrum.bus import Bus, get_bus
 from fulcrum.contracts import (
     AskAnswer,
@@ -487,6 +489,29 @@ def _router() -> APIRouter:
             return native
         english = [v for v in insight.variants if v.language == "en"] or insight.variants
         return await request.app.state.translator.variants(insight, english, body.language)
+
+    @r.get("/matches/{match_id}/insights/{insight_id}/coach", response_model=CoachView)
+    async def coach(request: Request, match_id: str, insight_id: str, language: str = "en") -> CoachView:
+        """Coach's view of a goal / big chance, from the defending side (on demand, cached per language).
+
+        The evidence is the moment's engine-computed coach_ facts; the agents explain it (fact-checked, one
+        repair). Without agents, or when no checked copy can be written, the deterministic fallback lists the facts.
+        """
+        rm = match(request, match_id)
+        insight = rm.insights.get(insight_id)
+        if insight is None:
+            raise HTTPException(404, f"unknown insight '{insight_id}'")
+        moment = next((m for m in rm.moments if m.moment_id == insight.moment_id), None)
+        if moment is None or not coach_eligible(moment):
+            raise HTTPException(404, "no coach's view for this moment (goals and big chances only)")
+        agents = request.app.state.translator.agents
+        view: CoachView | None = None
+        if (hook := getattr(agents, "coach", None)) is not None:
+            try:
+                view = await hook(insight_id, language)
+            except Exception:
+                log.exception("agents.coach(%s, %s) failed; serving the facts", insight_id, language)
+        return view or fallback_view(moment, insight, defending=defending_team_id(moment, rm.home, rm.away))
 
     @r.get("/speech")
     async def speech_status(request: Request) -> dict[str, Any]:

@@ -2,7 +2,7 @@
 
 Runs standalone (`python -m fulcrum.agents`, one Container App) or in-process in single-process dev mode, where
 the API lifespan creates one `AgentService` on the shared bus and calls `start()`. The API also uses it for the
-on-demand paths: `translate`, `translate_cues`, `player_lens`, `recap`, `ask` and `register_match`.
+on-demand paths: `translate`, `translate_cues`, `player_lens`, `recap`, `ask`, `coach` and `register_match`.
 
 Per match, moments are explained strictly in arrival order (one worker per match); matches run in parallel.
 For each moment the service publishes the Insight, then its OverlayCues; after the full-time moment it also
@@ -39,12 +39,13 @@ from fulcrum.contracts import (
 )
 from fulcrum.llm import LLMClient
 
+from .coach import CoachAgent, coach_eligible, defending_team_id, fallback_view
 from .context import MatchContextStore, foreign_names, load_teams
 from .orchestrator import ExplainMomentWorkflow, MomentProcessor, OrchestratorConfig
 from .player_lens import PlayerLens
-from .prompts import FACT_REVIEWER, MOMENT_ANALYST, PERSONA_EDITOR, STUDIO_ANALYST, PromptSpec
+from .prompts import COACH, FACT_REVIEWER, MOMENT_ANALYST, PERSONA_EDITOR, STUDIO_ANALYST, PromptSpec
 from .recap import RecapService
-from .schemas import EditorOutput, MomentContext, ReviewOutput, StudioAnswerOutput
+from .schemas import CoachOutput, CoachView, EditorOutput, MomentContext, ReviewOutput, StudioAnswerOutput
 from .studio import StudioAnalyst, build_pack
 from .translate import Translator, normalise_language
 
@@ -59,6 +60,7 @@ _PROMPT_AGENTS: tuple[tuple[PromptSpec, type], ...] = (
     (PERSONA_EDITOR, EditorOutput),
     (FACT_REVIEWER, ReviewOutput),
     (STUDIO_ANALYST, StudioAnswerOutput),
+    (COACH, CoachOutput),
 )
 PROMPT_AGENT_ROLES = tuple((spec.agent_name, spec.system, spec.version, schema) for spec, schema in _PROMPT_AGENTS)
 
@@ -90,6 +92,7 @@ class AgentService:
         self.recaps = RecapService(llm, self.config)
         self.player_lenses = PlayerLens(llm, self.config)
         self.studio = StudioAnalyst(llm, self.config)
+        self.coaches = CoachAgent(llm, self.config)
         self._seen: set[str] = set()
         self._insights: dict[str, tuple[Moment, Insight, str]] = {}  # id -> (moment, insight, score)
         self._pending: dict[str, list[Moment]] = {}
@@ -266,6 +269,30 @@ class AgentService:
             return [variant]
         lensed = insight.model_copy(update={"insight_id": f"{insight.insight_id}~{player_id}", "variants": [variant]})
         return await self.translator.translate(lensed, moment, home, away, lang, foreign_names=names, score=score)
+
+    async def coach(self, insight_id: str, language: str = "en") -> CoachView | None:
+        """The Coach's view of a goal / big chance in `language`, from the defending team's side (on demand).
+
+        None when the id is unknown or the moment is not a goal / big chance with coach_ facts. When no checked
+        LLM copy can be written this time, the deterministic fallback (the coach_ facts, `check_status=fallback`)
+        is returned and nothing is cached, so a later request retries.
+        """
+        found = self._insights.get(insight_id)
+        teams = self._teams(found[0].match_id) if found else None
+        if found is None or teams is None or not coach_eligible(found[0]):
+            return None
+        moment, insight, score = found
+        home, away = teams
+        view = await self.coaches.view(
+            insight,
+            moment,
+            home,
+            away,
+            language,
+            foreign_names=foreign_names(home, away, self.store.league),
+            score=score,
+        )
+        return view or fallback_view(moment, insight, defending=defending_team_id(moment, home, away))
 
     async def translate_cues(self, insight_id: str, language: str) -> list[OverlayCue]:
         """Overlay cues of a published insight in `language`. Empty if unknown id."""
