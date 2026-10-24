@@ -16,6 +16,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import httpx
+from dotenv import load_dotenv
 from fastapi import APIRouter, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -177,7 +178,11 @@ def _router() -> APIRouter:
             "llm": os.getenv("FULCRUM_LLM", "fake"),
             "in_process": pipeline is not None,
             "sim": None if pipeline is None else ("simulator" if pipeline.sim_available else "replay"),
-            "agents": None if pipeline is None else pipeline.agents_available,
+            # True only once the agents service is actually running (it starts with the first match);
+            # agents_state says why not otherwise (e.g. "failed" with agents_error = a missing Foundry setting).
+            "agents": None if pipeline is None else pipeline.agents_state == "running",
+            "agents_state": None if pipeline is None else pipeline.agents_state,
+            "agents_error": None if pipeline is None else pipeline.agents_error,
         }
 
     @r.get("/teams", response_model=list[Team])
@@ -344,4 +349,8 @@ async def _run_sender(conn: Connection) -> None:
         log.exception("websocket sender crashed")
 
 
+# `uvicorn fulcrum.api.app:app` (make dev) reads .env like the other services do; variables already set in the
+# environment win. Tests set FULCRUM_DOTENV=0 (tests/conftest.py) so a developer's .env never leaks into them.
+if os.getenv("FULCRUM_DOTENV", "1") == "1":
+    load_dotenv()
 app = create_app()

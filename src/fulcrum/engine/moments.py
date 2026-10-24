@@ -362,6 +362,8 @@ class MomentDetector:
             self._team_fact(team_id),
             Fact(key="card", label="Card", value="second yellow" if colour == "second_yellow" else "straight red"),
             Fact(key="team_red_cards", label="Team red cards this match", value=reds),
+            # so "down to 10 men" is a fact-pack number the agents may use
+            Fact(key="players_left", label="Players left on the pitch", value=11 - reds),
         ] + self._wp_facts(wp_before, wp_after)
         return _Candidate(
             MT.RED_CARD,

@@ -31,7 +31,7 @@ asyncio tasks on the shared `MemoryBus` (`api/app.py` lifespan). In Azure each r
 ## 2. REST (FastAPI, `fulcrum.api.app:app`, prefix `/api`)
 | Method | Path | Body / Query | Returns |
 |---|---|---|---|
-| GET | `/api/health` | – | `{"status":"ok","bus":"memory","llm":"fake"}` |
+| GET | `/api/health` | – | `{"status":"ok","bus":"memory","llm":"fake","in_process":true,"sim":"simulator","agents":true,"agents_state":"running","agents_error":null}`; `agents` is true only once the agents service is running (it starts with the first match); `agents_state` is `off` \| `unavailable` \| `not_started` \| `starting` \| `running` \| `failed` (reason in `agents_error`) |
 | GET | `/api/teams` | – | `Team[]` (from data/teams.json) |
 | POST | `/api/matches` | `MatchConfig` (match_id optional) | `{"match_id": str}` — starts a simulated match |
 | GET | `/api/matches` | – | `[{match_id, home_team_id, away_team_id, status, clock_ms, score}]` |

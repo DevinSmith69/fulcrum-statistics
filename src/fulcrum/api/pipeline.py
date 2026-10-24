@@ -157,6 +157,9 @@ class Pipeline:
         self._agents_tried = False
         self.sim_available = find_entrypoint(SIM_ENTRYPOINTS) is not None
         self.agents_available = run_agents and find_entrypoint(AGENT_SERVICE) is not None
+        # off | unavailable | not_started (starts with the first match) | starting | running | failed (agents_error)
+        self.agents_state = "not_started" if self.agents_available else ("unavailable" if run_agents else "off")
+        self.agents_error: str | None = None
 
     def _spawn(self, coro: Any, name: str) -> asyncio.Task[Any]:
         task = asyncio.create_task(coro, name=name)
@@ -174,15 +177,18 @@ class Pipeline:
         if cls is None:
             log.warning("fulcrum.agents service not available yet - moments will have no insights")
             return
+        self.agents_state = "starting"  # Foundry warm-up + prompt agent publishing take a few seconds
         try:
             from fulcrum.llm import get_llm
 
             svc = cls(self.bus, get_llm())
             await svc.start()  # registers its consumer groups before returning
-        except Exception:
+        except Exception as e:
             log.exception("could not start the agents service - moments will have no insights")
+            self.agents_state, self.agents_error = "failed", f"{type(e).__name__}: {e}"
             return
         self.agents = svc
+        self.agents_state = "running"
         if self.translator is not None:
             self.translator.agents = svc
 

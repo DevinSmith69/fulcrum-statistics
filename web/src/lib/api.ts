@@ -1,5 +1,6 @@
 import { API_URL, DEFAULT_FIXTURE } from "./config";
 import type { MatchEvent, MatchSummary, Team, ViewerPrefs } from "../types";
+import { pickMatch, requestedMatchId } from "./matchPick";
 
 async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
@@ -22,11 +23,12 @@ async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
 /** All fictional clubs (data/teams.json via the API). */
 export const fetchTeams = () => getJson<Team[]>("/api/teams");
 
-/** The match to follow: the first unfinished match, else the newest one, else start the default fixture. */
+/** The match to follow: `?match=<id>` if it exists, else the first unfinished match, else the newest one,
+ * else start the default fixture. */
 export async function resolveMatchId(): Promise<string> {
   const matches = await getJson<MatchSummary[]>("/api/matches");
-  const live = matches.find((m) => m.status !== "finished") ?? matches[matches.length - 1];
-  if (live) return live.match_id;
+  const picked = pickMatch(matches, requestedMatchId());
+  if (picked) return picked;
   const created = await getJson<{ match_id: string }>("/api/matches", {
     method: "POST",
     body: JSON.stringify(DEFAULT_FIXTURE),

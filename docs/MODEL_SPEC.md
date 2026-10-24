@@ -153,7 +153,7 @@ Target **20 – 35 moments per match**; if over, raise thresholds in params, don
 | pressure_shift | sign flip of (P_home − P_away) with \|diff\| ≥ 25, or +30 in 3 min | 0.4–0.6 | pressure_index_*_before/after, shots_last_5, box_entries_last_5 |
 | phase_change | phase transition (persisted) | 0.35 | phase_before, phase_after, control_index_*, chaos_index, turnovers_last_5 |
 | tempo_change | \|tempo − match avg\| > 35 % for ≥ 2 min | 0.25 | tempo_ppm, tempo_match_avg |
-| red_card | red | 0.8 | player, minute, wp_*_before/after |
+| red_card | red | 0.8 | player, minute, card, team_red_cards, players_left, wp_*_before/after |
 | speed_record | match-high shot ≥ 110 km/h, or player first ≥ 33 km/h | 0.3 | player, speed_kmh, previous_match_high |
 | elite_pass | completed, difficulty ≥ 7.5 and progressive ≥ 15 m (max 1 per 3 min) | 0.35–0.5 | passer, recipient, difficulty, expected_completion_pct, length_m, progressive_m, ball_speed_kmh |
 | player_milestone | 50th completed pass, 2nd/3rd goal, 10 km, ≥ 95 % accuracy on ≥ 30 passes at HT | 0.2–0.5 | player, milestone, value |

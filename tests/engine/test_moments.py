@@ -103,6 +103,7 @@ def test_red_card_and_big_chance_packs(replayed):
     f = _facts(red)
     assert f["player"].value == "Yardley" and f["card"].value == "second yellow"
     assert red.wp_after.home > red.wp_before.home  # RVR down to ten
+    assert f["team_red_cards"].value == 1 and f["players_left"].value == 10  # "down to 10" is a fact
     assert red.significance == pytest.approx(0.8)
     chance = next(m for m in replayed.moments if m.type == "big_chance")
     f = _facts(chance)

@@ -456,3 +456,26 @@ def test_out_of_process_post_forwards_to_sim(monkeypatch, sim_status):
         else:
             assert r.status_code == 502
             assert c.get("/api/matches").json() == []  # not left registered, so a retry can reuse the id
+
+
+def test_health_reports_agents_that_failed_to_start(monkeypatch):
+    """FULCRUM_LLM=foundry without its settings: the match runs, and health says the agents are not running."""
+    monkeypatch.setenv("FULCRUM_LLM", "foundry")
+    monkeypatch.delenv("FOUNDRY_PROJECT_ENDPOINT", raising=False)
+    app = create_app(MemoryBus(), in_process=True, run_sim=False, run_agents=True)
+    with TestClient(app) as c:
+        before = c.get("/api/health").json()
+        assert before["agents"] is False and before["agents_state"] == "not_started"
+        assert c.post("/api/matches", json={**CONFIG, "match_id": "no-agents"}).status_code == 201
+        h = c.get("/api/health").json()
+        assert h["agents"] is False and h["agents_state"] == "failed"
+        assert "FOUNDRY_PROJECT_ENDPOINT" in h["agents_error"]
+
+
+def test_health_reports_running_agents(monkeypatch):
+    monkeypatch.setenv("FULCRUM_LLM", "fake")
+    app = create_app(MemoryBus(), in_process=True, run_sim=False, run_agents=True)
+    with TestClient(app) as c:
+        assert c.post("/api/matches", json={**CONFIG, "match_id": "with-agents"}).status_code == 201
+        h = c.get("/api/health").json()
+        assert h["agents"] is True and h["agents_state"] == "running" and h["agents_error"] is None
