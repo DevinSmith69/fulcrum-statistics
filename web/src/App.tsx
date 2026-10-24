@@ -4,13 +4,14 @@ import { PrefsDrawer } from "./components/PrefsDrawer";
 import { useMatchFeed } from "./lib/useMatchFeed";
 import { usePrefs } from "./lib/usePrefs";
 import { BroadcastView } from "./views/BroadcastView";
+import { QualityView } from "./views/QualityView";
 import { RecapView } from "./views/RecapView";
 import { SplitView } from "./views/SplitView";
 import { StudioView } from "./views/StudioView";
 
 function parseRoute(hash: string): Route {
   const r = hash.replace(/^#\/?/, "").split("?")[0];
-  return r === "split" || r === "broadcast" || r === "recap" ? r : "studio";
+  return r === "split" || r === "broadcast" || r === "recap" || r === "quality" ? r : "studio";
 }
 
 function useRoute() {
@@ -48,6 +49,7 @@ function MainShell({ route }: { route: Exclude<Route, "split"> }) {
       {route === "studio" && <StudioView feed={feed} prefs={prefs} />}
       {route === "broadcast" && <BroadcastView feed={feed} prefs={prefs} />}
       {route === "recap" && <RecapView feed={feed} prefs={prefs} />}
+      {route === "quality" && <QualityView feed={feed} />}
       {feed.finished && route === "studio" && (
         <a href="#/recap" className="fixed bottom-6 left-1/2 z-30 -translate-x-1/2 rounded-full bg-signal px-5 py-2.5 text-sm font-semibold text-ink-950 shadow-lg">
           Full time — read the recap

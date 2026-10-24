@@ -1,6 +1,7 @@
 import { API_URL, DEFAULT_FIXTURE } from "./config";
 import type { MatchEvent, MatchSummary, Team, ViewerPrefs } from "../types";
 import { pickMatch, requestedMatchId } from "./matchPick";
+import type { EvalLatest } from "./quality";
 
 async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
@@ -45,6 +46,9 @@ export const startMatch = () =>
 /** Events since a seq — used once after `hello` to rebuild line-ups and the ball position. */
 export const fetchEvents = (matchId: string, sinceSeq = -1) =>
   getJson<MatchEvent[]>(`/api/matches/${encodeURIComponent(matchId)}/events?since_seq=${sinceSeq}`);
+
+/** Newest offline evaluation reports (live agent run + Foundry evaluator scores), for the Quality view. */
+export const fetchEvalLatest = () => getJson<EvalLatest>("/api/eval/latest");
 
 /** URL of the machine-readable overlay cue feed for a graphics partner (shown in the cue inspector). */
 export function overlayCuesUrl(matchId: string, prefs: ViewerPrefs) {
