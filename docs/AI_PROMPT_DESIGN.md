@@ -151,8 +151,10 @@ FACTS, names only from ROSTER, in LANGUAGE. No odds or betting. Return JSON.
 the shot, nearest-defender distance, defenders goal-side, chance quality, keeper facts — MODEL_SPEC §4.1), the
 Coach only explains it. User prompt: `LANGUAGE` · `MOMENT` · `FACTS` (context facts — minute, score, teams,
 scorer/shooter — plus the `coach_` facts only) · `ROSTER`. Checks (`agents/coach.py`, deterministic): each
-point's numbers must come from the `coach_` facts it cites in `fact_keys` (or minute/score), the takeaway's from
-the coach facts; unknown or missing keys; 2–3 points; ≤ 220 chars and complete sentences; real clubs, foreign
+point cites at least one `coach_` key (context keys such as `scorer` may be added) and its numbers must come
+from the facts it cites (or minute/score), the takeaway's from the coach facts; unknown keys; 2–3 points; a
+point that names the goalkeeper and quotes the nearest-defender distance is rejected (seen live: the model
+pinned that distance on the keeper); ≤ 220 chars and complete sentences; real clubs, foreign
 names, betting terms (§5); blame language in English and the copy's language. One repair; then None, and the
 API serves the deterministic fallback (the `coach_` facts listed, no LLM). Cached per (insight, language).
 

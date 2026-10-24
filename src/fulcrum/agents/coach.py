@@ -146,6 +146,26 @@ def _blame(text: str, where: str, language: str) -> list[Issue]:
     ]
 
 
+def _keeper_distance(text: str, where: str, facts: Sequence[Fact], language: str) -> list[Issue]:
+    """The keeper has no distance fact: a point that names the goalkeeper and quotes the nearest-defender distance
+    almost always pins that distance on the keeper (seen live: "with Ullmann 8.2 m away")."""
+    f = fact_map(facts)
+    keeper, near = f.get("coach_goalkeeper"), f.get("coach_nearest_defender_m")
+    if keeper is None or near is None or str(keeper.value).casefold() not in text.casefold():
+        return []
+    near_value = to_decimal(fmt_value(near.value))
+    if any(to_decimal(t) == near_value for t in numbers_in(text, language)):
+        return [
+            Issue(
+                "attribution",
+                where,
+                f"{fmt_value(near.value)} m is the distance from the shooter to the nearest defender, not the "
+                f"goalkeeper's; keep {keeper.value} and that distance in separate points",
+            )
+        ]
+    return []
+
+
 def check_coach(
     out: CoachOutput,
     moment: Moment,
@@ -188,6 +208,7 @@ def check_coach(
             issues.append(Issue("too_long", f"{where}.text", f"{len(text)} chars, max {MAX_POINT}"))
         issues += cut_off(text, f"{where}.text")
         issues += _blame(text, f"{where}.text", language)
+        issues += _keeper_distance(text, f"{where}.text", facts, language)
     takeaway = out.takeaway.strip()
     if not takeaway:
         issues.append(Issue("empty", "takeaway", "the takeaway is empty"))

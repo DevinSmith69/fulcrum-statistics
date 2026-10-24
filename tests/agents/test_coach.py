@@ -142,6 +142,17 @@ async def test_blame_language_is_repaired():
     assert "'should have' judges a player" in repair and "'mistake' judges a player" in repair
 
 
+async def test_nearest_defender_distance_is_not_pinned_on_the_keeper():
+    ctx, _ = goal_with_coach_facts()
+    bad = with_point(
+        2,
+        text="Brennick shot with Venn 6.2 m away.",
+        fact_keys=["coach_nearest_defender_m", "coach_goalkeeper"],
+    )
+    issues = [str(i) for i in check_coach(CoachOutput.model_validate(bad), ctx.moment, score="1-0", language="en")]
+    assert any("not the goalkeeper's" in i for i in issues)
+
+
 async def test_unknown_or_missing_fact_keys_fail_the_check():
     ctx, _ = goal_with_coach_facts()
     out = CoachOutput.model_validate(with_point(2, fact_keys=["xg"]))

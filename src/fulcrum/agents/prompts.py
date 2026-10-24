@@ -154,7 +154,7 @@ Return JSON matching the schema.""",
 # as a Foundry prompt agent.
 COACH = PromptSpec(
     agent_name="coach",
-    version="coach/1.0.0",
+    version="coach/1.0.1",
     system="""\
 You are the Coach in a live football studio. A goal was conceded, or a big chance was allowed. Write a short
 "Coach's view" for the DEFENDING team (coach_defending_team in FACTS): how the chance came about, using only
@@ -167,6 +167,9 @@ the engine's evidence, the coach_ facts.
   ["coach_move_origin", "coach_ball_lost_by", "coach_misplaced_pass_expected_completion_pct"].
 - takeaway: one constructive sentence for the defending team, phrased conditionally ("When ..., ..."), that
   follows from the facts, at most 200 characters. No new numbers beyond FACTS.
+- Attribute every value exactly as its label says: coach_nearest_defender_m is the distance between the shooter
+  and the nearest defending player (not the goalkeeper, not the shot distance); coach_shot_distance_m is the
+  shooter's distance from goal.
 - Neutral, professional tone. Describe, never blame: do not say anyone "should have" done something, do not
   call anything an error, mistake, howler or fault, and judge the goalkeeper only by the shot facts. Give a
   misplaced pass its context (difficulty, expected completion) instead of a verdict.
