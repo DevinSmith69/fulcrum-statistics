@@ -106,7 +106,14 @@ TEMPLATES: dict[MomentType, dict[str, list[Template]]] = {
         ],
     },
     MomentType.BIG_CHANCE: {
+        # The first template per persona uses the engine's what-if facts (MODEL_SPEC §3.1) when present.
         "analyst": [
+            T(
+                "Big chance for {shooter}: {xg} xG, {outcome}",
+                "{shooter} gets a {xg} xG look from {distance_m} m (outcome: {outcome}). Had it gone in, it would "
+                "be {whatif_goal_score} and {team} would be {whatif_goal_win_pct}% to win, not {whatif_win_pct_now}%.",
+                "A {xg} xG chance: had it gone in, {team} would be {whatif_goal_win_pct}% to win.",
+            ),
             T(
                 "Big chance for {shooter}: {xg} xG, {outcome}",
                 "{shooter} gets a {xg} xG look from {distance_m} m (outcome: {outcome}). {team} are up to "
@@ -122,6 +129,12 @@ TEMPLATES: dict[MomentType, dict[str, list[Template]]] = {
         "casual": [
             T(
                 "So close for {shooter}!",
+                "{shooter} had a golden chance for {team} and couldn't take it. Had it gone in, their chances of "
+                "winning would have jumped to {whatif_goal_win_pct}%.",
+                "How has that not gone in? {shooter} will want that one back.",
+            ),
+            T(
+                "So close for {shooter}!",
                 "{shooter} had a golden chance for {team} and couldn't take it. That was one of the best openings "
                 "of the game so far.",
                 "How has that not gone in? {shooter} will want that one back.",
@@ -130,12 +143,24 @@ TEMPLATES: dict[MomentType, dict[str, list[Template]]] = {
         "fan_for": [
             T(
                 "{shooter} so nearly does it for {us}",
+                "Agonising! {shooter} had the chance for {us} and it wouldn't go in. That would have put our "
+                "chances of winning at {whatif_goal_win_pct}%. Keep creating like that.",
+                "Come on! {shooter} so close for {us}.",
+            ),
+            T(
+                "{shooter} so nearly does it for {us}",
                 "Agonising! {shooter} had the chance for {us} and it wouldn't go in. Keep creating like that and "
                 "the goal will come.",
                 "Come on! {shooter} so close for {us}.",
             ),
         ],
         "fan_against": [
+            T(
+                "Let-off! {shooter} misses for {them}",
+                "Phew. {shooter} had a real chance for {them} and didn't take it. Had it gone in, their chances of "
+                "winning would have been {whatif_goal_win_pct}%. {us} got away with one there.",
+                "Big let-off for {us}: {shooter} should have scored.",
+            ),
             T(
                 "Let-off! {shooter} misses for {them}",
                 "Phew. {shooter} had a real chance for {them} and didn't take it. {us} got away with one there.",
@@ -625,11 +650,23 @@ WHY: dict[MomentType, list[WhyTemplate]] = {
     ],
     MomentType.BIG_CHANCE: [
         WhyTemplate(
+            "Had {shooter}'s {xg} xG chance gone in, it would be {whatif_goal_score} and {team_poss} win probability "
+            "would be {whatif_goal_win_pct}% instead of {whatif_win_pct_now}%."
+        ),
+        WhyTemplate(
+            "Had {shooter}'s chance gone in, {team_poss} win probability would be {whatif_goal_win_pct}% instead of "
+            "{whatif_win_pct_now}%."
+        ),
+        WhyTemplate(
             "A {xg} xG chance for {shooter} shows {team} can open up {opp}; {team} have {team_xg_total} xG so far."
         ),
         WhyTemplate("A {xg} xG chance for {shooter} shows {team} can open up {opp}."),
     ],
     MomentType.WP_SWING: [
+        WhyTemplate(  # what-if facts are only present when the swing came from the team's own shot
+            "After that {cause_event}, {team_poss} win probability moves from {wp_team_before}% to {wp_team_after}%; "
+            "had it gone in, it would be {whatif_goal_win_pct}%."
+        ),
         WhyTemplate(
             "After {cause_event}, {team_poss} win probability moves from {wp_team_before}% to {wp_team_after}%."
         ),
