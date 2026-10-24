@@ -32,10 +32,12 @@ from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from agent_framework import Case, Default, Executor, Workflow, WorkflowBuilder, WorkflowContext, handler
 from pydantic import BaseModel
 
 from fulcrum.contracts import CheckStatus, Explanation, Insight
 from fulcrum.llm import LLMClient
+from fulcrum.telemetry import current_trace_id
 
 from .context import analyst_prompt, editor_prompt, review_prompt
 from .cues import build_cues
@@ -56,6 +58,10 @@ class OrchestratorConfig:
 
     call_timeout_s: float = 6.0  # per LLM call (AI_PROMPT_DESIGN §5)
     total_budget_s: float = 15.0  # whole run; later calls get min(call_timeout, remaining)
+    # The recap runs once at full time on the stronger (reasoning) deployment, which needs ~10-20 s; it is
+    # not on the live moment path, so it gets its own, longer budget.
+    recap_call_timeout_s: float = 40.0
+    recap_budget_s: float = 75.0
     max_attempts: int = 2  # first try + one repair
     review_enabled: bool = field(default_factory=lambda: os.getenv("FULCRUM_LLM_REVIEW", "0") == "1")
     review_min_significance: float = 0.6
@@ -251,7 +257,7 @@ class CueProducerStep:
             variants=ctx.variants,
             check_status=ctx.status,
             check_notes=ctx.notes,
-            agent_trace_id=None,  # TODO(azure): OpenTelemetry trace id once tracing lands (WS3b)
+            agent_trace_id=ctx._cache.get("trace_id"),  # the workflow run's OpenTelemetry trace (None if off)
             latency_ms=ctx.latency_ms,
         )
         ctx.cues = build_cues(ctx.insight, ctx.moment, ctx.home, ctx.away)
@@ -302,8 +308,77 @@ EDGES: tuple[Edge, ...] = (
 )
 
 
+class _StepExecutor(Executor):
+    """Agent Framework executor wrapping one `Step`.
+
+    It runs the step, picks the outgoing edge (first matching `Edge` in `EDGES` order), bumps the attempt on a
+    retry edge, and records the choice in the context so the workflow's switch-case edge group routes to it.
+    Deciding in the source keeps `EDGES` the single source of routing truth: the attempt counter must change
+    *between* evaluating a retry condition and running the target, which a pure edge condition cannot do.
+    """
+
+    def __init__(self, step: Step, edges: tuple[Edge, ...]) -> None:
+        super().__init__(id=step.name)
+        self.step = step
+        self.out_edges = tuple(e for e in edges if e.source == step.name)
+
+    @handler
+    async def run(self, ctx: MomentContext, wctx: WorkflowContext[MomentContext, MomentContext]) -> None:
+        ctx.trace.append(self.id)
+        ctx._cache.setdefault("trace_id", current_trace_id())
+        crashed = False
+        try:
+            await self.step.run(ctx)
+        except Exception as e:  # noqa: BLE001 — a bug in a step must not lose the moment
+            if self.id in ("template_fallback", "cue_producer"):
+                raise
+            log.exception("step %s crashed on moment %s", self.id, ctx.moment.moment_id)
+            ctx.error = f"{self.id} crashed: {type(e).__name__}: {e}"
+            ctx.notes.append(f"attempt {ctx.attempt}: {ctx.error}")
+            crashed = True  # never retry a crash
+        edge = (
+            Edge(self.id, "template_fallback", _failed)
+            if crashed
+            else next((e for e in self.out_edges if e.condition(ctx)), None)
+        )
+        if edge is None:
+            await wctx.yield_output(ctx)
+            return
+        if edge.retry:
+            ctx.attempt += 1
+        ctx._cache["route"] = edge.target
+        await wctx.send_message(ctx)
+
+
+def _routed_to(target: str) -> Condition:
+    return lambda c: c._cache.get("route") == target
+
+
+def build_workflow(steps: Mapping[str, Step], edges: tuple[Edge, ...] = EDGES) -> Workflow:
+    """The explain-moment graph as a Microsoft Agent Framework `Workflow` (one executor per step)."""
+    executors = {name: _StepExecutor(step, edges) for name, step in steps.items()}
+    builder = WorkflowBuilder(start_executor=executors[START], max_iterations=MAX_STEPS, name="explain_moment")
+    for source, executor in executors.items():
+        targets = list(dict.fromkeys(e.target for e in edges if e.source == source))
+        if source in ("analyst", "persona_editor", "fact_checker") and "template_fallback" not in targets:
+            targets.append("template_fallback")  # crash route
+        if len(targets) == 1:
+            builder.add_edge(executor, executors[targets[0]], condition=_routed_to(targets[0]))
+        elif targets:  # Agent Framework wants exactly one Default; the last route (fallback) takes that role
+            *cases, last = targets
+            builder.add_switch_case_edge_group(
+                executor,
+                [*(Case(condition=_routed_to(t), target=executors[t]) for t in cases), Default(target=executors[last])],
+            )
+    return builder.build()
+
+
 class ExplainMomentWorkflow:
-    """Runs the steps along `EDGES` until a step has no outgoing edge (cue_producer)."""
+    """Explains one moment by running the Agent Framework workflow built from `EDGES`.
+
+    A built `Workflow` refuses concurrent runs, and moments from different matches run in parallel, so idle
+    instances are pooled and a new one is built when all are busy.
+    """
 
     def __init__(
         self,
@@ -327,9 +402,7 @@ class ExplainMomentWorkflow:
             }
         )
         self.edges = edges
-
-    def _next(self, source: str, ctx: MomentContext) -> Edge | None:
-        return next((e for e in self.edges if e.source == source and e.condition(ctx)), None)
+        self._idle: list[Workflow] = []
 
     async def run(self, ctx: MomentContext) -> MomentContext:
         """Explain one moment. Always returns `ctx` with `insight` and `cues` set."""
@@ -337,26 +410,13 @@ class ExplainMomentWorkflow:
         ctx.max_attempts = self.config.max_attempts
         ctx._cache.setdefault("started", now)
         ctx._cache.setdefault("deadline", now + self.config.total_budget_s)
-        current: str | None = START
-        for _ in range(MAX_STEPS):
-            if current is None:
-                break
-            ctx.trace.append(current)
-            try:
-                await self.steps[current].run(ctx)
-            except Exception as e:  # noqa: BLE001 — a bug in a step must not lose the moment
-                if current in ("template_fallback", "cue_producer"):
-                    raise
-                log.exception("step %s crashed on moment %s", current, ctx.moment.moment_id)
-                ctx.error = f"{current} crashed: {type(e).__name__}: {e}"
-                ctx.notes.append(f"attempt {ctx.attempt}: {ctx.error}")
-                current = "template_fallback"  # never retry a crash
-                continue
-            edge = self._next(current, ctx)
-            if edge is not None and edge.retry:
-                ctx.attempt += 1
-            current = edge.target if edge else None
-        if ctx.insight is None:  # pragma: no cover — only if the edge table is broken
+        workflow = self._idle.pop() if self._idle else build_workflow(self.steps, self.edges)
+        try:
+            result = await workflow.run(ctx)
+        finally:
+            self._idle.append(workflow)
+        outputs = result.get_outputs()
+        if ctx.insight is None or not outputs:  # pragma: no cover — only if the edge table is broken
             raise RuntimeError(f"workflow ended without an insight (trace {ctx.trace})")
         return ctx
 

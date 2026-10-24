@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 
 from fulcrum.bus import get_bus
 from fulcrum.llm import get_llm
+from fulcrum.telemetry import configure_telemetry
 
 from .service import AgentService
 
@@ -17,6 +18,7 @@ def main() -> None:
     """Entry point for the agents Container App (FULCRUM_SERVICE=agents)."""
     load_dotenv()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    configure_telemetry("agents")
     asyncio.run(AgentService(get_bus(), get_llm()).run())
 
 

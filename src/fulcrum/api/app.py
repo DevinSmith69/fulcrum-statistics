@@ -40,6 +40,7 @@ from fulcrum.contracts import (
 )
 from fulcrum.engine.service import EngineService
 from fulcrum.engine.teams import load_teams
+from fulcrum.telemetry import configure_telemetry
 
 from . import personalise as ps
 from .hub import Connection, Hub
@@ -98,6 +99,7 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        configure_telemetry("api")  # no-op unless APPLICATIONINSIGHTS_CONNECTION_STRING is set
         the_bus = bus or get_bus()
         registry = Registry(teams if teams is not None else load_teams())
         translator = Translator()

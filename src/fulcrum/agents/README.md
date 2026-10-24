@@ -29,12 +29,37 @@ Design reference: `docs/AI_PROMPT_DESIGN.md`. Wire formats: `docs/API_CONTRACT.m
 - **LLM reviewer:** optional (`FULCRUM_LLM_REVIEW=1`, significance ≥ 0.6). Its issues feed the same repair
   loop. If the reviewer fails, the insight is not blocked.
 
-### Mapping to Microsoft Agent Framework (WS3b)
-Each step in `orchestrator.py` is one executor (`Step.name` is the executor id). `MomentContext`
-(`schemas.py`) is the shared state. `EDGES` is the list of `WorkflowBuilder.add_edge(source, target,
-condition)` calls, evaluated in order with the first match winning. Routing lives only in `EDGES`. To port,
-wrap each step's `run(ctx)` in an executor, build the graph from `EDGES`, and swap the LLM calls for Foundry
-agents behind `LLMClient`.
+### Microsoft Agent Framework + Foundry (WS3b, done)
+- **Workflow:** `ExplainMomentWorkflow` runs an Agent Framework `Workflow` built by `build_workflow()` from
+  `EDGES`: one `Executor` per step, and a switch-case edge group per step (one plain edge where a step has a
+  single route). Each executor runs its step, picks the first matching `Edge`, bumps the attempt on a retry
+  edge and routes there, so `EDGES` stays the only routing table. Built workflows refuse concurrent runs, so
+  idle ones are pooled (one in use per match worker). Agent Framework logs a harmless "self-loop" warning
+  when it builds the retry edges.
+- **LLM:** `fulcrum.llm.foundry.FoundryLLM` (`FULCRUM_LLM=foundry`). Each role is an Agent Framework `Agent`
+  named after the role on a `FoundryChatClient`, with the pydantic schema as `response_format`. The Match
+  Reporter runs on `FOUNDRY_MODEL_DEPLOYMENT_RECAP` (`strong`, gpt-5-mini, no temperature); every other role runs
+  on `FOUNDRY_MODEL_DEPLOYMENT` (`fast`, gpt-5.4-mini; temperature 0.4 for the Editor, 0.2 otherwise). Auth is
+  `DefaultAzureCredential`. `AgentService.start()` calls `warm_up()` so the first moment isn't a cold start.
+- **Tracing:** `fulcrum.telemetry.configure_telemetry()` (agents and api start-up) installs Azure Monitor when
+  `APPLICATIONINSIGHTS_CONNECTION_STRING` is set and turns on Agent Framework instrumentation: workflow,
+  executor and agent spans. `Insight.agent_trace_id` is the workflow run's trace id. Use
+  `FULCRUM_OTEL_CONSOLE=1` to print spans locally.
+- **Recap budget:** 40 s per call and 75 s overall (`recap_call_timeout_s`, `recap_budget_s`). The reasoning
+  model needs about 25 s, and the recap is not on the live path.
+
+### Live evaluation (`scripts/eval_live.py`, AI_PROMPT_DESIGN §7)
+`uv run python scripts/eval_live.py data/matches/sample_seed11.jsonl --json data/eval/sample_seed11.json`
+replays a recording through the engine and explains every moment, in order, on Foundry.
+First full run, 2026-10-24 (sample_seed11, HLC 2-2 MDU):
+
+| | |
+|---|---|
+| Moments | 30 |
+| Passed / repaired / fallback | 93.3 % / 6.7 % / 0 % |
+| Moment → insight latency | p50 4.2 s · p95 6.7 s (Analyst ≈ 1.4 s + Editor ≈ 2.9 s per call) |
+| Tokens per match | ≈ 115k (Analyst 42k, Editor 65k, recap 7.5k) |
+| Recap (strong) | passed, 26 s |
 
 ## Modules
 

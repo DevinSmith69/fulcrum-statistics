@@ -1,0 +1,48 @@
+{
+  "recording": "data\\matches\\sample_seed11.jsonl",
+  "moments": 30,
+  "status_counts": {
+    "passed": 28,
+    "repaired": 2
+  },
+  "status_rates_pct": {
+    "passed": 93.3,
+    "repaired": 6.7
+  },
+  "latency_ms": {
+    "p50": 4195,
+    "p95": 6717,
+    "mean": 4612.4
+  },
+  "llm": {
+    "moment_analyst": {
+      "calls": 31.0,
+      "failed": 0.0,
+      "input_tokens": 38035.0,
+      "output_tokens": 4166.0,
+      "seconds": 43.85
+    },
+    "persona_editor": {
+      "calls": 32.0,
+      "failed": 0.0,
+      "input_tokens": 48698.0,
+      "output_tokens": 16156.0,
+      "seconds": 94.32
+    },
+    "match_reporter": {
+      "calls": 1.0,
+      "failed": 0.0,
+      "input_tokens": 4202.0,
+      "output_tokens": 3299.0,
+      "seconds": 26.09
+    }
+  },
+  "tokens_total": 114556,
+  "recap": {
+    "seconds": 26.09,
+    "status": "passed",
+    "title": "Harlow Cross snatches late 2-2 draw",
+    "summary": "Verdict: Harlow Cross rescued a dramatic 2-2 draw with a stoppage-time equaliser. 41' \u2014 Hartsell\u2019s second yellow (MDU-03) handed Harlow Cross the momentum swing, lifting their win probability from 36% to 49%. 45+2' \u2014 Rookwood (MDU-10) struck before half to make it 0-1, taking Marsh Dock United\u2019s win chance from 14% to 52% (assist: Jessop MDU-09). 90+1' \u2014 Whitlock (HLC-15) levelled to 2-2 with an assist from Tolliver (HLC-08), moving Harlow Cross from 0% to 8% and sending the draw chance to 89%. Standout performer: Bellweather (HLC-11) was the pick with a 9.2 rating \u2014 he forced a 0.76 xG chance at 15' and created the 66' goal that helped turn the game back. What the numbers say: the match finished 2-2, with Harlow Cross piling up 63 % possession, 16 shots and 2.43 xG to Marsh Dock United\u2019s 37 %, 9 shots and 0.73 xG, and the final state left the draw as the full-time result."
+  },
+  "fallback_notes": {}
+}

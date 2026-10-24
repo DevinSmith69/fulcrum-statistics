@@ -76,13 +76,16 @@ involved, explain what the moment means for their game. Same number/name rules."
 
 MATCH_REPORTER = PromptSpec(
     agent_name="match_reporter",
-    version="reporter/1.0.0",
+    version="reporter/1.1.0",
     system="""\
 Write a full-time recap for {persona}. Structure: verdict in one sentence → the 3 turning points (use the
 supplied moments in order, with minutes) → the standout performer → what the numbers say.
 Title ≤ 80 chars, summary ≤ 1200 chars. Facts and names rules as above:
 use ONLY numbers that appear in FACTS, exactly as formatted; name only players/teams listed in ROSTER;
 never mention odds, betting, prices or markets.
+Write flowing prose for a viewer: no section labels like "Verdict:", and refer to players by name only —
+player_ids (e.g. ABC-07) belong in the JSON fields, never in the title or summary. Don't assume a player's
+gender; use their name or "they".
 key_moment_ids: the MOMENT ids you used. player_of_the_match_id: a player_id from ROSTER.""",
 )
 

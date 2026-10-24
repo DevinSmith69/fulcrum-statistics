@@ -249,7 +249,7 @@ process on the real namespace: sim → engine → agents → api in 4 processes.
   (or an aborted match) `/api/matches` can list a match as `live` that will never finish, and the web picks
   "the first unfinished match". Suggestion: the web prefers the newest live match, or the API marks a match
   `stale` when no event arrives for N minutes.
-- [ ] (WS5 → WS3b) `APPLICATIONINSIGHTS_CONNECTION_STRING` and `AZURE_CLIENT_ID` (user-assigned MI) are set on
+- [x] (WS5 → WS3b) **Done 2026-10-24: `fulcrum.telemetry.configure_telemetry()` in agents + api.** `APPLICATIONINSIGHTS_CONNECTION_STRING` and `AZURE_CLIENT_ID` (user-assigned MI) are set on
   every container, but no code calls `azure.monitor.opentelemetry.configure_azure_monitor()` yet. Please call it
   in the agents (and ideally the api) when the variable is set. `DefaultAzureCredential` then picks the MI
   through `AZURE_CLIENT_ID`. The MI has **Foundry User** on the project and on the account.

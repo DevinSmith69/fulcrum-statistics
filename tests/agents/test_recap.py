@@ -112,3 +112,12 @@ def test_fallback_recap_with_no_history():
     )
     assert recap.summary.startswith("Full time: Northbridge Athletic 0-0 Riverside Rovers.")
     assert recap.key_moment_ids == []
+
+
+async def test_recap_player_ids_in_text_are_repaired():
+    """The first live Foundry recap wrote "Hartsell's second yellow (MDU-03)"; ids belong in fields only."""
+    bad = {**GOOD, "summary": GOOD["summary"].replace("Brennick (8.6)", "Brennick (NBA-10, 8.6)")}
+    llm = ScriptedLLM({"match_reporter": [bad, GOOD]})
+    recap = await RecapService(llm).recap(**args())
+    assert recap.check_status == CheckStatus.REPAIRED
+    assert "use names, not ids: NBA-10" in llm.calls[1]["user"]

@@ -67,6 +67,7 @@ class AgentService:
             os.getenv("FULCRUM_AGENTS_EVENTS", "1") == "1" if consume_events is None else consume_events
         )
         self.config = config or OrchestratorConfig()
+        self.llm = llm
         self.store = MatchContextStore(league if league is not None else load_teams())
         self.workflow = ExplainMomentWorkflow(llm, self.config)
         self.processor = MomentProcessor(self.workflow, self._publish)
@@ -81,6 +82,11 @@ class AgentService:
 
     async def start(self) -> None:
         """Subscribe to the input topics (queues are registered before this returns, so nothing is missed)."""
+        if (warm_up := getattr(self.llm, "warm_up", None)) is not None:
+            try:
+                await warm_up()  # FoundryLLM: token + clients, so the first moment isn't a cold start
+            except Exception:
+                log.exception("agents: LLM warm-up failed; the first calls may time out")
         topics = [(TOPIC_MOMENTS, Moment, self._on_moment)]
         if self.consume_events:
             topics.append((TOPIC_EVENTS, MatchEvent, self._on_event))

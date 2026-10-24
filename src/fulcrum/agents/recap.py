@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Sequence
+from dataclasses import replace
 
 from fulcrum.contracts import CheckStatus, Insight, Moment, MomentType, Persona, Recap, Team
 from fulcrum.llm import LLMClient
@@ -62,6 +63,10 @@ def check_recap(
         issues.append(Issue("too_long", "recap.title", f"{len(out.title)} chars, max {MAX_TITLE}"))
     if len(out.summary) > MAX_SUMMARY:
         issues.append(Issue("too_long", "recap.summary", f"{len(out.summary)} chars, max {MAX_SUMMARY}"))
+    for field_name, text in (("recap.title", out.title), ("recap.summary", out.summary)):
+        leaked = sorted({pid for pid in player_ids if pid in text})
+        if leaked:
+            issues.append(Issue("player_id_in_text", field_name, f"use names, not ids: {', '.join(leaked)}"))
     for mid in out.key_moment_ids:
         if mid not in moment_ids:
             issues.append(Issue("unknown_moment", "recap.key_moment_ids", f"'{mid}' is not one of the MOMENTS"))
@@ -153,7 +158,10 @@ class RecapService:
         sheet = recap_sheet(full_time, moments, score, foreign_names)
         moment_ids = {m.moment_id for m, _ in moments}
         player_ids = {p.player_id for t in (home, away) for p in t.players}
-        deadline = time.monotonic() + self.config.total_budget_s
+        config = replace(
+            self.config, call_timeout_s=self.config.recap_call_timeout_s, total_budget_s=self.config.recap_budget_s
+        )
+        deadline = time.monotonic() + config.total_budget_s
         issues: list[str] = []
         status = CheckStatus.PASSED
         for attempt in (1, 2):
@@ -172,7 +180,7 @@ class RecapService:
                         issues=issues,
                     ),
                     schema=RecapOutput,
-                    config=self.config,
+                    config=config,
                     deadline=deadline,
                     persona=persona,
                 )
