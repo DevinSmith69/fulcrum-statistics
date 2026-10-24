@@ -374,3 +374,27 @@ def test_hello_after_full_time_bounds_translation_and_sends_recap(client):
         client.get(f"/api/matches/{MID}/recap", params={"persona": "analyst", "language": "es"}).json()["title"]
         == "analyst-es recap"
     )
+
+
+def test_replay_relabels_recording_to_requested_teams(monkeypatch):
+    """Replaying the NBA v RVR recording for an HLC v MDU match gives HLC/MDU ids and the right score."""
+    monkeypatch.setenv("FULCRUM_REPLAY_FILE", str(FIXTURE))
+    app = create_app(MemoryBus(), in_process=True, run_sim=True, run_agents=False)
+    with TestClient(app) as c:
+        cfg = {"match_id": "swap", "home_team_id": "HLC", "away_team_id": "MDU", "speed": 100000}
+        assert c.post("/api/matches", json=cfg).status_code == 201
+        wait_for(lambda: c.get("/api/matches").json()[0]["status"] == "finished", timeout=30)
+        wait_for(lambda: c.get("/api/matches/swap/state").json()["clock_ms"] > 90 * 60_000)
+        s = c.get("/api/matches/swap/state").json()
+        assert (s["home"]["team_id"], s["away"]["team_id"], s["score_home"], s["score_away"]) == ("HLC", "MDU", 1, 1)
+        assert s["home"]["shots"] == 8 and s["away"]["shots"] == 2
+        assert "HLC-10" in s["players"] and not any(p.startswith("NBA") for p in s["players"])
+
+
+def test_recording_teams_detected_from_tracking(tmp_path):
+    from fulcrum.api.pipeline import recording_teams
+
+    assert recording_teams(FIXTURE) == ("NBA", "RVR")  # from match_start.extra
+    frames_only = tmp_path / "frames.jsonl"
+    frames_only.write_text("\n".join(row for row in FIXTURE.read_text().splitlines() if '"tracking-frames"' in row))
+    assert recording_teams(frames_only) == ("NBA", "RVR")  # from P1 positions

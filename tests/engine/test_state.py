@@ -122,3 +122,24 @@ async def test_engine_service_on_memory_bus(fixture_items):
     assert {m.type for m in moments} >= {"goal", "red_card", "big_chance", "half_time", "full_time"}
     assert states[-1].score_home == 1 and states[-1].score_away == 1
     assert len(states) < len([i for i in fixture_items if isinstance(i, MatchEvent)])  # throttled
+
+
+def test_unused_substitutes_have_no_minutes(replayed):
+    s = replayed.snapshot()
+    bench = [p for pid, p in s.players.items() if int(pid.split("-")[1]) > 11]
+    assert bench and all(p.minutes == 0 for p in bench)
+    assert s.players["NBA-01"].minutes > 90
+
+
+async def test_engine_pump_survives_unparseable_message(fixture_items):
+    bus = MemoryBus()
+    service = EngineService(bus, teams=load_teams())
+    service.start()
+    bus._queues[TOPIC_EVENTS]["engine"].put_nowait("not json")
+    await bus.publish(TOPIC_EVENTS, "fixture-nba-rvr", fixture_items[0])
+    for _ in range(100):
+        await asyncio.sleep(0.01)
+        if "fixture-nba-rvr" in service.engines:
+            break
+    await service.stop()
+    assert service.engines["fixture-nba-rvr"].tracker.last_seq == 0

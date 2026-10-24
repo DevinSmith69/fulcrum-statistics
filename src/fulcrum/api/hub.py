@@ -102,7 +102,8 @@ class Connection:
         """Drain the queue, personalising each item for this viewer."""
         while True:
             kind, item = await self.queue.get()
-            if item is not None and getattr(item, "match_id", self.match_id) != self.match_id:
+            item_match = item.get("match_id") if isinstance(item, dict) else getattr(item, "match_id", None)
+            if item_match is not None and item_match != self.match_id:
                 continue  # stale item from a previous subscription
             await self._deliver(kind, item)
 
@@ -138,7 +139,7 @@ class Connection:
                     self._recap_sent = True
                     await self.send("recap", dump(best))
         elif kind == "match_end":
-            await self.send("match_end", item)
+            await self.send("match_end", {k: v for k, v in item.items() if k != "match_id"})
 
     async def _maybe_player_tag(self, rm: MatchReadModel, ev: MatchEvent) -> None:
         last = self._last_player_tag_ms
@@ -201,7 +202,8 @@ class Hub:
             return
         self._fanout(ev.match_id, "event", ev)
         if ev.type == EventType.MATCH_END:
-            self._fanout(ev.match_id, "match_end", {"score_home": rm.score_home, "score_away": rm.score_away})
+            end = {"match_id": ev.match_id, "score_home": rm.score_home, "score_away": rm.score_away}
+            self._fanout(ev.match_id, "match_end", end)
 
     def on_state(self, state: MatchState) -> None:
         if self.registry.get_or_create(state.match_id).set_state(state):
@@ -227,11 +229,18 @@ class Hub:
     # ------------------------------------------------------------------ pumps
 
     async def _pump(self, topic: str, model: type[BaseModel], handler: Callable[[Any], None]) -> None:
-        async for msg in self.bus.subscribe(topic, model, GROUPS[topic]):
+        while True:  # re-subscribe if the consumer itself fails (e.g. a message that doesn't parse)
             try:
-                handler(msg)
+                async for msg in self.bus.subscribe(topic, model, GROUPS[topic]):
+                    try:
+                        handler(msg)
+                    except Exception:
+                        log.exception("hub failed on %s message", topic)
+            except asyncio.CancelledError:
+                raise
             except Exception:
-                log.exception("hub failed on %s message", topic)
+                log.exception("hub consumer for %s failed; re-subscribing", topic)
+                await asyncio.sleep(0.5)
 
     def start(self) -> None:
         """Register consumer groups first (memory bus), then start one pump per topic."""

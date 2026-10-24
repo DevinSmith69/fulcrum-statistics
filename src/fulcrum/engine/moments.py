@@ -721,15 +721,15 @@ class MomentDetector:
     def _summary_facts(self, wp: WinProbability) -> list[Fact]:
         t = self.t
         out = []
+        poss_home = ri(t.possession_pct(t.home_id))
+        possession = {"home": poss_home, "away": 100 - poss_home}  # always sums to 100
         for side, team_id in (("home", t.home_id), ("away", t.away_id)):
             acc = t.team(team_id) if team_id else None
             name = t.team_name(team_id)
             out += [
                 Fact(key=f"xg_{side}", label=f"{name} xG", value=r2(acc.xg if acc else 0.0), unit="xG"),
                 Fact(key=f"shots_{side}", label=f"{name} shots", value=acc.shots if acc else 0),
-                Fact(
-                    key=f"possession_{side}", label=f"{name} possession", value=ri(t.possession_pct(team_id)), unit="%"
-                ),
+                Fact(key=f"possession_{side}", label=f"{name} possession", value=possession[side], unit="%"),
             ]
         out += [
             Fact(key="wp_home", label="Home win probability", value=pct(wp.home), unit="%"),

@@ -74,19 +74,25 @@ class EngineService:
         for m in out.moments:
             await self.bus.publish(TOPIC_MOMENTS, match_id, m)
 
-    async def _pump_events(self) -> None:
-        async for ev in self.bus.subscribe(TOPIC_EVENTS, MatchEvent, GROUP):
+    async def _consume(self, topic: str, model: type[MatchEvent] | type[TrackingFrame], handler) -> None:  # noqa: ANN001
+        while True:  # re-subscribe if the consumer itself fails (e.g. a message that doesn't parse)
             try:
-                await self.handle_event(ev)
-            except Exception:  # one bad message must not kill the engine
-                log.exception("engine failed on event %s/%s", ev.match_id, ev.seq)
+                async for msg in self.bus.subscribe(topic, model, GROUP):
+                    try:
+                        await handler(msg)
+                    except Exception:  # one bad message must not kill the engine
+                        log.exception("engine failed on %s message for %s", topic, msg.match_id)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                log.exception("engine consumer for %s failed; re-subscribing", topic)
+                await asyncio.sleep(0.5)
+
+    async def _pump_events(self) -> None:
+        await self._consume(TOPIC_EVENTS, MatchEvent, self.handle_event)
 
     async def _pump_frames(self) -> None:
-        async for frame in self.bus.subscribe(TOPIC_TRACKING, TrackingFrame, GROUP):
-            try:
-                await self.handle_frame(frame)
-            except Exception:
-                log.exception("engine failed on frame %s/%s", frame.match_id, frame.frame_id)
+        await self._consume(TOPIC_TRACKING, TrackingFrame, self.handle_frame)
 
     def start(self) -> list[asyncio.Task[None]]:
         """Register consumer groups (so nothing published meanwhile is lost) and start the pump tasks."""

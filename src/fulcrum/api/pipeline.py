@@ -15,14 +15,16 @@ from __future__ import annotations
 import asyncio
 import importlib
 import inspect
+import json
 import logging
 import os
-from collections.abc import Callable
+import re
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
 from fulcrum.bus import Bus
-from fulcrum.contracts import TOPIC_EVENTS, TOPIC_TRACKING, MatchConfig, MatchEvent
+from fulcrum.contracts import TOPIC_EVENTS, TOPIC_TRACKING, MatchConfig, MatchEvent, TrackingFrame
 from fulcrum.engine.replay import read_jsonl
 from fulcrum.engine.service import EngineService
 
@@ -72,10 +74,54 @@ def replay_file() -> Path | None:
     return next((p for p in REPLAY_CANDIDATES if p.exists()), None)
 
 
-async def replay(path: Path, bus: Bus, match_id: str, speed: float) -> None:
-    """Publish a recorded match onto the bus under `match_id`, paced to `speed`× sim time."""
-    last_clock: int | None = None
+def recording_teams(path: Path) -> tuple[str, str] | None:
+    """(home, away) of a recording: `extra.home_team_id/away_team_id`, else the P1 tracking frame
+    (home attacks towards x = 105 in P1, so its players' mean x is lower)."""
     for item in read_jsonl(path):
+        if isinstance(item, MatchEvent):
+            h, a = item.extra.get("home_team_id"), item.extra.get("away_team_id")
+            if h and a:
+                return str(h), str(a)
+        elif isinstance(item, TrackingFrame) and item.period == 1 and item.players:
+            xs: dict[str, list[float]] = {}
+            for p in item.players:
+                xs.setdefault(p.team_id, []).append(p.x)
+            if len(xs) == 2:
+                home, away = sorted(xs, key=lambda t: sum(xs[t]) / len(xs[t]))
+                return home, away
+    return None
+
+
+def team_remapper(src: tuple[str, str] | None, dst: tuple[str, str]) -> Callable[[str], str] | None:
+    """Rewrites team ids and `TEAM-NN` player ids in a raw JSON line (simultaneous, so swaps work)."""
+    if src is None or src == dst:
+        return None
+    mapping = dict(zip(src, dst, strict=True))
+    pattern = re.compile(r'"(' + "|".join(map(re.escape, src)) + r')(-|")')
+    return lambda line: pattern.sub(lambda m: f'"{mapping[m.group(1)]}{m.group(2)}', line)
+
+
+def _read_remapped(path: Path, remap: Callable[[str], str] | None) -> Iterator[MatchEvent | TrackingFrame]:
+    with path.open(encoding="utf-8") as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            row = json.loads(remap(line) if remap else line)
+            if row["topic"] == TOPIC_EVENTS:
+                yield MatchEvent.model_validate(row["data"])
+            elif row["topic"] == TOPIC_TRACKING:
+                yield TrackingFrame.model_validate(row["data"])
+
+
+async def replay(path: Path, bus: Bus, match_id: str, speed: float, teams: tuple[str, str] | None = None) -> None:
+    """Publish a recorded match onto the bus under `match_id`, paced to `speed`× sim time.
+
+    With `teams=(home, away)` the recording's clubs are re-labelled as those teams (ids and player ids), so a
+    replay always matches the match the viewer asked for.
+    """
+    remap = team_remapper(recording_teams(path), teams) if teams else None
+    last_clock: int | None = None
+    for item in _read_remapped(path, remap):
         clock = item.clock_ms
         if last_clock is not None and clock > last_clock:
             await asyncio.sleep(min(MAX_REPLAY_SLEEP_S, (clock - last_clock) / 1000.0 / speed))
@@ -171,7 +217,7 @@ class Pipeline:
         if path is None:
             raise RuntimeError("no simulator and no recorded match to replay")
         log.warning("fulcrum.sim not available - replaying %s as match %s", path, config.match_id)
-        await replay(path, self.bus, config.match_id, config.speed)
+        await replay(path, self.bus, config.match_id, config.speed, (config.home_team_id, config.away_team_id))
 
     async def stop(self) -> None:
         """Cancel the sim task(s) and stop agents and engine."""

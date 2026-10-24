@@ -79,7 +79,9 @@ class MatchReadModel:
             return False
         self.state = state
         self.clock_ms = max(self.clock_ms, state.clock_ms)
-        self.score_home, self.score_away = state.score_home, state.score_away
+        # max(): the event feed runs ahead of the engine, so a lagging state must not undo a goal
+        self.score_home = max(self.score_home, state.score_home)
+        self.score_away = max(self.score_away, state.score_away)
         wp = state.win_prob
         if not self.winprob or self.winprob[-1].seq != state.seq:
             self.winprob.append(

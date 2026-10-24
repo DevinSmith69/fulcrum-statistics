@@ -229,8 +229,7 @@ class MatchTracker:
             for i, p in enumerate(team.players):
                 self.player_names[p.player_id] = p.short_name
                 acc = self.player(p.player_id, team.team_id)
-                if i < 11:
-                    acc.on_since_ms = 0
+                acc.on_since_ms = 0 if i < 11 else None  # substitutes start on the bench
 
     def _learn_teams(self, ev: MatchEvent) -> None:
         """Identify home/away: `extra.home_team_id/away_team_id` on any event, else first two teams seen."""
@@ -638,8 +637,6 @@ class MatchTracker:
         if frame.match_id != self.match_id or frame.frame_id <= self.last_frame_id:
             return FrameEffects(duplicate=True)
         self.last_frame_id = frame.frame_id
-        if frame.period == self.period and not self.finished:
-            self._advance(frame.clock_ms)  # frame-driven moments carry the frame's sim time
         fx = FrameEffects()
         mp = self.params.metrics
         milestone_m = self.params.moments.milestone_distance_km * 1000
