@@ -137,7 +137,7 @@ The overlay's **Voice** and **Audio description** toggles work without Azure: `P
 the browser's `speechSynthesis` speaks. To use Azure AI Speech neural voices instead (en-GB Ryan, es-ES Alvaro,
 fr-FR Henri, pt-BR Antonio, de-DE Conrad):
 
-**Keyless, via Bicep (recommended).** TODO(azure): not provisioned yet.
+**Keyless, via Bicep (recommended).** Done for the hackathon on 24 Oct: `speech-fulcrum-ds534` (F0, custom domain, key auth off) was created by hand with exactly the Bicep's name and settings, so `azd provision` adopts it and adds the identity's role; the `fulcrum` azd env already has `FULCRUM_ENABLE_SPEECH=true`.
 
 ```bash
 azd env set FULCRUM_ENABLE_SPEECH true      # optional: azd env set FULCRUM_SPEECH_SKU S0
