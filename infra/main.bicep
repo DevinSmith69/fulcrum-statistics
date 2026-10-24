@@ -262,8 +262,8 @@ module api 'modules/containerapp.bicep' = {
     keyVaultSecrets: kvSecrets
     ingress: 'external'
     targetPort: 8000
-    cpu: '1.0'
-    memory: '2Gi'
+    cpu: '0.5'
+    memory: '1Gi'
     // One replica: the API keeps per-match read models and WebSocket fan-out in memory.
     minReplicas: 1
     maxReplicas: 1
