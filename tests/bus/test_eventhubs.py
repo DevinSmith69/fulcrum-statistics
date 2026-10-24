@@ -132,6 +132,7 @@ def test_config_forced_managed_identity_drops_the_secret():
         {"FULCRUM_EVENTHUBS_AUTH": "connection_string", "EVENTHUBS_NAMESPACE": "evh-x"},
         {"EVENTHUBS_CONNECTION_STRING": CONN, "FULCRUM_EVENTHUBS_AUTH": "kerberos"},
         {"EVENTHUBS_CONNECTION_STRING": CONN, "FULCRUM_EVENTHUBS_OFFSET_RESET": "middle"},
+        {"EVENTHUBS_CONNECTION_STRING": "Endpoint=sb://evh-x.servicebus.windows.net/"},  # cut at the first ';'
     ],
 )
 def test_config_rejects_unusable_env(env: dict[str, str]):
@@ -207,6 +208,7 @@ class _FakeCluster:
         self.offsets: dict[tuple[str, str], int] = {}
         self.new_data = asyncio.Event()
         self.producers_started = 0
+        self.sync_sends = 0
         self.kwargs: list[dict[str, Any]] = []
 
 
@@ -223,8 +225,19 @@ def _fake_aiokafka(cluster: _FakeCluster) -> types.ModuleType:
             cluster.producers_started += 1
 
         async def send_and_wait(self, topic: str, value: bytes, key: bytes, headers: Any = None) -> None:
+            cluster.sync_sends += 1
             cluster.log[topic].append((key, value, hash(key) % 2))
             cluster.new_data.set()
+
+        async def send(self, topic: str, value: bytes, key: bytes, headers: Any = None) -> asyncio.Future[None]:
+            fut: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+            if topic == "fail-me":
+                fut.set_exception(RuntimeError("broker said no"))
+            else:
+                cluster.log[topic].append((key, value, hash(key) % 2))
+                cluster.new_data.set()
+                fut.set_result(None)
+            return fut
 
         async def stop(self) -> None:
             pass
@@ -331,3 +344,19 @@ def test_get_bus_selects_eventhubs(monkeypatch: pytest.MonkeyPatch):
     assert isinstance(bus, EventHubsBus)
     assert bus.config.fqdn == "evh-unit-test.servicebus.windows.net"
     monkeypatch.setattr(bus_base, "_bus", None)  # don't leak into other tests
+
+
+async def test_delivery_failures_are_counted_not_raised(fake_kafka: _FakeCluster):
+    bus = EventHubsBus(EventHubsConfig.from_env({"EVENTHUBS_CONNECTION_STRING": CONN}))
+    await bus.publish("fail-me", "m1", _cue())
+    await asyncio.sleep(0)  # done callbacks run on the next loop iteration
+    assert bus.delivery_errors == 1
+    await bus.close()
+
+
+async def test_sync_publish_waits_for_ack(fake_kafka: _FakeCluster):
+    env = {"EVENTHUBS_CONNECTION_STRING": CONN, "FULCRUM_EVENTHUBS_SYNC": "1"}
+    bus = EventHubsBus(EventHubsConfig.from_env(env))
+    await bus.publish(TOPIC_INSIGHTS, "m1", InsightsEnvelope.wrap(_cue()))
+    assert fake_kafka.sync_sends == 1 and len(fake_kafka.log[TOPIC_INSIGHTS]) == 1
+    await bus.close()

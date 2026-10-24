@@ -19,9 +19,13 @@ Authentication (see docs/DEPLOY.md):
   "Azure Event Hubs Data Receiver". Env: `EVENTHUBS_NAMESPACE` and no connection string, or force it with
   `FULCRUM_EVENTHUBS_AUTH=managed_identity`.
 
-Other env: `FULCRUM_EVENTHUBS_OFFSET_RESET` (`latest` default: a brand-new group starts at the live edge, like
-a MemoryBus queue created on subscribe; `earliest` replays the hub's retention), `FULCRUM_SERVICE` (used in the
-Kafka client id).
+Other env:
+
+* `FULCRUM_EVENTHUBS_SYNC=1`: wait for the broker ack on every publish. The default queues and logs failures, so
+  a publisher is not limited to one message per round trip.
+* `FULCRUM_EVENTHUBS_OFFSET_RESET`: `latest` (default) starts a brand-new group at the live edge, like a
+  MemoryBus queue created on subscribe; `earliest` replays the hub's retention.
+* `FULCRUM_SERVICE`: used in the Kafka client id.
 
 `aiokafka` is imported lazily (it lives in the `azure` extra), so this module and its config parsing can be
 imported and unit-tested without it.
@@ -113,6 +117,7 @@ class EventHubsConfig:
     connection_string: str | None = field(default=None, repr=False)  # never printed
     client_id: str = "fulcrum"
     offset_reset: Literal["latest", "earliest"] = "latest"
+    sync_publish: bool = False
 
     @property
     def bootstrap_servers(self) -> str:
@@ -138,7 +143,11 @@ class EventHubsConfig:
         if mode == "connection_string":
             if not conn:
                 raise ValueError("FULCRUM_BUS=eventhubs needs EVENTHUBS_CONNECTION_STRING or EVENTHUBS_NAMESPACE")
-            fqdn = namespace_fqdn(parse_connection_string(conn)["Endpoint"])
+            parts = parse_connection_string(conn)
+            if not parts.get("SharedAccessKey") and not parts.get("SharedAccessSignature"):
+                # Typical cause: `. .env` in bash cuts the unquoted value at the first ';'. Quote it, or use dotenv.
+                raise ValueError("EVENTHUBS_CONNECTION_STRING has no SharedAccessKey (truncated at a ';'?)")
+            fqdn = namespace_fqdn(parts["Endpoint"])
         else:
             if not ns and conn:
                 ns = parse_connection_string(conn)["Endpoint"]
@@ -151,7 +160,10 @@ class EventHubsConfig:
             raise ValueError(f"FULCRUM_EVENTHUBS_OFFSET_RESET must be latest|earliest, not {reset!r}")
         service = (env.get("FULCRUM_SERVICE") or "").strip()
         client_id = f"fulcrum-{service}" if service else "fulcrum"
-        return cls(fqdn=fqdn, auth=mode, connection_string=conn, client_id=client_id, offset_reset=reset)  # type: ignore[arg-type]
+        sync = (env.get("FULCRUM_EVENTHUBS_SYNC") or "0").strip().lower() in ("1", "true", "yes")
+        return cls(
+            fqdn=fqdn, auth=mode, connection_string=conn, client_id=client_id, offset_reset=reset, sync_publish=sync
+        )  # type: ignore[arg-type]
 
     def kafka_kwargs(self, token_provider: Any = None) -> dict[str, Any]:
         """Security + Event Hubs tuning kwargs shared by producer and consumers.
@@ -241,6 +253,7 @@ class EventHubsBus:
         self._consumers: set[AIOKafkaConsumer] = set()
         self._closed = False
         self._token_provider: Any = None
+        self.delivery_errors = 0
 
     def _kafka_kwargs(self) -> dict[str, Any]:
         if self.config.auth == "managed_identity" and self._token_provider is None:
@@ -266,12 +279,29 @@ class EventHubsBus:
         return self._producer
 
     async def publish(self, topic: str, key: str, message: BaseModel) -> None:
-        """Publish a contract model to Event Hub `topic`, partitioned by `key` (match_id). Waits for the ack."""
+        """Publish a contract model to Event Hub `topic`, partitioned by `key` (match_id).
+
+        Returns once the record is queued in the producer's batch (not after the broker ack): waiting for each
+        ack caps a publisher at one message per round trip (~25/s to Sweden Central from the UK), too slow for
+        the sim at 10x. Per-partition order is still kept by the producer; delivery failures are logged, and
+        `close()` flushes. Set `FULCRUM_EVENTHUBS_SYNC=1` to wait for every ack instead.
+        """
         if self._closed:
             raise RuntimeError("EventHubsBus is closed")
         k, v = encode(key, message)
         producer = await self._get_producer()
-        await producer.send_and_wait(topic, value=v, key=k, headers=headers_for(message))
+        if self.config.sync_publish:
+            await producer.send_and_wait(topic, value=v, key=k, headers=headers_for(message))
+            return
+        delivery = await producer.send(topic, value=v, key=k, headers=headers_for(message))
+        delivery.add_done_callback(lambda f, t=topic: self._delivered(t, f))
+
+    def _delivered(self, topic: str, fut: asyncio.Future[Any]) -> None:
+        if fut.cancelled():
+            log.warning("eventhubs: delivery to %s cancelled", topic)
+        elif fut.exception() is not None:
+            self.delivery_errors += 1
+            log.error("eventhubs: delivery to %s failed: %s", topic, fut.exception())
 
     async def subscribe(self, topic: str, model: type[M], group: str) -> AsyncIterator[M]:  # type: ignore[override]
         """Yield parsed models from `topic` for consumer group `group`. Unparseable messages are logged and skipped
