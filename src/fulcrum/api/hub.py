@@ -196,6 +196,8 @@ class Hub:
         self.registry = registry
         self.translator = translator
         self.subscribers: dict[str, set[Connection]] = {}
+        # Extra in-process consumers of every new moment (e.g. the pipeline's "skip to the next moment").
+        self.moment_listeners: list[Callable[[Moment], None]] = []
         self._tasks: list[asyncio.Task[None]] = []
 
     # ------------------------------------------------------------------ subscriptions
@@ -245,6 +247,11 @@ class Hub:
     def on_moment(self, moment: Moment) -> None:
         if self.registry.get_or_create(moment.match_id).add_moment(moment):
             self._fanout(moment.match_id, "moment", moment)
+            for listener in self.moment_listeners:
+                try:
+                    listener(moment)
+                except Exception:
+                    log.exception("moment listener failed")
 
     def on_envelope(self, env: InsightsEnvelope) -> None:
         data = env.data

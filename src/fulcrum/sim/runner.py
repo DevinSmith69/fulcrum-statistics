@@ -15,6 +15,7 @@ from pathlib import Path
 from fulcrum.bus import Bus, get_bus
 from fulcrum.contracts import TOPIC_EVENTS, TOPIC_TRACKING, MatchConfig, MatchEvent, Team
 
+from .control import MatchControl
 from .engine import SimOutput, simulate
 from .params import DEFAULT_PARAMS, SimParams
 from .players import load_teams
@@ -43,11 +44,14 @@ async def run_match(
     speed: float | None = None,
     bus: Bus | None = None,
     params: SimParams = DEFAULT_PARAMS,
+    control: MatchControl | None = None,
 ) -> tuple[int, int]:
     """Simulate `config` and publish every model to the bus, paced by `speed` (default `config.speed`).
 
     When paced (speed > 0) each event's `ts` is restamped with the real publish time; at speed 0 the
-    deterministic synthetic `ts` is kept. Returns the final score (home, away).
+    deterministic synthetic `ts` is kept. With a `control` (demo director: live speed, pause, skip to the next
+    moment) the control paces the stream instead of `speed`; the items themselves are unchanged.
+    Returns the final score (home, away).
     """
     home, away = _resolve_teams(config, home, away)
     speed = config.speed if speed is None else speed
@@ -55,18 +59,26 @@ async def run_match(
     loop = asyncio.get_running_loop()
     start = loop.time()
     score = (0, 0)
-    for i, item in enumerate(simulate(config, home, away, params)):
-        if speed > 0:
-            delay = start + item.clock_ms / 1000.0 / speed - loop.time()
-            if delay > 0:
-                await asyncio.sleep(delay)
+    try:
+        for i, item in enumerate(simulate(config, home, away, params)):
+            if control is not None:
+                await control.pace(item.clock_ms)
+                if isinstance(item, MatchEvent):
+                    item = item.model_copy(update={"ts": datetime.now(UTC)})
+            elif speed > 0:
+                delay = start + item.clock_ms / 1000.0 / speed - loop.time()
+                if delay > 0:
+                    await asyncio.sleep(delay)
+                if isinstance(item, MatchEvent):
+                    item = item.model_copy(update={"ts": datetime.now(UTC)})
+            elif i % YIELD_EVERY == 0:
+                await asyncio.sleep(0)
             if isinstance(item, MatchEvent):
-                item = item.model_copy(update={"ts": datetime.now(UTC)})
-        elif i % YIELD_EVERY == 0:
-            await asyncio.sleep(0)
-        if isinstance(item, MatchEvent):
-            score = (item.score_home, item.score_away)
-        await bus.publish(topic_for(item), config.match_id, item)
+                score = (item.score_home, item.score_away)
+            await bus.publish(topic_for(item), config.match_id, item)
+    finally:
+        if control is not None:
+            control.finish()
     return score
 
 

@@ -13,7 +13,7 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 from dotenv import load_dotenv
@@ -35,6 +35,7 @@ from fulcrum.contracts import (
     MatchEvent,
     MatchState,
     Moment,
+    MomentType,
     OverlayCue,
     Persona,
     Recap,
@@ -43,6 +44,7 @@ from fulcrum.contracts import (
 )
 from fulcrum.engine.service import EngineService
 from fulcrum.engine.teams import load_teams
+from fulcrum.sim.control import DEFAULT_SKIP_SIGNIFICANCE, MAX_SPEED, MIN_SPEED, MatchControl
 from fulcrum.telemetry import configure_telemetry
 
 from . import personalise as ps
@@ -66,6 +68,19 @@ class TranslateRequest(BaseModel):
 class SpeechRequest(BaseModel):
     text: str = Field(min_length=1, max_length=MAX_TEXT_CHARS)
     language: str = "en"
+
+
+class ControlRequest(BaseModel):
+    """`POST /api/matches/{id}/control` (demo director, API_CONTRACT §2 "Match controls")."""
+
+    action: Literal["set_speed", "pause", "resume", "next_moment", "cancel_skip"]
+    speed: float | None = Field(default=None, ge=MIN_SPEED, le=MAX_SPEED, description="set_speed: sim-time multiplier")
+    min_significance: float = Field(
+        default=DEFAULT_SKIP_SIGNIFICANCE, ge=0, le=1, description="next_moment: stop on a moment at least this big"
+    )
+    types: list[MomentType] | None = Field(
+        default=None, description="next_moment: stop on these moment types instead of by significance"
+    )
 
 
 def _env_flag(name: str, default: bool) -> bool:
@@ -129,6 +144,7 @@ def create_app(
             agents = run_agents if run_agents is not None else _env_flag("FULCRUM_RUN_AGENTS", True)
             engine = EngineService(the_bus, teams=registry.teams)
             pipeline = Pipeline(the_bus, registry, engine, translator, run_sim=sim, run_agents=agents)
+            hub.moment_listeners.append(pipeline.on_moment)
         app.state.bus, app.state.registry, app.state.hub = the_bus, registry, hub
         app.state.translator, app.state.pipeline = translator, pipeline
         app.state.speech = speech if speech is not None else SpeechSynth.from_env()
@@ -156,6 +172,7 @@ def create_app(
             409: "Conflict",
             422: "Unprocessable Entity",
             429: "Too Many Requests",
+            501: "Not Implemented",
             502: "Bad Gateway",
             503: "Service Unavailable",
         }
@@ -212,6 +229,8 @@ def _router() -> APIRouter:
             "agents_state": None if pipeline is None else pipeline.agents_state,
             "agents_error": None if pipeline is None else pipeline.agents_error,
             "speech": request.app.state.speech is not None,
+            # Demo director (speed / pause / next moment) needs the simulator running in this process.
+            "match_controls": pipeline is not None and pipeline.run_sim,
         }
 
     @r.get("/eval/latest")
@@ -315,6 +334,43 @@ def _router() -> APIRouter:
         if best is None:
             raise HTTPException(404, "recap not ready yet")
         return best
+
+    def control(request: Request, match_id: str) -> MatchControl:
+        match(request, match_id)  # 404 first
+        pipeline: Pipeline | None = request.app.state.pipeline
+        ctl = pipeline.control(match_id) if pipeline is not None else None
+        if ctl is None:
+            raise HTTPException(
+                501,
+                "match controls need the simulator running inside the API process (FULCRUM_INPROCESS); "
+                "this match is simulated elsewhere",
+            )
+        return ctl
+
+    @r.get("/matches/{match_id}/control")
+    async def get_control(request: Request, match_id: str) -> dict[str, Any]:
+        """Demo director: the match's live pacing (speed, paused, skipping)."""
+        return control(request, match_id).snapshot()
+
+    @r.post("/matches/{match_id}/control")
+    async def post_control(request: Request, match_id: str, body: ControlRequest) -> dict[str, Any]:
+        """Demo director: set speed, pause / resume, or run fast to the next significant moment."""
+        ctl = control(request, match_id)
+        if ctl.finished:
+            raise HTTPException(409, "the match has finished")
+        if body.action == "set_speed":
+            if body.speed is None:
+                raise HTTPException(422, "set_speed requires speed")
+            ctl.set_speed(body.speed)
+        elif body.action == "pause":
+            ctl.pause()
+        elif body.action == "resume":
+            ctl.resume()
+        elif body.action == "next_moment":
+            ctl.skip_to_next(body.min_significance, body.types)
+        else:
+            ctl.cancel_skip()
+        return ctl.snapshot()
 
     @r.post("/matches/{match_id}/ask", response_model=AskAnswer)
     async def ask(request: Request, match_id: str, body: AskRequest) -> AskAnswer:

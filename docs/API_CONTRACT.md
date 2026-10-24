@@ -31,7 +31,7 @@ asyncio tasks on the shared `MemoryBus` (`api/app.py` lifespan). In Azure each r
 ## 2. REST (FastAPI, `fulcrum.api.app:app`, prefix `/api`)
 | Method | Path | Body / Query | Returns |
 |---|---|---|---|
-| GET | `/api/health` | – | `{"status":"ok","bus":"memory","llm":"fake","in_process":true,"sim":"simulator","agents":true,"agents_state":"running","agents_error":null,"speech":false}`; `agents` is true only once the agents service is running (it starts with the first match); `agents_state` is `off` \| `unavailable` \| `not_started` \| `starting` \| `running` \| `failed` (reason in `agents_error`) |
+| GET | `/api/health` | – | `{"status":"ok","bus":"memory","llm":"fake","in_process":true,"sim":"simulator","agents":true,"agents_state":"running","agents_error":null,"speech":false,"match_controls":true}` (`match_controls`: see Match controls below); `agents` is true only once the agents service is running (it starts with the first match); `agents_state` is `off` \| `unavailable` \| `not_started` \| `starting` \| `running` \| `failed` (reason in `agents_error`) |
 | GET | `/api/teams` | – | `Team[]` (from data/teams.json) |
 | POST | `/api/matches` | `MatchConfig` (match_id optional) | `{"match_id": str}` — starts a simulated match |
 | GET | `/api/matches` | – | `[{match_id, home_team_id, away_team_id, status, clock_ms, score}]` |
@@ -59,6 +59,33 @@ question, language, persona, team, number of moments so far). Errors: 404 unknow
 429 rate limit (per client IP, `FULCRUM_ASK_RATE`, default `6/30` = 6 questions per 30 s; `Retry-After` header) ·
 503 when no agents service is running in the API process (out-of-process deployments, or the agents failed
 to start).
+
+### Match controls (demo director)
+
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| GET | `/api/matches/{id}/control` | – | `ControlState` (below) |
+| POST | `/api/matches/{id}/control` | `{"action": "set_speed", "speed": 30}` · `{"action": "pause"}` · `{"action": "resume"}` · `{"action": "next_moment", "min_significance"?: 0.65, "types"?: MomentType[]}` · `{"action": "cancel_skip"}` | `ControlState` after the change |
+
+`ControlState` = `{"match_id", "available": true, "speed", "effective_speed", "paused", "skipping",
+"skip_min_significance", "position_ms", "finished", "last_skip": {"moment_id", "type", "clock_ms",
+"significance"} | null}`.
+
+- **Pacing only.** The controls change how fast the simulator's items are *released* (wall clock), never
+  the items: same seed → identical event stream at any speed, paused or not (`tests/sim/test_sim_control.py`).
+  Event `ts` is the real publish time whenever a match is paced, as before.
+- `speed` is the sim-time multiplier (0.25–600; the overlay offers 1×, 5×, 10×, 30×, 60×). A change applies
+  at once, also to an item already waiting, and never bursts to "catch up". Pause holds the stream before the
+  next item; resume continues from there.
+- `next_moment` runs at 120× (or `speed`, if faster) until the engine emits a moment with
+  `significance >= min_significance` (default 0.65: goals, red cards, big chances, full time; not
+  phase/tempo/pressure notes) — or, with `types`, a moment of one of those types — then drops back to
+  `speed` and records it in `last_skip`. It also resumes a paused match. `cancel_skip` stops early.
+  Moments passed on the way are still detected and explained (agents explain in arrival order).
+- `GET /api/health` → `"match_controls": true` when this API process runs the simulator (in-process mode).
+- Errors: 404 unknown match · 422 bad body (`set_speed` without `speed`, speed out of range) · 409 the match has
+  finished · **501** when the match is not simulated in this process (out-of-process topology: the sim
+  Container App paces itself; the overlay disables its controls).
 
 The API keeps per-match read models in memory (dict of match_id → ring buffers). Persistence is a stretch
 goal (Cosmos DB) — do not build it before Sunday evening.

@@ -24,9 +24,10 @@ from pathlib import Path
 from typing import Any
 
 from fulcrum.bus import Bus
-from fulcrum.contracts import TOPIC_EVENTS, TOPIC_TRACKING, MatchConfig, MatchEvent, TrackingFrame
+from fulcrum.contracts import TOPIC_EVENTS, TOPIC_TRACKING, MatchConfig, MatchEvent, Moment, TrackingFrame
 from fulcrum.engine.replay import read_jsonl
 from fulcrum.engine.service import EngineService
+from fulcrum.sim.control import MAX_SPEED, MIN_SPEED, MatchControl
 
 from .readmodel import Registry
 from .translation import Translator
@@ -55,13 +56,17 @@ def find_entrypoint(candidates: list[tuple[str, str]]) -> Callable[..., Any] | N
     return None
 
 
-async def call_flexible(fn: Callable[..., Any], *args: Any, bus: Bus) -> Any:
-    """Call `fn(*args)` passing `bus` by keyword when its signature accepts it; await if needed."""
+def accepts(fn: Callable[..., Any], name: str) -> bool:
+    """Whether `fn` takes a keyword argument called `name`."""
     try:
-        params = inspect.signature(fn).parameters
+        return name in inspect.signature(fn).parameters
     except (TypeError, ValueError):
-        params = {}
-    kwargs = {"bus": bus} if "bus" in params else {}
+        return False
+
+
+async def call_flexible(fn: Callable[..., Any], *args: Any, bus: Bus, **optional: Any) -> Any:
+    """Call `fn(*args)` passing `bus` (and each of `optional`) by keyword when its signature accepts it."""
+    kwargs = {k: v for k, v in {"bus": bus, **optional}.items() if accepts(fn, k)}
     out = fn(*args, **kwargs)
     return await out if inspect.isawaitable(out) else out
 
@@ -113,24 +118,37 @@ def _read_remapped(path: Path, remap: Callable[[str], str] | None) -> Iterator[M
                 yield TrackingFrame.model_validate(row["data"])
 
 
-async def replay(path: Path, bus: Bus, match_id: str, speed: float, teams: tuple[str, str] | None = None) -> None:
+async def replay(
+    path: Path,
+    bus: Bus,
+    match_id: str,
+    speed: float,
+    teams: tuple[str, str] | None = None,
+    control: MatchControl | None = None,
+) -> None:
     """Publish a recorded match onto the bus under `match_id`, paced to `speed`× sim time.
 
     With `teams=(home, away)` the recording's clubs are re-labelled as those teams (ids and player ids), so a
-    replay always matches the match the viewer asked for.
+    replay always matches the match the viewer asked for. With a `control`, it paces the replay instead.
     """
     remap = team_remapper(recording_teams(path), teams) if teams else None
     last_clock: int | None = None
-    for item in _read_remapped(path, remap):
-        clock = item.clock_ms
-        if last_clock is not None and clock > last_clock:
-            await asyncio.sleep(min(MAX_REPLAY_SLEEP_S, (clock - last_clock) / 1000.0 / speed))
-        else:
-            await asyncio.sleep(0)
-        last_clock = clock
-        item = item.model_copy(update={"match_id": match_id})
-        topic = TOPIC_EVENTS if isinstance(item, MatchEvent) else TOPIC_TRACKING
-        await bus.publish(topic, match_id, item)
+    try:
+        for item in _read_remapped(path, remap):
+            clock = item.clock_ms
+            if control is not None:
+                await control.pace(clock)
+            elif last_clock is not None and clock > last_clock:
+                await asyncio.sleep(min(MAX_REPLAY_SLEEP_S, (clock - last_clock) / 1000.0 / speed))
+            else:
+                await asyncio.sleep(0)
+            last_clock = clock
+            item = item.model_copy(update={"match_id": match_id})
+            topic = TOPIC_EVENTS if isinstance(item, MatchEvent) else TOPIC_TRACKING
+            await bus.publish(topic, match_id, item)
+    finally:
+        if control is not None:
+            control.finish()
 
 
 class Pipeline:
@@ -153,6 +171,7 @@ class Pipeline:
         self.run_sim = run_sim
         self.run_agents = run_agents
         self.tasks: set[asyncio.Task[Any]] = set()
+        self.controls: dict[str, MatchControl] = {}  # demo director: per-match speed / pause / skip
         self.agents: Any = None
         self._agents_task: asyncio.Task[None] | None = None
         self.sim_available = find_entrypoint(SIM_ENTRYPOINTS) is not None
@@ -223,18 +242,39 @@ class Pipeline:
             except Exception:
                 log.exception("agents.register_match failed for %s", config.match_id)
         if self.run_sim:
+            fn = self._sim_entrypoint()
+            if fn is None or accepts(fn, "control"):
+                speed = min(MAX_SPEED, max(MIN_SPEED, config.speed))
+                self.controls[config.match_id] = MatchControl(config.match_id, speed)
             self._spawn(self._guard(self._simulate(config), "sim", config.match_id), f"sim-{config.match_id}")
 
+    def control(self, match_id: str) -> MatchControl | None:
+        """The live controls of a match this process is simulating (None: not ours, or controls unsupported)."""
+        return self.controls.get(match_id)
+
+    def on_moment(self, moment: Moment) -> None:
+        """Hub hook: every engine moment, so a running "skip to the next moment" can stop on it."""
+        if (ctl := self.controls.get(moment.match_id)) is not None and ctl.on_moment(moment):
+            log.info("match %s: skip stopped on %s at %s ms", moment.match_id, moment.type, moment.clock_ms)
+
+    @staticmethod
+    def _sim_entrypoint() -> Callable[..., Any] | None:
+        if os.getenv("FULCRUM_REPLAY_FILE"):  # an explicit recording wins (demos)
+            return None
+        return find_entrypoint(SIM_ENTRYPOINTS)
+
     async def _simulate(self, config: MatchConfig) -> None:
-        fn = find_entrypoint(SIM_ENTRYPOINTS)
-        if fn is not None and not os.getenv("FULCRUM_REPLAY_FILE"):  # an explicit recording wins (demos)
-            await call_flexible(fn, config, bus=self.bus)
+        control = self.controls.get(config.match_id)
+        fn = self._sim_entrypoint()
+        if fn is not None:
+            await call_flexible(fn, config, bus=self.bus, **({"control": control} if control else {}))
             return
         path = replay_file()
         if path is None:
             raise RuntimeError("no simulator and no recorded match to replay")
         log.warning("fulcrum.sim not available - replaying %s as match %s", path, config.match_id)
-        await replay(path, self.bus, config.match_id, config.speed, (config.home_team_id, config.away_team_id))
+        teams = (config.home_team_id, config.away_team_id)
+        await replay(path, self.bus, config.match_id, config.speed, teams, control)
 
     async def stop(self) -> None:
         """Cancel the sim task(s) and stop agents and engine."""

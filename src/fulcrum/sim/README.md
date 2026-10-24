@@ -30,6 +30,14 @@ for model in simulate(config, home_team, away_team):
 JSONL records are `{"topic": "match-events" | "tracking-frames", "data": <model JSON, by_alias>}`. Pass
 attributes therefore appear under `"pass"`, as on the bus.
 
+## Live controls (demo director)
+`control.py` — `MatchControl` is a small per-match pacing object that `run_match(..., control=ctl)` consults
+before releasing each item: live speed (0.25–600×), pause / resume, and `skip_to_next(min_significance)` (run at
+120× until `on_moment()` sees a moment that big, then drop back). It only decides *when* the next item is
+released; the generator is never touched, so the stream stays identical per seed
+(`tests/sim/test_sim_control.py`). The API wires it up in-process (`api/pipeline.py`, `POST
+/api/matches/{id}/control`); the standalone sim service paces with `config.speed` only.
+
 ## Stream semantics (what consumers can rely on)
 - **Determinism.** The same `MatchConfig` (incl. `seed` and `match_id`) gives a byte-identical stream.
   `event_id = md5(match_id:seq)`. `ts` is synthetic (`2026-10-24T15:00Z` + sim time, +15 min in P2). When
