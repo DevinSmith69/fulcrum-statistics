@@ -27,8 +27,8 @@ DEFAULT_TEAMS_PATH = Path(__file__).resolve().parents[3] / "data" / "teams.json"
 ANCHORS_433: dict[str, tuple[float, float]] = {
     "GK": (5.0, 34.0),
     "RB": (36.0, 10.0),
-    "RCB": (32.0, 25.0),
-    "LCB": (32.0, 43.0),
+    "RCB": (32.0, 28.0),
+    "LCB": (32.0, 40.0),
     "LB": (36.0, 58.0),
     "CDM": (44.0, 34.0),
     "RCM": (52.0, 22.0),
@@ -85,6 +85,7 @@ class Tracking:
             [p.tracking_gk_shift_x, p.tracking_gk_shift_y],
             [p.tracking_shift_x, p.tracking_shift_y],
         )
+        self.is_front = self.anchor[:, 0] >= p.tracking_front_line_x
         self.noise_scale = np.where(self.is_gk, p.tracking_gk_noise_factor, 1.0)[:, None]
         self.active = np.ones(2 * SLOTS_PER_TEAM, dtype=bool)
         self.vmax = np.array([top_speed_kmh(pl.ratings.pace, p) / 3.6 for pl in self.players])
@@ -154,6 +155,8 @@ class Tracking:
             )
             tx = self.anchor[sl, 0] + self.shift[sl, 0] * (bx - LENGTH / 2) + np.where(self.is_gk[sl], 0.0, offset)
             ty = self.anchor[sl, 1] + self.shift[sl, 1] * (by - WIDTH / 2)
+            if poss == team and bx >= p.tracking_narrow_from_x:  # front three tuck inside near goal
+                ty = ty + np.where(self.is_front[sl], p.tracking_attack_narrowing, 0.0) * (WIDTH / 2 - ty)
             tx = np.clip(tx, 1.0, LENGTH - 1.0)
             ty = np.clip(ty, 1.0, WIDTH - 1.0)
             if dirs[team] < 0:

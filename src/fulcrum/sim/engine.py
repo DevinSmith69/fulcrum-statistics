@@ -76,7 +76,7 @@ class LastPass:
     recipient: int
     bonus: bool  # through ball or cutback
     cross: bool
-    first_touch: bool = True  # recipient hasn't carried/dribbled since (the xG bonus needs a first-time shot)
+    touches: int = 0  # carries/dribbles by the recipient since receiving
 
 
 def simulate(config: MatchConfig, home: Team, away: Team, params: SimParams = DEFAULT_PARAMS) -> Iterator[SimOutput]:
@@ -713,7 +713,7 @@ class MatchSimulator:
         ex, ey = pitch.clamp_point(sx + length * math.cos(ang), sy + length * math.sin(ang), 1.0)
         ex = min(ex, max(sx, p.carry_max_x))
         if self.last_pass:
-            self.last_pass.first_touch = False
+            self.last_pass.touches += 1
         self._emit(
             EventType.CARRY,
             team,
@@ -742,7 +742,7 @@ class MatchSimulator:
             ex, ey = pitch.clamp_point(sx + gain, sy + self.rng.uniform(-2.0, 2.0), 1.0)
             ex = min(ex, max(sx, p.carry_max_x))
             if self.last_pass:
-                self.last_pass.first_touch = False
+                self.last_pass.touches += 2  # beating a man is the shooter's own work: no assist
             self._emit(
                 EventType.DRIBBLE,
                 team,
@@ -827,11 +827,13 @@ class MatchSimulator:
         distance = pitch.shot_distance(sx, sy)
         angle = pitch.shot_angle(sx, sy)
 
-        lp = self.last_pass if self.last_pass and self.last_pass.recipient == slot else None
+        lp = self.last_pass
+        if lp is None or lp.recipient != slot or lp.touches > self.p.assist_max_touches:
+            lp = None
         if situation == "penalty":
             xg = p.xg_penalty
         else:
-            bonus = p.xg_assist_bonus if lp and lp.bonus and lp.first_touch else 0.0
+            bonus = p.xg_assist_bonus if lp and lp.bonus and lp.touches == 0 else 0.0
             xg = pitch.xg(sx, sy, header=header, bonus=bonus, p=p)
             if situation == "set_piece":
                 xg = pitch.clamp(xg * p.free_kick_xg_factor, p.xg_min, p.xg_max)

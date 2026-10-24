@@ -36,7 +36,7 @@ class SimParams:
     fin_cross: float = 0.10  # only if wide
     fin_shot_base: float = 0.0  # tuned (spec 0.04 → ~10 % shots from 33 m)
     fin_shot_xg_coef: float = 0.65  # tuned (spec 1.8)
-    fin_shot_max: float = 0.065  # tuned (spec 0.6): caps in-box shot propensity
+    fin_shot_max: float = 0.045  # tuned (spec 0.6): caps in-box shot propensity
     trailing_after_min: float = 60.0
     trailing_boost: float = 1.20  # relative weight on forward passes and shots
 
@@ -51,7 +51,7 @@ class SimParams:
     # --- §1.3 pass recipient choice -------------------------------------------------------- spec+ext
     recipient_prog_coef: float = 0.04  # spec: weight ∝ exp(0.04·progressive_m)
     recipient_length_decay: float = 0.11  # ext/tuned: × exp(-decay·length) so long balls stay rare
-    recipient_open_scale_m: float = 3.0  # ext: openness = 1 − exp(−d_nearest_opp/scale)
+    recipient_open_scale_m: float = 5.0  # ext: openness = 1 − exp(−d_nearest_opp/scale)
     recipient_gk_weight: float = 0.15  # ext: keepers rarely receive
     restart_max_len_m: float = 25.0  # ext: throw-ins / kick-offs stay short
     through_min_prog_m: float = 15.0  # ext: line-breaking + this much progress = through ball
@@ -113,7 +113,8 @@ class SimParams:
     xg_penalty: float = 0.76
     xg_min: float = 0.01
     xg_max: float = 0.95
-    xg_assist_bonus: float = 0.10  # through-ball / cutback recipients
+    xg_assist_bonus: float = 0.10  # through-ball / cutback recipients (first-time shots only)
+    assist_max_touches: int = 1  # ext: an assist survives at most one carry by the shooter
     big_chance_xg: float = 0.30
     shot_block_prob: float = 0.15
     on_target_base: float = 0.30
@@ -124,7 +125,7 @@ class SimParams:
     p_goal_max: float = 0.97
     woodwork_prob: float = 0.02  # of off-target
     save_corner_prob: float = 0.30
-    blocked_corner_prob: float = 0.45  # ext: blocked shot deflected behind
+    blocked_corner_prob: float = 0.55  # ext: blocked shot deflected behind
     loose_ball_defender_prob: float = 0.60  # ext: who wins a loose ball after a block
     shot_speed_foot_mean: float = 98.0
     shot_speed_foot_sd: float = 12.0
@@ -153,7 +154,7 @@ class SimParams:
     cross_target_y: tuple[float, float] = (24.0, 44.0)  # ext
     cross_shot_prob: float = 0.15  # ext: completed open-play cross → immediate shot
     cross_header_prob: float = 0.70  # ext: that shot is a header
-    cross_fail_corner_prob: float = 0.40  # ext/tuned: failed cross deflected behind
+    cross_fail_corner_prob: float = 0.55  # ext/tuned: failed cross deflected behind
     clearance_min_m: float = 25.0  # ext
     clearance_max_m: float = 50.0  # ext
     clearance_out_prob: float = 0.35  # ext
@@ -182,7 +183,7 @@ class SimParams:
 
     # --- §1.7 team strength --------------------------------------------------------------- spec
     strength_pass_logit: float = 1.5
-    strength_shot_rel: float = 1.0  # tuned (spec 0.30): NBA v HLC needed a clearer edge
+    strength_shot_rel: float = 0.6  # tuned (spec 0.30): NBA v HLC needed a clearer edge
     home_pass_logit: float = 0.15
 
     # --- §1.8 tracking -------------------------------------------------------------------- spec+tuned
@@ -190,6 +191,9 @@ class SimParams:
     tracking_shift_y: float = 0.3
     tracking_gk_shift_x: float = 0.15  # ext: keepers don't follow the ball upfield
     tracking_gk_shift_y: float = 0.1  # ext
+    tracking_front_line_x: float = 60.0  # ext: anchors at/after this x are the front three
+    tracking_narrow_from_x: float = 70.0  # ext: ball in the final third (team frame) ...
+    tracking_attack_narrowing: float = 0.3  # ext: ... pulls the front three this share towards the centre
     tracking_possession_offset_m: float = 5.0  # ext: attacking side steps up, defending side drops
     tracking_noise_sd_m: float = 1.5  # spec: OU process σ
     tracking_noise_tau_s: float = 12.0  # tuned
