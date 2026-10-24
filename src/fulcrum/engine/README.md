@@ -49,3 +49,12 @@ values that differ from the spec's starting values are listed in `docs/HANDOFFS.
   `uv run python scripts/print_moments.py <file>`; every step in the chart should come from a shot, card or goal.
 - Goal significance uses the largest swing across home/draw/away, so a stoppage-time equaliser ranks as a
   top moment (it used to rank 6th, behind a red card).
+
+## What-if counterfactuals (MODEL_SPEC §3.1)
+"Had it gone in" is computed, never guessed: `MatchTracker.win_prob_if_scored(team_id)` re-runs the live model
+at the same instant with that team's score + 1 (`win_prob(extra_home=…, extra_away=…)`; nothing else changes).
+Every `big_chance` (and a `wp_swing` caused by the swinging team's own shot) carries `whatif_goal_score`,
+`whatif_win_pct_now`, `whatif_goal_win_pct`, `whatif_goal_win_delta` (pp, from the rounded values) and
+`whatif_goal_draw_pct`, labelled with the team name. Example, hand-made fixture 86': NBA miss a 0.55 xG chance
+at 1-1 — 24% to win now, 93% had it gone in (2-1). Goals get no what-if: "without this goal" is within a few
+points of `wp_scorer_before`. Significance and triggers are unchanged. Tests: `tests/engine/test_whatif.py`.

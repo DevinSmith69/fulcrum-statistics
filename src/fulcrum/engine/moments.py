@@ -134,6 +134,35 @@ class MomentDetector:
             ]
         return out
 
+    def _whatif_goal_facts(self, team_id: str | None, wp_now: WinProbability) -> list[Fact]:
+        """What-if facts for a shot that did not go in (MODEL_SPEC §3.1): the same instant, one more goal.
+
+        Keys are relative to the shooting team, which is always the moment's `team`. The delta is computed
+        from the rounded percents so "from 41% to 64%, 23 points more" is always arithmetically consistent.
+        """
+        t = self.t
+        if team_id is None or team_id not in (t.home_id, t.away_id) or t.finished:
+            return []
+        side = t.side(team_id)
+        cf = t.win_prob_if_scored(team_id)
+        now, if_scored = pct(getattr(wp_now, side)), pct(getattr(cf, side))
+        name = t.team_name(team_id)
+        score_if = f"{t.score_home + 1}-{t.score_away}" if side == "home" else f"{t.score_home}-{t.score_away + 1}"
+        return [
+            Fact(key="whatif_goal_score", label="Score if it had gone in", value=score_if),
+            Fact(key="whatif_win_pct_now", label=f"{name} win probability now", value=now, unit="%"),
+            Fact(
+                key="whatif_goal_win_pct", label=f"{name} win probability if it had gone in", value=if_scored, unit="%"
+            ),
+            Fact(
+                key="whatif_goal_win_delta",
+                label=f"Rise in {name} win probability if it had gone in",
+                value=if_scored - now,
+                unit="pp",
+            ),
+            Fact(key="whatif_goal_draw_pct", label="Draw probability if it had gone in", value=pct(cf.draw), unit="%"),
+        ]
+
     def _team_fact(self, team_id: str | None) -> Fact:
         return Fact(key="team", label="Team", value=self.t.team_name(team_id))
 
@@ -200,7 +229,7 @@ class MomentDetector:
             self._goal(fx, wp_before, wp_after),
             self._goal_milestone(fx),
             self._red_card(ev, fx, wp_before, wp_after),
-            self._big_chance(fx),
+            self._big_chance(fx, wp_after),
             self._elite_pass(ev, fx),
             self._shot_speed(fx),
         ]
@@ -377,7 +406,7 @@ class MomentDetector:
             exempt=True,
         )
 
-    def _big_chance(self, fx: EventEffects) -> _Candidate | None:
+    def _big_chance(self, fx: EventEffects, wp_after: WinProbability) -> _Candidate | None:
         s = fx.shot
         if s is None or s.xg < self.p.big_chance_xg or s.outcome == "goal":
             return None
@@ -394,6 +423,7 @@ class MomentDetector:
             facts.append(Fact(key="shot_speed_kmh", label="Shot speed", value=ri(s.speed_kmh), unit="km/h"))
         if s.assister_id:
             facts.append(self._player_fact("assist", "Chance created by", s.assister_id))
+        facts += self._whatif_goal_facts(s.team_id, wp_after)
         before = self._shot_wp_before.get(s.team_id, (s.seq, None))[1]
         return _Candidate(
             MT.BIG_CHANCE,
@@ -503,6 +533,8 @@ class MomentDetector:
             facts.append(self._player_fact("cause_player", "Player involved", ev.player_id))
         if team_id:
             facts.append(self._team_fact(team_id))
+            if str(ev.type) == "shot" and ev.team_id == team_id:  # the shooting team's own swing: what if it went in?
+                facts += self._whatif_goal_facts(team_id, wp_after)
         return _Candidate(
             MT.WP_SWING,
             min(1.0, self.p.wp_swing_sig_per_delta * delta),
