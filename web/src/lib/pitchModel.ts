@@ -11,6 +11,12 @@ const ANCHORS: Record<string, [number, number]> = {
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
+/** Event types whose team is the team in possession afterwards. */
+const ON_BALL = new Set<MatchEvent["type"]>([
+  "pass", "carry", "dribble", "shot", "kick_off", "possession_change", "corner", "free_kick", "throw_in", "goal_kick",
+  "interception", "ball_recovery",
+]);
+
 /** Does this side attack towards x = 105 in absolute coordinates? (home does in period 1) */
 export const attacksRight = (side: Side, period: number) => (side === "home") === (period % 2 === 1);
 
@@ -57,6 +63,8 @@ export class PitchModel {
   traces: Trace[] = [];
   lastSeq = -1;
   version = 0;
+  /** Side in possession (from the last on-ball event); the other side drops into a defensive block. */
+  possession: Side | null = null;
 
   reset(home: Team, away: Team) {
     this.home = home;
@@ -114,6 +122,7 @@ export class PitchModel {
       return;
     }
     if (stale || ev.x == null || ev.y == null) return;
+    if (ON_BALL.has(ev.type)) this.possession = side;
     const [x, y] = toAbs(side, ev.period, ev.x, ev.y);
     const end = ev.end_x != null && ev.end_y != null ? toAbs(side, ev.period, ev.end_x, ev.end_y) : null;
     if (ev.player_id) this.actor = { id: ev.player_id, x, y };
@@ -154,8 +163,15 @@ export class PitchModel {
           tx = clamp(ax + 0.08 * (bx - 52.5), 2, 16);
           ty = clamp(ay + 0.15 * (by - 34), 26, 42);
         } else {
-          tx = clamp(ax + 0.45 * (bx - 52.5), 3, 102);
-          ty = clamp(ay + 0.3 * (by - 34), 3, 65);
+          tx = ax + 0.45 * (bx - 52.5);
+          ty = ay + 0.3 * (by - 34);
+          if (this.possession && this.possession !== side) {
+            // Out of possession: drop deeper and narrower, goal-side of the ball.
+            tx -= 9;
+            ty = 34 + (ty - 34) * 0.78;
+          }
+          tx = clamp(tx, 3, 102);
+          ty = clamp(ty, 3, 65);
         }
         let [x, y] = toAbs(side, this.period, tx, ty);
         if (this.actor?.id === p.player_id) [x, y] = [this.actor.x, this.actor.y];

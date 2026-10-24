@@ -237,7 +237,7 @@ class Sim {
     const t = side ? this.team[side] : null;
     const pl = ev.player_id ? this.players[ev.player_id] : null;
     if (pl && !["substitution", "card", "foul"].includes(ev.type)) pl.touches++;
-    const addR = (p, v) => { if (p) p.rating = clamp(p.rating + v, 3, 10); };
+    const addR = (p, v) => { if (p) p.rating = clamp(p.rating + v, 0, 14); };
 
     switch (ev.type) {
       case "pass": {
@@ -417,7 +417,8 @@ class Sim {
       if (!p._fixedTop) p.top_speed_kmh = r1(maxSpeed * (1 - Math.exp(-minutes / 10)));
       p.sprints = Math.floor(minutes * (p._gk ? 0.02 : 0.3));
       const { _diffSum, _on, _off, _pace, _gk, _fixedTop, ...pub } = p;
-      players[id] = { ...pub, rating: r1(p.rating) };
+      // raw rating deltas follow MODEL_SPEC §2; compressed so a 90-minute mock stays in a believable 5–9 band
+      players[id] = { ...pub, rating: r1(clamp(6 + 0.42 * (p.rating - 6), 3, 10)) };
     }
     const pubTeam = (t) => { const { _diffSum, ...rest } = t; return { ...rest }; };
     const state = {
@@ -645,18 +646,29 @@ class Sim {
   pass(side, opts = {}) {
     const [x, y] = this.ball;
     const passer = this.carrier;
-    let len, theta;
-    if (opts.to) {
-      len = Math.hypot(opts.to[0] - x, opts.to[1] - y);
-    } else {
-      len = this.chance(0.08) ? this.r(35, 55) : 6 + 26 * this.rng() ** 1.4;
-      theta = (this.rng() + this.rng() + this.rng() - 1.5) * 1.6;
+    // Pick the receiver first (MODEL_SPEC §1.3: weight ∝ exp(0.04·progressive) · openness), then pass to them.
+    let target = opts.recipient ?? null;
+    let to = opts.to ?? null;
+    if (!to) {
+      const mates = this.onPitch[side]
+        .filter((e) => e.p.player_id !== passer.p.player_id && (e.role !== "GK" || x < 25))
+        .map((e) => {
+          const [px, py] = anchorPos(e.role, x, y);
+          const d = Math.hypot(px - x, py - y);
+          const roleW = { MF: 1.6, DF: 1.0, FW: 0.55, GK: 0.5 }[e.p.position] ?? 1;
+          const w = roleW * Math.exp(0.04 * clamp(px - x, -20, 40)) * Math.exp(-Math.abs(d - 16) / 14) * (0.6 + this.rng());
+          return { e, px, py, w };
+        });
+      let pick = this.rng() * mates.reduce((a, m) => a + m.w, 0);
+      const m = mates.find((c) => (pick -= c.w) <= 0) ?? mates[0];
+      target = m.e;
+      to = [m.px + this.r(-4, 4), m.py + this.r(-4, 4)];
     }
-    let ex = opts.to ? opts.to[0] : x + len * Math.cos(theta);
-    let ey = opts.to ? opts.to[1] : y + len * Math.sin(theta);
+    let ex = to[0];
+    let ey = to[1];
     ex = clamp(ex, 1, 104);
     ey = clamp(ey, 1, 67);
-    len = Math.hypot(ex - x, ey - y);
+    const len = Math.hypot(ex - x, ey - y);
     const prog = ex - x;
     const lineBreaking = opts.lineBreaking ?? (prog >= 15 && len >= 20 && this.chance(0.5));
     const intoBox = !inBox(x, y) && inBox(ex, ey);
@@ -673,7 +685,7 @@ class Sim {
     const ok = opts.force != null ? opts.force : this.chance(pc);
     const height = isCross || len > 38 ? "high" : len > 25 && this.chance(0.4) ? "low" : "ground";
     const speed = height === "high" ? clamp(70 + 10 * (this.rng() * 2 - 1), 20, 110) : clamp(45 + 0.6 * len + 6 * (this.rng() * 2 - 1), 20, 110);
-    const recipient = opts.recipient ?? this.nearest(side, ex, ey, { exclude: passer.p.player_id });
+    const recipient = target ?? this.nearest(side, ex, ey, { exclude: passer.p.player_id });
     const ev = this.emit("pass", side, passer.p, {
       x, y, end_x: ex, end_y: ey, outcome: ok ? "success" : "fail", under_pressure: pr,
       nearest_opponent_m: opts.near ?? null,
@@ -1033,6 +1045,7 @@ class Sim {
     const a = this.team.away;
     const wp = this.winProb();
     const top = Object.values(this.players).sort((x, y) => y.rating - x.rating).slice(0, 3);
+    const pubRating = (p) => clamp(6 + 0.42 * (p.rating - 6), 3, 10);
     return [
       { key: "xg_home", label: "Home xG", value: h.xg, unit: "xG" },
       { key: "xg_away", label: "Away xG", value: a.xg, unit: "xG" },
@@ -1043,7 +1056,7 @@ class Sim {
       { key: "wp_home", label: "Home win probability", value: pct(wp.home), unit: "%" },
       { key: "wp_draw", label: "Draw probability", value: pct(wp.draw), unit: "%" },
       { key: "wp_away", label: "Away win probability", value: pct(wp.away), unit: "%" },
-      ...top.map((p, i) => ({ key: `top_player_${i + 1}`, label: `Top rated #${i + 1}`, value: `${this.name(p.player_id)} ${r1(p.rating).toFixed(1)}` })),
+      ...top.map((p, i) => ({ key: `top_player_${i + 1}`, label: `Top rated #${i + 1}`, value: `${this.name(p.player_id)} ${r1(pubRating(p)).toFixed(1)}` })),
       { key: "top_player_1_id", label: "Top rated player id", value: top[0].player_id },
     ];
   }

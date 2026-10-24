@@ -77,11 +77,11 @@ function Pane({ storageKey, initial }: { storageKey: string; initial: Partial<Vi
       <div className="panel px-4 py-2.5">
         <Scoreboard feed={feed} compact />
       </div>
-      <div className="panel relative aspect-[111/74] w-full overflow-hidden">
+      <div className="panel relative min-h-[300px] w-full flex-[3] overflow-hidden">
         <Pitch model={feed.pitch} followedPlayerId={prefs.followed_player_id} />
         <OverlayLayer feed={feed} size="md" />
       </div>
-      <div className="panel scroll-thin min-h-0 flex-1 overflow-y-auto p-3">
+      <div className="panel scroll-thin min-h-[180px] flex-[2] overflow-y-auto p-3">
         <InsightFeed feed={feed} lang={prefs.language ?? "en"} limit={8} dense />
       </div>
     </section>
