@@ -285,3 +285,14 @@ def test_brace_milestone():
     ms = [m for m in s.out if m.type == "player_milestone"]
     assert len(ms) == 1 and _facts(ms[0])["milestone"].value == "brace"
     assert [m.type for m in s.out].count("goal") == 2
+
+
+def test_phase_facts_are_readable(replayed):
+    """Agents quote fact values verbatim, so no raw enum values like control_home in copy-facing facts."""
+    phases = [m for m in replayed.moments if m.type == "phase_change"]
+    assert phases
+    allowed = {"chaotic", "balanced", "Northbridge Athletic in control", "Riverside Rovers in control"}
+    for m in phases:
+        f = _facts(m)
+        assert {f["phase_before"].value, f["phase_after"].value} <= allowed
+        assert "_" not in m.trigger.split("(")[0]

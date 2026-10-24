@@ -59,7 +59,9 @@ class Connection:
         self.match_id: str | None = None
         self.queue: asyncio.Queue[tuple[str, Any]] = asyncio.Queue(maxsize=CONNECTION_QUEUE_MAX)
         self._last_player_tag_ms: int | None = None
-        self._recap_sent = False
+        self._recap_sent = False  # any recap sent to this viewer
+        self._recap_exact = False  # the viewer's own persona + language recap sent
+        self._recap_task: asyncio.Task[None] | None = None
 
     def push(self, kind: str, item: Any) -> None:
         """Called by the hub. Drops (and logs) if the viewer is hopelessly behind."""
@@ -114,10 +116,7 @@ class Connection:
             if rm is not None:
                 await self.hello(rm)
                 if rm.status == "finished" and rm.recaps:  # a (re)subscribe after full time gets its recap too
-                    best = await self.hub.best_recap(rm, self.prefs)
-                    if best is not None:
-                        self._recap_sent = True
-                        await self.send("recap", dump(best))
+                    await self._offer_recap(rm)
         elif kind in ("pong", "error"):
             await self.send(kind, item)
         elif kind == "event":
@@ -133,14 +132,44 @@ class Connection:
             if cue is not None:
                 await self.send("cue", dump(cue))
         elif kind == "recap":
-            # Each arriving recap is a nudge: send the best one for this viewer, once.
-            if rm is not None and not self._recap_sent:
-                best = await self.hub.best_recap(rm, self.prefs)
-                if best is not None:
-                    self._recap_sent = True
-                    await self.send("recap", dump(best))
+            # Each arriving recap is a nudge to offer this viewer the best one we have.
+            if rm is not None:
+                await self._offer_recap(rm)
+        elif kind == "recap_ready":  # the viewer's own persona + language recap, written in the background
+            if (str(item.persona), item.language) == (str(self.prefs.persona), self.prefs.language):
+                self._recap_sent = self._recap_exact = True
+                await self.send("recap", dump(item))
         elif kind == "match_end":
             await self.send("match_end", {k: v for k, v in item.items() if k != "match_id"})
+
+    async def _offer_recap(self, rm: MatchReadModel) -> None:
+        """Send the viewer's own recap if we have it; else the closest one now, and write theirs in the background.
+
+        The reporter runs on the reasoning model (30-60 s), so a viewer whose persona/language differs from the
+        recap published at full time (casual/en) would otherwise stare at a placeholder for a minute.
+        """
+        if self._recap_exact:
+            return
+        exact = rm.recaps.get((str(self.prefs.persona), self.prefs.language))
+        if exact is not None:
+            self._recap_sent = self._recap_exact = True
+            await self.send("recap", dump(exact))
+            return
+        nearest = ps.pick_recap(rm.recaps, self.prefs)
+        if nearest is not None and not self._recap_sent:
+            self._recap_sent = True
+            await self.send("recap", dump(nearest))
+        if self._recap_task is None:
+            self._recap_task = asyncio.create_task(self._write_recap(rm, self.prefs.model_copy()))
+
+    async def _write_recap(self, rm: MatchReadModel, prefs: ViewerPrefs) -> None:
+        try:
+            got = await self.hub.best_recap(rm, prefs)
+        except Exception:
+            log.exception("recap for %s (%s/%s) failed", rm.match_id, prefs.persona, prefs.language)
+            return
+        if got is not None and (str(got.persona), got.language) == (str(prefs.persona), prefs.language):
+            self.push("recap_ready", got)
 
     async def _maybe_player_tag(self, rm: MatchReadModel, ev: MatchEvent) -> None:
         last = self._last_player_tag_ms
@@ -153,7 +182,10 @@ class Connection:
 
     def reset_prefs_state(self) -> None:
         self._last_player_tag_ms = None
-        self._recap_sent = False
+        self._recap_sent = self._recap_exact = False
+        # Don't cancel a recap being written: it is cached for everyone, and a result for the old prefs is
+        # ignored on delivery (persona/language mismatch).
+        self._recap_task = None
 
 
 class Hub:

@@ -368,6 +368,9 @@ def test_hello_after_full_time_bounds_translation_and_sends_recap(client):
         hello = ws.receive_json()
         assert hello["type"] == "hello" and len(hello["payload"]["insights"]) == 8
         assert agents.translate_calls == 5  # only the newest insights are translated on demand
+        # the nearest recap straight away, then the viewer's own one once the reporter has written it
+        first = ws.receive_json()
+        assert first["type"] == "recap" and first["payload"]["title"] == "casual-en recap"
         recap = ws.receive_json()
         assert recap["type"] == "recap" and recap["payload"]["title"] == "analyst-es recap"  # lazily generated
     assert (

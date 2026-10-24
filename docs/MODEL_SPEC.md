@@ -151,7 +151,7 @@ Target **20 – 35 moments per match**; if over, raise thresholds in params, don
 | big_chance | shot xG ≥ 0.30 not scored | 0.3 + 0.5·xG | shooter, xg, outcome, distance_m, team_xg_total |
 | wp_swing | \|ΔP(home) or ΔP(away)\| ≥ 0.06 within 90 s, not a goal | min(1, 5·\|Δ\|) | wp_*_before, wp_*_after, cause_event, minute, pressure_index_* |
 | pressure_shift | sign flip of (P_home − P_away) with \|diff\| ≥ 25, or +30 in 3 min | 0.4–0.6 | pressure_index_*_before/after, shots_last_5, box_entries_last_5 |
-| phase_change | phase transition (persisted) | 0.35 | phase_before, phase_after, control_index_*, chaos_index, turnovers_last_5 |
+| phase_change | phase transition (persisted) | 0.35 | phase_before, phase_after (readable: "<team> in control", "chaotic", "balanced"), control_index_*, chaos_index, turnovers_last_5 |
 | tempo_change | \|tempo − match avg\| > 35 % for ≥ 2 min | 0.25 | tempo_ppm, tempo_match_avg |
 | red_card | red | 0.8 | player, minute, card, team_red_cards, players_left, wp_*_before/after |
 | speed_record | match-high shot ≥ 110 km/h, or player first ≥ 33 km/h | 0.3 | player, speed_kmh, previous_match_high |

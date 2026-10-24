@@ -2,7 +2,7 @@ import { CheckBadge } from "../components/InsightFeed";
 import { KitStripe } from "../components/TeamMark";
 import { WinProbChart } from "../components/WinProbChart";
 import { as100, fixtureColours, minuteLabel } from "../lib/format";
-import { momentLabel } from "../lib/i18n";
+import { momentLabel, personaLabel } from "../lib/i18n";
 import type { MatchFeed } from "../lib/useMatchFeed";
 import type { TeamLiveStats, ViewerPrefs } from "../types";
 
@@ -29,11 +29,25 @@ export function RecapView({ feed, prefs }: { feed: MatchFeed; prefs: ViewerPrefs
     return (
       <main className="flex flex-1 items-center justify-center p-8">
         <div className="panel max-w-lg p-8 text-center">
-          <h1 className="font-display text-4xl font-semibold">The recap is written at full time</h1>
-          <p className="mt-3 text-ink-300">
-            {minute ? `We're at ${minute}. ` : ""}
-            When the match ends, the reporter agent writes it up for your persona and language, using only numbers from the match.
-          </p>
+          {feed.finished ? (
+            <>
+              <h1 className="font-display text-4xl font-semibold">Full time: writing your recap</h1>
+              <p className="mt-3 text-ink-300" aria-live="polite">
+                The reporter agent is writing it up for your persona and language, using only numbers from the match. This takes
+                about half a minute.
+              </p>
+              <span className="shimmer mx-auto mt-5 block h-2 w-48 rounded-full" />
+            </>
+          ) : (
+            <>
+              <h1 className="font-display text-4xl font-semibold">The recap is written at full time</h1>
+              <p className="mt-3 text-ink-300">
+                {minute ? `We're at ${minute}. ` : ""}
+                When the match ends, the reporter agent writes it up for your persona and language, using only numbers from the
+                match.
+              </p>
+            </>
+          )}
           <a href="#/" className="mt-6 inline-block rounded-md bg-signal px-4 py-2 text-sm font-semibold text-ink-950">
             Watch in Match Studio
           </a>
@@ -56,6 +70,11 @@ export function RecapView({ feed, prefs }: { feed: MatchFeed; prefs: ViewerPrefs
             <div className="flex items-center gap-2 text-sm text-ink-300">
               <span>Full time</span>
               <CheckBadge status={recap.check_status} />
+              {(recap.persona !== (prefs.persona ?? "casual") || (recap.language ?? "en") !== (prefs.language ?? "en")) && (
+                <span className="text-ink-400" aria-live="polite">
+                  · Showing the {personaLabel(recap.persona)} {(recap.language ?? "en").toUpperCase()} recap while yours is written…
+                </span>
+              )}
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
               <span className="flex items-center gap-3">

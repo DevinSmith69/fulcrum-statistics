@@ -567,6 +567,16 @@ class MomentDetector:
         )
         return _Candidate(MT.PRESSURE_SHIFT, sig, trigger, facts, team_id, seq_start=seq_start)
 
+    def _phase_text(self, phase: MatchPhase | str) -> str:
+        """How a match phase reads in copy, e.g. "Northbridge Athletic in control"."""
+        t = self.t
+        return {
+            MatchPhase.CONTROL_HOME: f"{t.team_name(t.home_id)} in control",
+            MatchPhase.CONTROL_AWAY: f"{t.team_name(t.away_id)} in control",
+            MatchPhase.CHAOS: "chaotic",
+            MatchPhase.BALANCED: "balanced",
+        }.get(MatchPhase(phase), str(phase))
+
     def _phase_change(self, fx: EventEffects) -> _Candidate | None:
         if fx.phase_before is None:
             return None
@@ -576,8 +586,9 @@ class MomentDetector:
             return None
         team_id = {MatchPhase.CONTROL_HOME: t.home_id, MatchPhase.CONTROL_AWAY: t.away_id}.get(after)
         facts = [
-            Fact(key="phase_before", label="Match phase before", value=str(fx.phase_before)),
-            Fact(key="phase_after", label="Match phase now", value=str(after)),
+            # Readable values: agents quote fact values verbatim, and "control_home" leaked into live copy.
+            Fact(key="phase_before", label="Match phase before", value=self._phase_text(fx.phase_before)),
+            Fact(key="phase_after", label="Match phase now", value=self._phase_text(after)),
             Fact(
                 key="control_index_home",
                 label=f"{t.team_name(t.home_id)} control index",
@@ -596,7 +607,7 @@ class MomentDetector:
         return _Candidate(
             MT.PHASE_CHANGE,
             self.p.phase_change_sig,
-            f"phase {fx.phase_before} -> {after} (persisted)",
+            f"phase {self._phase_text(fx.phase_before)} -> {self._phase_text(after)} (persisted)",
             facts,
             team_id,
             cooldown_team="*",

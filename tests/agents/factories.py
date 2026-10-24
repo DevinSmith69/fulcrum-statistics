@@ -108,7 +108,7 @@ SPECS: dict[MomentType, tuple[str | None, list[str], str, str, list[Fact]]] = {
         "0-0",
         [
             F("phase_before", "balanced", label="Phase before"),
-            F("phase_after", "control_home", label="Phase after"),
+            F("phase_after", "Northbridge Athletic in control", label="Phase after"),
             F("control_index_home", 72, label="Home control index"),
             F("control_index_away", 31, label="Away control index"),
             F("chaos_index", 18, label="Chaos index"),
