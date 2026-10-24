@@ -14,7 +14,7 @@ export interface CueContext {
   size: "lg" | "md";
 }
 
-const glass = "bg-ink-950/88 backdrop-blur-md ring-1 ring-white/8 shadow-[0_18px_48px_-18px_rgba(0,0,0,0.9)]";
+const glass = "bg-ink-950/92 ring-1 ring-white/8 shadow-[0_18px_48px_-18px_rgba(0,0,0,0.9)]";
 
 function teamFor(cue: OverlayCue, ctx: CueContext) {
   if (!cue.team_id) return null;

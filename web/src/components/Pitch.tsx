@@ -33,7 +33,7 @@ export function Pitch({ model, followedPlayerId, className = "" }: Props) {
 
     const resize = () => {
       const r = canvas.getBoundingClientRect();
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
       canvas.width = Math.max(1, Math.round(r.width * dpr));
       canvas.height = Math.max(1, Math.round(r.height * dpr));
     };
@@ -166,7 +166,7 @@ export function Pitch({ model, followedPlayerId, className = "" }: Props) {
     };
   }, [model]);
 
-  return <canvas ref={canvasRef} className={`block h-full w-full ${className}`} aria-label="Live pitch view" role="img" />;
+  return <canvas ref={canvasRef} className={`absolute inset-0 block h-full w-full ${className}`} aria-label="Live pitch view" role="img" />;
 }
 
 function hexA(hex: string, a: number) {

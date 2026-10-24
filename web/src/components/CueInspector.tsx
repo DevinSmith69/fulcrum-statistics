@@ -28,7 +28,7 @@ export function CueInspector({ feed, prefs, onClose }: { feed: MatchFeed; prefs:
   const [copied, setCopied] = useState(false);
 
   return (
-    <aside className="flex h-full w-[min(500px,100vw)] flex-col border-l border-ink-700 bg-ink-950/95 backdrop-blur-md" aria-label="Cue inspector">
+    <aside className="flex h-full w-[min(500px,100vw)] flex-col border-l border-ink-700 bg-ink-950" aria-label="Cue inspector">
       <header className="border-b border-ink-700 px-5 py-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-2xl font-semibold">Cue inspector</h2>

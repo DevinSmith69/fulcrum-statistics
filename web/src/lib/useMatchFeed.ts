@@ -213,7 +213,6 @@ export function useMatchFeed(prefs: ViewerPrefs) {
   useEffect(() => {
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "update_prefs", prefs }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefsKey]);
 
   return { ...state, pitch };

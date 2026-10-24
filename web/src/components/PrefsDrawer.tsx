@@ -70,7 +70,7 @@ export function PrefsDrawer({ open, onClose, prefs, onChange, home, away, title 
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label={title}>
-      <button className="absolute inset-0 bg-ink-950/60 backdrop-blur-[2px]" aria-label="Close preferences" onClick={onClose} />
+      <button className="absolute inset-0 bg-ink-950/70" aria-label="Close preferences" onClick={onClose} />
       <div ref={panelRef} tabIndex={-1} className="drawer-in relative flex h-full w-[min(440px,100vw)] flex-col border-l border-ink-700 bg-ink-900 outline-none">
         <header className="flex items-center justify-between border-b border-ink-700 px-6 py-4">
           <div>

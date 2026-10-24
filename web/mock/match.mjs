@@ -518,6 +518,7 @@ class Sim {
         facts: [
           ...this.wpFacts(before, now),
           { key: "cause_event", label: "Cause", value: ev.type.replace("_", " ") },
+          { key: "window_s", label: "Window", value: 90, unit: "s" },
           { key: "pressure_index_home", label: "Home pressure index", value: Math.round(this.team.home.pressure_index) },
           { key: "pressure_index_away", label: "Away pressure index", value: Math.round(this.team.away.pressure_index) },
         ],
