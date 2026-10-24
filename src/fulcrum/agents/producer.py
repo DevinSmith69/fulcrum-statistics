@@ -77,8 +77,8 @@ GRAPHIC_LAYOUT: dict[str, tuple[OverlayAnchor, int, int]] = {
 
 # Deterministic refusals (no numbers, no banned terms: tests fact-check them).
 REFUSE_OFF_TOPIC = (
-    "The graphics desk only makes graphics about this match, from its own data, not about other matches or "
-    "real-world clubs."
+    "That can't go on screen: the graphics desk only makes graphics about this match, from its own data. "
+    "Predictions, other matches and real-world clubs are off limits."
 )
 REFUSE_UNDOABLE = (
     "The match data can't support that graphic. Try a stat card on a player or team, a win probability graphic "

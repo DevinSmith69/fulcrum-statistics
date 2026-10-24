@@ -85,7 +85,7 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
       className="group flex items-center gap-3 text-sm font-medium text-ink-100"
     >
       <span className={`relative h-6 w-11 rounded-full ring-1 transition-colors ${on ? "bg-[#e5484d] ring-[#e5484d]" : "bg-ink-800 ring-ink-600"}`}>
-        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-ink-50 shadow transition-transform ${on ? "translate-x-[22px]" : "translate-x-0.5"}`} />
+        <span className={`absolute left-0 top-0.5 h-5 w-5 rounded-full bg-ink-50 shadow transition-transform ${on ? "translate-x-[22px]" : "translate-x-0.5"}`} />
       </span>
       {label}
     </button>
@@ -406,7 +406,7 @@ function Monitor({ label, tally, children }: { label: string; tally: "red" | "gr
     <div className="relative aspect-video w-full overflow-hidden rounded-md bg-black ring-1 ring-ink-700">
       {children}
       <span
-        className={`font-display absolute left-2 top-2 z-10 rounded-sm px-2 py-px text-sm font-bold tracking-[0.2em] ${tally === "red" ? "bg-[#e5484d] text-white" : "bg-[#2fbf71] text-ink-950"}`}
+        className={`font-display absolute left-2 top-2 z-20 rounded-sm shadow-lg px-2 py-px text-sm font-bold tracking-[0.2em] ${tally === "red" ? "bg-[#e5484d] text-white" : "bg-[#2fbf71] text-ink-950"}`}
       >
         {label}
       </span>
