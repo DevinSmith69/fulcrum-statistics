@@ -370,5 +370,5 @@ wss.on("connection", (ws) => {
 
 server.listen(Number(args.port), () => {
   console.log(`[mock] Fulcrum mock API on http://localhost:${args.port}  (REST /api, WebSocket /ws)`);
-  console.log(`[mock] clock ${minuteLabel(1, session.clockNow)} · Ctrl+C to stop`);
+  console.log(`[mock] clock ${minuteLabel(session.clockNow > H1_LEN ? 2 : 1, session.clockNow)} · Ctrl+C to stop`);
 });
