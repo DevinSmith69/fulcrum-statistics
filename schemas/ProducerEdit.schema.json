@@ -1,0 +1,94 @@
+{
+  "$defs": {
+    "InsightVariant": {
+      "additionalProperties": false,
+      "properties": {
+        "persona": {
+          "$ref": "#/$defs/Persona"
+        },
+        "language": {
+          "default": "en",
+          "title": "Language",
+          "type": "string"
+        },
+        "perspective_team_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Set for club_fan variants",
+          "title": "Perspective Team Id"
+        },
+        "perspective_player_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Set for player_lens variants",
+          "title": "Perspective Player Id"
+        },
+        "headline": {
+          "maxLength": 90,
+          "title": "Headline",
+          "type": "string"
+        },
+        "body": {
+          "maxLength": 300,
+          "title": "Body",
+          "type": "string"
+        },
+        "commentary_line": {
+          "description": "One spoken-style line, <= 25 words",
+          "maxLength": 160,
+          "title": "Commentary Line",
+          "type": "string"
+        }
+      },
+      "required": [
+        "persona",
+        "headline",
+        "body",
+        "commentary_line"
+      ],
+      "title": "InsightVariant",
+      "type": "object"
+    },
+    "Persona": {
+      "enum": [
+        "analyst",
+        "casual",
+        "club_fan",
+        "player_lens"
+      ],
+      "title": "Persona",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Body of `POST .../producer/held/{insight_id}/edit`: replacement copy for one or more persona variants.\n\nEach variant replaces the held variant with the same persona, perspective and language. The result is\nfact-checked against the moment's facts with the same deterministic checker as agent copy.",
+  "properties": {
+    "variants": {
+      "items": {
+        "$ref": "#/$defs/InsightVariant"
+      },
+      "minItems": 1,
+      "title": "Variants",
+      "type": "array"
+    }
+  },
+  "required": [
+    "variants"
+  ],
+  "title": "ProducerEdit",
+  "type": "object"
+}

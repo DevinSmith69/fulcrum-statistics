@@ -1,0 +1,35 @@
+{
+  "additionalProperties": false,
+  "description": "Body of `POST .../producer/settings`; omitted fields are left unchanged.",
+  "properties": {
+    "approval_required": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Approval Required"
+    },
+    "auto_approve_s": {
+      "anyOf": [
+        {
+          "maximum": 600,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "0 turns auto-approve off; 1-600 seconds turns it on",
+      "title": "Auto Approve S"
+    }
+  },
+  "title": "ProducerSettings",
+  "type": "object"
+}

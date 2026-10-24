@@ -108,7 +108,11 @@ def personalise_query(
 
 
 def cue_matches(cue: OverlayCue, prefs: ViewerPrefs) -> bool:
-    """Persona + perspective + language filter (English cues pass for any language: they get translated)."""
+    """Persona + perspective + language filter (English cues pass for any language: they get translated).
+
+    Producer graphics (`origin="producer"`) are persona-neutral: every viewer gets them."""
+    if cue.origin == "producer":
+        return cue.language == prefs.language or cue.language == "en"
     if cue.persona != prefs.persona:
         return False
     if cue.perspective_team_id is not None and cue.perspective_team_id != prefs.favourite_team_id:

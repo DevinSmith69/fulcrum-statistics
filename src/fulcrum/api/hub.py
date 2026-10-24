@@ -209,6 +209,8 @@ class Hub:
         self.subscribers: dict[str, set[Connection]] = {}
         # Extra in-process consumers of every new moment (e.g. the pipeline's "skip to the next moment").
         self.moment_listeners: list[Callable[[Moment], None]] = []
+        # Editorial gate: returns True for an insight/cue it holds back (the producer desk); None = no gate.
+        self.gate: Callable[[Insight | OverlayCue | Recap], bool] | None = None
         self._tasks: list[asyncio.Task[None]] = []
 
     # ------------------------------------------------------------------ subscriptions
@@ -274,6 +276,12 @@ class Hub:
 
     def on_envelope(self, env: InsightsEnvelope) -> None:
         data = env.data
+        if self.gate is not None and self.gate(data):
+            return  # held for the producer (editorial gate, `producer.py`)
+        self.deliver(data)
+
+    def deliver(self, data: Insight | OverlayCue | Recap) -> None:
+        """Into the read model and out to every subscriber (also used by the producer desk to release items)."""
         rm = self.registry.get_or_create(data.match_id)
         if isinstance(data, Insight):
             rm.add_insight(data)

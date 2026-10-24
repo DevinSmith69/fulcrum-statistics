@@ -10,7 +10,7 @@ import type { MatchFeed } from "../lib/useMatchFeed";
 import type { ViewerPrefs } from "../types";
 
 /** Compact score bug in the top-left corner of the broadcast picture. */
-function ScoreBug({ feed }: { feed: MatchFeed }) {
+export function ScoreBug({ feed }: { feed: MatchFeed }) {
   const s = feed.state;
   const clock = s ? matchClock(s.clock_ms, s.period, feed.periodStarts) : { main: "00:00", added: null };
   return (

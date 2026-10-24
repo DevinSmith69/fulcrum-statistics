@@ -9,6 +9,7 @@ import { useAudioPrefs, useCommentary } from "./lib/useCommentary";
 import { useMatchFeed } from "./lib/useMatchFeed";
 import { usePrefs } from "./lib/usePrefs";
 import { BroadcastView } from "./views/BroadcastView";
+import { ProducerView } from "./views/ProducerView";
 import { QualityView } from "./views/QualityView";
 import { RecapView } from "./views/RecapView";
 import { SplitView } from "./views/SplitView";
@@ -19,7 +20,7 @@ const STUDIO_ROOMY = "(min-width: 1024px)";
 
 function parseRoute(hash: string): Route {
   const r = hash.replace(/^#\/?/, "").split("?")[0];
-  return r === "split" || r === "broadcast" || r === "recap" || r === "quality" ? r : "studio";
+  return r === "split" || r === "broadcast" || r === "recap" || r === "quality" || r === "producer" ? r : "studio";
 }
 
 function useRoute() {
@@ -88,6 +89,7 @@ function MainShell({ route }: { route: Exclude<Route, "split"> }) {
       )}
       {route === "recap" && <RecapView feed={feed} prefs={prefs} onPlayHighlights={playHighlights} />}
       {route === "quality" && <QualityView feed={feed} />}
+      {route === "producer" && <ProducerView feed={feed} />}
       {feed.finished && route === "studio" && (
         <div className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center overflow-hidden rounded-full shadow-lg ring-1 ring-signal/60">
           {playHighlights && (

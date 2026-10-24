@@ -487,6 +487,11 @@ class OverlayCue(_Base):
     headline: str
     body: str | None = None
     stats: list[OverlayStat] = Field(default_factory=list)
+    origin: Literal["agents", "producer"] | None = Field(
+        default=None,
+        description="Who made the cue. None/'agents': a moment cue from the agent team (one per persona). "
+        "'producer': a graphic the studio producer requested and put on air (persona-neutral: every viewer gets it)",
+    )
 
 
 class Recap(_Base):
@@ -529,6 +534,96 @@ class AskAnswer(_Base):
     fact_keys: list[str] = Field(default_factory=list, description="Context-pack fact keys the answer used")
     persona: Persona = Persona.CASUAL
     language: str = "en"
+    latency_ms: int | None = None
+
+
+# --------------------------------------------------------------------------- #
+# Producer console (editorial gate + overlay requests), `/api/matches/{id}/producer/...`
+# --------------------------------------------------------------------------- #
+
+
+class HeldItem(_Base):
+    """An insight (and its overlay cues) held by the API until the producer approves, edits or kills it."""
+
+    insight: Insight
+    cues: list[OverlayCue] = Field(default_factory=list)
+    moment: Moment | None = Field(default=None, description="The moment it explains (for the fact trail)")
+    held_at: datetime
+    age_s: float = Field(ge=0, description="Seconds since it was held")
+    auto_release_in_s: float | None = Field(default=None, description="Seconds until auto-approve, if it is on")
+
+
+class ProducerLogEntry(_Base):
+    """One editorial decision, newest first in `ProducerState.log`."""
+
+    at: datetime = Field(default_factory=_now)
+    action: Literal["approve", "edit", "kill", "auto_approve", "release", "air", "drop"]
+    insight_id: str | None = None
+    cue_id: str | None = None
+    headline: str = ""
+    note: str | None = None
+
+
+class ProducerState(_Base):
+    """Producer console state for one match (`GET /api/matches/{id}/producer`)."""
+
+    match_id: str
+    approval_required: bool = False
+    auto_approve_s: int | None = Field(default=None, description="Auto-approve held items after this many seconds")
+    held: list[HeldItem] = Field(default_factory=list, description="Oldest first")
+    log: list[ProducerLogEntry] = Field(default_factory=list, description="Newest first, bounded")
+    graphics_available: bool = Field(False, description="True when the graphics producer agent can take requests")
+
+
+class ProducerSettings(_Base):
+    """Body of `POST .../producer/settings`; omitted fields are left unchanged."""
+
+    approval_required: bool | None = None
+    auto_approve_s: int | None = Field(
+        default=None, ge=0, le=600, description="0 turns auto-approve off; 1-600 seconds turns it on"
+    )
+
+
+class ProducerEdit(_Base):
+    """Body of `POST .../producer/held/{insight_id}/edit`: replacement copy for one or more persona variants.
+
+    Each variant replaces the held variant with the same persona, perspective and language. The result is
+    fact-checked against the moment's facts with the same deterministic checker as agent copy.
+    """
+
+    variants: list[InsightVariant] = Field(min_length=1)
+
+
+class ProducerDecision(_Base):
+    """Outcome of approve / edit / kill. `issues` lists fact-check failures when an edit is rejected."""
+
+    match_id: str
+    insight_id: str
+    action: Literal["approve", "edit", "kill"]
+    ok: bool
+    issues: list[str] = Field(default_factory=list)
+    insight: Insight | None = Field(default=None, description="The insight as it went out (approve / edit)")
+    cues_released: int = 0
+
+
+class GraphicRequest(_Base):
+    """Body of `POST .../producer/graphics`: an overlay request in plain language."""
+
+    request: str = Field(min_length=1, max_length=200, examples=["stat card on Brennick's passing"])
+
+
+class GraphicProposal(_Base):
+    """The graphics producer's answer: a fact-checked `OverlayCue` to preview, or a refusal."""
+
+    proposal_id: str = Field(default_factory=_uid)
+    match_id: str
+    request: str
+    ok: bool
+    cue: OverlayCue | None = None
+    check_status: CheckStatus
+    refusal: str | None = Field(default=None, description="Why no graphic was made (ok=false)")
+    issues: list[str] = Field(default_factory=list, description="Fact-check issues of the last attempt, if any")
+    fact_keys: list[str] = Field(default_factory=list, description="Context-pack fact keys the graphic uses")
     latency_ms: int | None = None
 
 
@@ -605,4 +700,10 @@ ALL_MODELS: list[type[BaseModel]] = [
     ServerMessage,
     AskRequest,
     AskAnswer,
+    ProducerState,
+    ProducerSettings,
+    ProducerEdit,
+    ProducerDecision,
+    GraphicRequest,
+    GraphicProposal,
 ]

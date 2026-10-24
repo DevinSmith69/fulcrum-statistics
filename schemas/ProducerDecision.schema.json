@@ -1,0 +1,277 @@
+{
+  "$defs": {
+    "CheckStatus": {
+      "enum": [
+        "passed",
+        "repaired",
+        "fallback"
+      ],
+      "title": "CheckStatus",
+      "type": "string"
+    },
+    "Explanation": {
+      "additionalProperties": false,
+      "description": "Moment Analyst output (persona-neutral).",
+      "properties": {
+        "headline": {
+          "maxLength": 90,
+          "title": "Headline",
+          "type": "string"
+        },
+        "why_it_matters": {
+          "maxLength": 400,
+          "title": "Why It Matters",
+          "type": "string"
+        },
+        "tactical_tag": {
+          "$ref": "#/$defs/TacticalTag"
+        },
+        "key_fact_keys": {
+          "description": "Fact.key values used \u2014 must exist in the moment's fact pack",
+          "items": {
+            "type": "string"
+          },
+          "title": "Key Fact Keys",
+          "type": "array"
+        }
+      },
+      "required": [
+        "headline",
+        "why_it_matters",
+        "tactical_tag",
+        "key_fact_keys"
+      ],
+      "title": "Explanation",
+      "type": "object"
+    },
+    "Insight": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "default": "1.0.0",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "insight_id": {
+          "title": "Insight Id",
+          "type": "string"
+        },
+        "match_id": {
+          "title": "Match Id",
+          "type": "string"
+        },
+        "moment_id": {
+          "title": "Moment Id",
+          "type": "string"
+        },
+        "clock_ms": {
+          "title": "Clock Ms",
+          "type": "integer"
+        },
+        "explanation": {
+          "$ref": "#/$defs/Explanation"
+        },
+        "variants": {
+          "items": {
+            "$ref": "#/$defs/InsightVariant"
+          },
+          "title": "Variants",
+          "type": "array"
+        },
+        "check_status": {
+          "$ref": "#/$defs/CheckStatus"
+        },
+        "check_notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Check Notes",
+          "type": "array"
+        },
+        "agent_trace_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "OpenTelemetry trace id for the agent run",
+          "title": "Agent Trace Id"
+        },
+        "latency_ms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latency Ms"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "match_id",
+        "moment_id",
+        "clock_ms",
+        "explanation",
+        "variants",
+        "check_status"
+      ],
+      "title": "Insight",
+      "type": "object"
+    },
+    "InsightVariant": {
+      "additionalProperties": false,
+      "properties": {
+        "persona": {
+          "$ref": "#/$defs/Persona"
+        },
+        "language": {
+          "default": "en",
+          "title": "Language",
+          "type": "string"
+        },
+        "perspective_team_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Set for club_fan variants",
+          "title": "Perspective Team Id"
+        },
+        "perspective_player_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Set for player_lens variants",
+          "title": "Perspective Player Id"
+        },
+        "headline": {
+          "maxLength": 90,
+          "title": "Headline",
+          "type": "string"
+        },
+        "body": {
+          "maxLength": 300,
+          "title": "Body",
+          "type": "string"
+        },
+        "commentary_line": {
+          "description": "One spoken-style line, <= 25 words",
+          "maxLength": 160,
+          "title": "Commentary Line",
+          "type": "string"
+        }
+      },
+      "required": [
+        "persona",
+        "headline",
+        "body",
+        "commentary_line"
+      ],
+      "title": "InsightVariant",
+      "type": "object"
+    },
+    "Persona": {
+      "enum": [
+        "analyst",
+        "casual",
+        "club_fan",
+        "player_lens"
+      ],
+      "title": "Persona",
+      "type": "string"
+    },
+    "TacticalTag": {
+      "enum": [
+        "control",
+        "chaos",
+        "pressure_shift",
+        "rhythm",
+        "individual_brilliance",
+        "set_piece",
+        "turning_point"
+      ],
+      "title": "TacticalTag",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Outcome of approve / edit / kill. `issues` lists fact-check failures when an edit is rejected.",
+  "properties": {
+    "match_id": {
+      "title": "Match Id",
+      "type": "string"
+    },
+    "insight_id": {
+      "title": "Insight Id",
+      "type": "string"
+    },
+    "action": {
+      "enum": [
+        "approve",
+        "edit",
+        "kill"
+      ],
+      "title": "Action",
+      "type": "string"
+    },
+    "ok": {
+      "title": "Ok",
+      "type": "boolean"
+    },
+    "issues": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "insight": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Insight"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The insight as it went out (approve / edit)"
+    },
+    "cues_released": {
+      "default": 0,
+      "title": "Cues Released",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "match_id",
+    "insight_id",
+    "action",
+    "ok"
+  ],
+  "title": "ProducerDecision",
+  "type": "object"
+}
