@@ -149,7 +149,11 @@ class MomentDetector:
         name = t.team_name(team_id)
         score_if = f"{t.score_home + 1}-{t.score_away}" if side == "home" else f"{t.score_home}-{t.score_away + 1}"
         return [
-            Fact(key="whatif_goal_score", label="Score if it had gone in", value=score_if),
+            Fact(
+                key="whatif_goal_score",
+                label=f"Score if it had gone in ({t.team_name(t.home_id)} first)",
+                value=score_if,
+            ),
             Fact(key="whatif_win_pct_now", label=f"{name} win probability now", value=now, unit="%"),
             Fact(
                 key="whatif_goal_win_pct", label=f"{name} win probability if it had gone in", value=if_scored, unit="%"

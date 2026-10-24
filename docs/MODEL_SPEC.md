@@ -152,7 +152,7 @@ moment's `team`; percents rounded like every other `%` fact; the delta from the 
 
 | key | label | example |
 |---|---|---|
-| `whatif_goal_score` | Score if it had gone in | `"2-1"` |
+| `whatif_goal_score` | Score if it had gone in (`<home>` first) | `"2-1"` |
 | `whatif_win_pct_now` | `<team>` win probability now | `24` |
 | `whatif_goal_win_pct` | `<team>` win probability if it had gone in | `93` |
 | `whatif_goal_win_delta` | Rise in `<team>` win probability if it had gone in (pp) | `69` |

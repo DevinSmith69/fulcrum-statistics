@@ -63,3 +63,28 @@ def test_big_chance_stat_card_without_whatif_is_unchanged():
     ctx, insight = insight_for(MomentType.BIG_CHANCE, facts=moment.facts)
     c = next(c for c in build_cues(insight, ctx.moment, ctx.home, ctx.away) if c.template == "stat_card")
     assert [s.value for s in c.stats][:3] == ["0.41", "9.5", "0.87"]
+
+
+def test_prompt_examples_carry_no_literal_percentages():
+    """A '64%' example in the Editor prompt was copied into live copy and failed the fact-checker every time."""
+    import re
+
+    from fulcrum.agents.prompts import MOMENT_ANALYST, PERSONA_EDITOR
+
+    for spec in (MOMENT_ANALYST, PERSONA_EDITOR):
+        assert not re.search(r"\d\s*%", spec.system), spec.agent_name
+
+
+def test_whatif_hint_only_reaches_prompts_of_moments_with_whatif_facts():
+    """Live run: with the hint in every prompt, the Editor wrote "had it gone in" on phase changes and passes."""
+    from fulcrum.agents.context import WHATIF_NOTE, analyst_prompt, editor_prompt
+
+    with_whatif = make_context(make_moment(MomentType.BIG_CHANCE))
+    assert WHATIF_NOTE in analyst_prompt(with_whatif)
+    assert WHATIF_NOTE in editor_prompt(with_whatif, fallback_explanation(with_whatif))
+    for ctx in (
+        make_context(_without_whatif(MomentType.BIG_CHANCE)),
+        make_context(make_moment(MomentType.PHASE_CHANGE)),
+    ):
+        assert "WHAT-IF" not in analyst_prompt(ctx)
+        assert "WHAT-IF" not in editor_prompt(ctx, fallback_explanation(ctx))
