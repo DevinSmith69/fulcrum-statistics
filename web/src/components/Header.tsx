@@ -2,7 +2,7 @@ import { LANGUAGES, personaLabel } from "../lib/i18n";
 import type { ConnStatus } from "../lib/useMatchFeed";
 import type { ViewerPrefs } from "../types";
 
-export type Route = "studio" | "split" | "broadcast" | "recap" | "quality";
+export type Route = "studio" | "split" | "broadcast" | "recap" | "quality" | "producer";
 
 const NAV: { id: Route; label: string }[] = [
   { id: "studio", label: "Match Studio" },
@@ -10,6 +10,7 @@ const NAV: { id: Route; label: string }[] = [
   { id: "broadcast", label: "Broadcast" },
   { id: "recap", label: "Recap" },
   { id: "quality", label: "Quality" },
+  { id: "producer", label: "Producer" },
 ];
 
 export function Logo({ className = "" }: { className?: string }) {
