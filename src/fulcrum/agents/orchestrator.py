@@ -169,7 +169,8 @@ class PersonaEditorStep:
             _record_failure(ctx, PERSONA_EDITOR.agent_name, e)
             return
         order = {pair: i for i, pair in enumerate(required_variants(ctx.home.team_id, ctx.away.team_id))}
-        ctx.variants = sorted(out.variants, key=lambda v: order.get((str(v.persona), v.perspective_team_id), 99))
+        variants = [v.model_copy(update={"language": "en"}) for v in out.variants]  # we always ask for English
+        ctx.variants = sorted(variants, key=lambda v: order.get((str(v.persona), v.perspective_team_id), 99))
 
 
 @dataclass
