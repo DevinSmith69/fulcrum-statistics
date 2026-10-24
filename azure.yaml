@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+# Fulcrum on Azure. `azd up` = provision infra/main.bicep into the resource group + build and deploy everything.
+# See docs/DEPLOY.md. All four backend services share one Dockerfile; FULCRUM_SERVICE (set in Bicep) picks the
+# process. remoteBuild builds in Azure Container Registry, so no local Docker is needed.
+name: fulcrum
+metadata:
+  template: fulcrum@0.1.0
+
+infra:
+  provider: bicep
+  path: infra
+  module: main
+
+services:
+  api:
+    project: .
+    language: docker
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: .
+      remoteBuild: true
+  sim:
+    project: .
+    language: docker
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: .
+      remoteBuild: true
+  engine:
+    project: .
+    language: docker
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: .
+      remoteBuild: true
+  agents:
+    project: .
+    language: docker
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: .
+      remoteBuild: true
+  web:
+    project: ./web
+    language: js
+    host: staticwebapp
+    dist: dist
+    hooks:
+      # Vite bakes the API URL in at build time. API_URL is a Bicep output (azd env). The file is removed again
+      # after deploy so it never gets committed.
+      prepackage:
+        shell: sh
+        run: printf 'VITE_API_URL=%s\n' "$API_URL" > .env.production.local
+      postdeploy:
+        shell: sh
+        run: rm -f .env.production.local
