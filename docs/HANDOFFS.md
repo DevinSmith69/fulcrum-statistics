@@ -6,22 +6,24 @@ Fixtures: `data/matches/sample_seed7.jsonl` (NBA v RVR, match_id `nba-rvr-s7`) a
 `data/matches/sample_seed11.jsonl` (HLC v MDU, `hlc-mdu-s11`). Each is JSONL `{"topic","data"}` with events and
 1 Hz tracking, about 11 MB. Stream semantics are in `src/fulcrum/sim/README.md` ("Stream semantics").
 
-- [ ] (WS1 → WS2) **API lifespan:** start a match with `from fulcrum.sim import run_match` and
+- [x] (WS1 → WS2) **API lifespan:** start a match with `from fulcrum.sim import run_match` and
   `asyncio.create_task(run_match(config))`. It paces by `config.speed`, publishes to `get_bus()` and returns
   `(score_home, score_away)`. It loads teams from `data/teams.json` (override with `FULCRUM_TEAMS_PATH`).
-  Pass `speed=0` for as-fast-as-possible.
-- [ ] (WS1 → WS2) **Don't double count:** a goal is a `shot` (outcome `goal`) followed by a `goal` event
+  Pass `speed=0` for as-fast-as-possible. **Done in 6d145f5:** `api/pipeline.py` starts `run_match` per POSTed match.
+- [x] (WS1 → WS2) **Don't double count:** a goal is a `shot` (outcome `goal`) followed by a `goal` event
   (`extra.shot_seq` points at the shot). Take xG, shot speed and distance from the shot. Shots and xG
-  come from `shot` events only.
-- [ ] (WS1 → WS2) **Match minute in P2** = `45 + (clock_ms − period_start(P2).clock_ms)/60000`. The clock
+  come from `shot` events only. **Done in 5b6c5df** (`engine/state.py` takes xG and speed from the shot).
+- [x] (WS1 → WS2) **Match minute in P2** = `45 + (clock_ms − period_start(P2).clock_ms)/60000`. The clock
   is continuous, and P2 starts at 45:00 plus the actual first-half added time (`period_end.extra.added_time_ms`).
-- [ ] (WS1 → WS2) **Turnovers:** the winning event (`interception`/`ball_recovery`/`tackle`/`clearance`/`save`)
+  **Done in 5b6c5df** (`MatchTracker.period_start_ms`).
+- [x] (WS1 → WS2) **Turnovers:** the winning event (`interception`/`ball_recovery`/`tackle`/`clearance`/`save`)
   already carries the new `possession_id`. The next event is `possession_change`. Defensive events use the
-  defender's frame.
-- [ ] (WS1 → WS2/WS6) `make replay` writes `data/matches/seed7.jsonl` (gitignored). The committed fixtures
+  defender's frame. **Done in 5b6c5df** (`GAINS` / `_on_defensive` in `engine/state.py`).
+- [x] (WS1 → WS2/WS6) `make replay` writes `data/matches/seed7.jsonl` (gitignored). The committed fixtures
   are `sample_seed*.jsonl`. Regenerate them with
   `uv run python -m fulcrum.sim --home NBA --away RVR --seed 7 --out data/matches/sample_seed7.jsonl`
   (and HLC/MDU/11). I left the Makefile alone because it's shared.
+  **Resolved:** both samples are committed (95ae048) and used by the engine tests and `eval_live.py`.
 - [x] (WS1 → WS5) The container image needs `data/teams.json`, or set `FULCRUM_TEAMS_PATH`. **Done (WS5):** the image copies `data/` and sets `FULCRUM_TEAMS_PATH=/app/data/teams.json`.
 
 ### WS1 decisions (made unattended; shout if you disagree)
@@ -41,30 +43,34 @@ Fixtures: `data/matches/sample_seed7.jsonl` (NBA v RVR, match_id `nba-rvr-s7`) a
 ## WS2 (engine + API) — 2026-10-24
 
 ### Requests
-- [ ] (WS2 → WS1) Put `home_team_id` / `away_team_id` in `match_start.extra`. In-process the engine gets the
+- [x] (WS2 → WS1) Put `home_team_id` / `away_team_id` in `match_start.extra`. In-process the engine gets the
   teams from `MatchConfig`, but the standalone engine Container App otherwise has to guess (it takes the
   first two teams it sees, in order). Coded against `MatchTracker._learn_teams` (`engine/state.py`).
-- [ ] (WS1 → WS2 check) Once `data/matches/sample_seed7.jsonl` / `sample_seed11.jsonl` are committed,
+  **Resolved in 5c8ca09:** the sim service's bus wrapper (`sim/service.py`) stamps them; the deterministic sim is
+  unchanged (see the WS5 → WS1 item).
+- [x] (WS1 → WS2 check) Once `data/matches/sample_seed7.jsonl` / `sample_seed11.jsonl` are committed,
   `tests/engine/test_moments.py::test_target_moment_count_on_sim_samples` turns on (20–35 moments, every goal
   reported). Checked against WS1's final samples (`95ae048`): sample_seed7 → 26 moments (2 goals),
   sample_seed11 → 30 moments (4 goals). If the sim's calibration changes, re-run `scripts/print_moments.py`
-  and tune `engine/params.py`.
+  and tune `engine/params.py`. **Done:** the test runs on the committed samples and passes.
 - [ ] (WS2 → WS3) `AgentService.translate / translate_cues / recap` only know about insights produced by the
   same process. That covers single-process dev mode. In Azure (separate Container Apps) the API's on-demand
   translation therefore serves English. Please add a stateless hook, e.g.
   `translate_insight(insight, moment, language)`, or a request topic. The API already passes everything
-  through `api/translation.py`, so it is a one-line switch there.
-- [ ] (WS2 → WS3, FYI) Done on WS2's side: every moment has `home_team` / `away_team` (team names), player
+  through `api/translation.py`, so it is a one-line switch there. **Still open.** The demo sidesteps it by
+  running in-process (DEPLOY.md §4); the same gap applies to Player Lens, per-persona recaps and Ask the studio.
+- [x] (WS2 → WS3, FYI) Done on WS2's side: every moment has `home_team` / `away_team` (team names), player
   facts use short names, HT/FT use `top_player_N` + `top_player_N_rating`. The API creates
   `AgentService(bus, get_llm())`, `await start()` on the first POST, calls `register_match(config)`, and uses
   the translate / cue / recap hooks. Fact labels contain only truthful numbers ("last 5 minutes", "(0-10)").
   Percentage-point deltas use unit `pp` (e.g. `wp_home_delta = 22`, unit `pp`).
-- [ ] (WS2 → WS4) Real API vs the mock: `POST /api/matches` returns **201**. `hello.payload` also carries
+- [x] (WS2 → WS4) Real API vs the mock: `POST /api/matches` returns **201**. `hello.payload` also carries
   `status`. `update_prefs` re-sends `hello` (same as the mock). Errors are `bad_request` / `unknown_match`.
   `MatchState` percentages (`possession_pct`, `pass_accuracy`, indices) are 0–100. Server-side
   `player_tag` cues for `followed_player_id` arrive at most every 20 s of sim time, `anchor=top_right`,
   priority 2, English. The agents additionally emit moment-linked `player_tag` cues for `player_lens`.
   De-dupe by `seq` / ids: a `hello` and the live stream may overlap by one item.
+  **Resolved:** the web runs against the real API (merged 540915f, deployed).
 - [x] (WS2 → WS5) **Done (WS5): `python -m fulcrum` dispatches on `FULCRUM_SERVICE`; api has external ingress with WebSockets, CORS = SWA origin; consumer groups in Bicep.** Entry points: `uvicorn fulcrum.api.app:app` (api) and `python -m fulcrum.engine` (engine).
   Consumer groups: engine = `engine` on `match-events` + `tracking-frames`; api = `api-feed` on `match-events`
   and `api` on `match-state`, `moments`, `insights`. The API needs WebSocket ingress. Set
@@ -111,43 +117,50 @@ Fixtures: `data/matches/sample_seed7.jsonl` (NBA v RVR, match_id `nba-rvr-s7`) a
   `match_start.extra`, else from P1 tracking positions.
 
 ## WS3a (agents, offline) — 2026-10-24
-- [ ] (WS3 → WS2) Every `Moment` should carry `home_team` / `away_team` facts (team name, or team_id; the agents
+- [x] (WS3 → WS2) Every `Moment` should carry `home_team` / `away_team` facts (team name, or team_id; the agents
   resolve by id, name or short_name, and `home_team_id` / `away_team_id` also work). Better still, call
   `AgentService.register_match(config)` when `POST /api/matches` starts a match. A `match_start` event whose
   `extra` holds `home_team_id` / `away_team_id` also works. Until the teams are known, the agents hold the
   match's moments (up to 50) and process them as soon as the teams arrive. Coded against MODEL_SPEC §4 "Every moment also carries minute, score,
   home_team, away_team".
-- [ ] (WS3 → WS2) Put player **short names** (e.g. `"Brennick"`) in player facts (`scorer`, `shooter`, `player`,
+  **Done:** every moment carries both facts (5b6c5df) and the API calls `register_match` (d2e854c).
+- [x] (WS3 → WS2) Put player **short names** (e.g. `"Brennick"`) in player facts (`scorer`, `shooter`, `player`,
   `passer`, `recipient`, `assist`). A player_id still works because templates map ids to short names, but the
-  LLM will quote ids literally.
-- [ ] (WS3 → WS2) Half-time and full-time "top 3 player ratings" facts: the templates read `top_player_1` (name)
+  LLM will quote ids literally. **Done** (the engine's `_player_fact` writes short names).
+- [x] (WS3 → WS2) Half-time and full-time "top 3 player ratings" facts: the templates read `top_player_1` (name)
   and `top_player_1_rating` (also `_2`, `_3`). Please use these keys or tell WS3.
-- [ ] (WS3 → WS2) Fact labels count as fact-pack text: numbers in a label (e.g. "Shots in last 5 min") may be
+  **Done** (`engine/moments.py`).
+- [x] (WS3 → WS2) Fact labels count as fact-pack text: numbers in a label (e.g. "Shots in last 5 min") may be
   quoted. Keep labels truthful, and don't put numbers in labels that you don't want quoted.
-- [ ] (WS3 → WS2) API integration, single process: create one `fulcrum.agents.AgentService(bus, get_llm())` in
+  **Done** (confirmed by WS2 above).
+- [x] (WS3 → WS2) API integration, single process: create one `fulcrum.agents.AgentService(bus, get_llm())` in
   the lifespan and `await svc.start()` it. On-demand hooks:
   `await svc.translate(insight_id, language)` → `InsightVariant[]` (cached; English on failure; `[]` if the id
   is unknown), `await svc.translate_cues(insight_id, language)` → `OverlayCue[]`,
   `await svc.recap(match_id, persona, language)` → `Recap | None` (None before full time).
-  The casual/en recap is published on `insights` right after the full-time insight.
-- [ ] (WS3 → WS2/WS4) Per moment, `insights` carries the Insight first, then its cues: one per English variant
+  The casual/en recap is published on `insights` right after the full-time insight. **Done in d2e854c.**
+- [x] (WS3 → WS2/WS4) Per moment, `insights` carries the Insight first, then its cues: one per English variant
   per cue spec (e.g. goal = 4 × lower_third + 4 × wp_swing), plus `player_tag` cues (persona `player_lens`,
   `perspective_player_id` = the player) for each id in `moment.player_ids`. A player-lens viewer filters
   on `perspective_player_id`. The agents do not produce player_lens *variants* yet (Player Lens is on the cut list).
+  **Resolved:** the API and web consume this; Player Lens variants now exist on demand (6b7d13f).
 - [x] (WS3 → WS5) **Done 2026-10-24: `agents` group created on evh-fulcrum-ds534.** The agents also consume `match-events` with consumer group `agents` (recent sequence +
   score for prompts). Please create that consumer group on the Event Hub, or set `FULCRUM_AGENTS_EVENTS=0`.
   The agents then rely on the `score` fact and send no recent sequence.
-- [ ] (WS3a → WS3b) Port `orchestrator.py` to an Agent Framework Workflow: the steps become executors,
+- [x] (WS3a → WS3b) Port `orchestrator.py` to an Agent Framework Workflow: the steps become executors,
   `EDGES` become `add_edge(..., condition)`, and `MomentContext` becomes shared state. Set
   `Insight.agent_trace_id` (currently None, `TODO(azure)`). The §3 analyst tools (`get_wp_history`,
   `get_team_trend`) are not built; the facts and recent sequence are passed inline instead.
   `PromptSpec.temperature` holds the §2 temperatures for the real client.
+  **Done in c65d158 / d4d1201:** Agent Framework `WorkflowBuilder` workflow; `agent_trace_id` is the run's trace id.
+  The §3 analyst tools are still not built (facts and the recent sequence stay inline).
 
 ### Decisions made overnight (WS3a)
 - **Retry policy:** a fact-check failure gets one repair, with the issues appended ("Fix these issues…").
   An LLM error uses up that single retry, so `fail_times=2` ends in FALLBACK and `fail_times=1` ends in
   REPAIRED. A timeout (6 s per call, 15 s per run) skips the retry and falls back immediately to protect
   latency. A crash inside a step also falls back.
+  (Later raised to 8 s per call in 874f4a2: 6 s timed out on ~4 % of moments with several matches running.)
 - **Repair scope:** if only variants failed, only the Persona Editor re-runs. If the explanation failed, the
   Analyst and the Editor both re-run.
 - **Number matching is numeric, not string:** `0.30` matches a fact stored as `0.3`, `0,34` matches `0.34`,
@@ -181,24 +194,30 @@ Fixtures: `data/matches/sample_seed7.jsonl` (NBA v RVR, match_id `nba-rvr-s7`) a
   The scoreboard clock and minute labels need it to show 46:00 (not 47:00) after first-half stoppage. The web app
   falls back to `period_start` events and then to 45:00, so this is cosmetic, not blocking. The mock sends it.
   Coded against: API_CONTRACT §3 `hello` + `web/mock/server.mjs`.
-- [ ] (WS4 → WS2) On `update_prefs`, please re-send a `hello` snapshot (with insights re-filtered for the new
+- [x] (WS4 → WS2) On `update_prefs`, please re-send a `hello` snapshot (with insights re-filtered for the new
   persona/language). The web app treats `hello` as "replace the feed", so the moment list switches language and
-  persona immediately; without it only *new* insights change. The mock does this.
-- [ ] (WS4 → WS2) Confirm units for `TeamLiveStats.pass_accuracy`, `possession_pct` and `PlayerLiveStats.pass_accuracy`
+  persona immediately; without it only *new* insights change. The mock does this. **Done in 6d145f5.**
+- [x] (WS4 → WS2) Confirm units for `TeamLiveStats.pass_accuracy`, `possession_pct` and `PlayerLiveStats.pass_accuracy`
   (0–1 or 0–100?). The web app accepts either (`as100()` in `web/src/lib/format.ts`); the mock sends 0–100.
-- [ ] (WS4 → WS2/WS3) `OverlayCue.show_at_clock_ms`: the web app shows a cue once the latest match clock is ≥ this
+  **Resolved:** 0–100 (engine README "Conventions").
+- [x] (WS4 → WS2/WS3) `OverlayCue.show_at_clock_ms`: the web app shows a cue once the latest match clock is ≥ this
   value, and shows late cues immediately. At 10× sim speed agent latency is ~30 s of match clock, so the mock sets
   `show_at = moment clock + latency × speed`, rounded up to the next second. Please do the same (or tell WS4 if you
-  intend wall-clock latency only).
-- [ ] (WS4 → WS3) `OverlayCue.duration_ms` is applied in **wall-clock** time by the renderer (a 6 s card stays 6 s
+  intend wall-clock latency only). **Resolved (4b0fce5):** the agents use moment clock + wall-clock latency rounded
+  up to the next second (`cues.show_at`), not × speed; the web shows late cues immediately.
+- [x] (WS4 → WS3) `OverlayCue.duration_ms` is applied in **wall-clock** time by the renderer (a 6 s card stays 6 s
   on screen even at 10× speed). Keep durations in the 4–15 s range per API_CONTRACT §4.
-- [ ] (WS4 → WS3) Cue mapping beyond the API_CONTRACT §4 list, as implemented in the mock (`web/mock/text.mjs`
+  **Done:** `agents/cues.py` uses 5–12 s.
+- [x] (WS4 → WS3) Cue mapping beyond the API_CONTRACT §4 list, as implemented in the mock (`web/mock/text.mjs`
   `buildCues`) — please match or tell WS4: `big_chance` → `stat_card` p3 bottom_right; `red_card` → `lower_third`
   p4 + `wp_swing` p4 (for the opponent); `tempo_change` → `pressure_bar`; `half_time` → `stat_card` p3.
   Anchors used by the web overlay: `lower_third`/`recap_card` bottom_center, `wp_swing` top_right,
   `pressure_bar` top_left, `stat_card` bottom_right, `player_tag` bottom_left.
+  **Resolved:** the web places each cue at its own `anchor` (`cueStage.ts`), so the agents' mapping (agents README
+  "Cue mapping") is authoritative.
 - [ ] (WS4 → WS2) `wp_swing` copy wants to say "inside 90 seconds"; please include the window in the fact pack
   (the mock uses `window_s = 90`, unit `s`) so the fact-checker allows the number.
+  **Still open:** the window is only in the moment's `trigger` text, not in the fact pack, so agents cannot quote it.
 - [x] (WS4 → WS5) **Done (WS5): azd `web` service (SWA), `prepackage` hook writes `VITE_API_URL=$API_URL` to `web/.env.production.local`.** Static Web App build: `cd web && npm ci && npm run build`, output `web/dist`, env
   `VITE_API_URL=https://<api-container-app>` at build time. WebSocket path is `/ws` on the same host.
 - [ ] (WS4 → WS6) Recording tips: `npm run mock -- --from 82` lands just before the winning goal; `#/split` with
@@ -248,7 +267,8 @@ process on the real namespace: sim → engine → agents → api in 4 processes.
 - [ ] (WS5 → WS2/WS4) **Stale "live" matches.** Kafka groups resume from committed offsets. After an API restart
   (or an aborted match) `/api/matches` can list a match as `live` that will never finish, and the web picks
   "the first unfinished match". Suggestion: the web prefers the newest live match, or the API marks a match
-  `stale` when no event arrives for N minutes.
+  `stale` when no event arrives for N minutes. **Still open;** mitigated by `?match=<id>` in the web (f1fd056)
+  and by the in-process demo, which has no committed Kafka offsets.
 - [x] (WS5 → WS3b) **Done 2026-10-24: `fulcrum.telemetry.configure_telemetry()` in agents + api.** `APPLICATIONINSIGHTS_CONNECTION_STRING` and `AZURE_CLIENT_ID` (user-assigned MI) are set on
   every container, but no code calls `azure.monitor.opentelemetry.configure_azure_monitor()` yet. Please call it
   in the agents (and ideally the api) when the variable is set. `DefaultAzureCredential` then picks the MI
@@ -257,6 +277,7 @@ process on the real namespace: sim → engine → agents → api in 4 processes.
   `azd env set FULCRUM_LLM fake`.
 - [ ] (WS5 → WS4) Please add `*.local` to `web/.gitignore`. The azd `prepackage` hook writes
   `web/.env.production.local` (`VITE_API_URL`), and a `postdeploy` hook deletes it again, but ignoring it is safer.
+  **Still open:** there is no `web/.gitignore`, and the root `.gitignore` does not cover `*.local`.
 - [ ] (WS5 → Devin) Docker Desktop is **not installed** on this machine (`docker` not found, no WSL distro), so
   `docker build` was not run locally. `azure.yaml` uses `remoteBuild: true` (ACR builds the image), so the
   deploy does not need it. Checked instead: all 216 locked packages resolve to manylinux wheels for py3.12
