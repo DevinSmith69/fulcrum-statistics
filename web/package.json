@@ -1,0 +1,35 @@
+{
+  "name": "fulcrum-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Fulcrum overlay: Match Studio, split view, broadcast mode and recap",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "types": "node scripts/gen-types.mjs",
+    "mock": "node mock/server.mjs",
+    "test": "node --test --experimental-strip-types --no-warnings \"tests/*.test.ts\""
+  },
+  "dependencies": {
+    "@fontsource/barlow": "^5.3.0",
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "recharts": "^3.10.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "json-schema-to-typescript": "^16.0.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "ws": "^8.22.0"
+  }
+}
