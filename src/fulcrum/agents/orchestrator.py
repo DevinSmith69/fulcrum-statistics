@@ -80,13 +80,14 @@ async def call_llm[T: BaseModel](
     *,
     user: str,
     schema: type[T],
-    ctx: MomentContext,
     config: OrchestratorConfig,
+    deadline: float | None = None,
     **render: str,
 ) -> T:
-    """One structured LLM call with the per-call timeout, capped by what is left of the run's budget."""
-    deadline = ctx._cache.get("deadline", time.monotonic() + config.total_budget_s)
-    timeout = min(config.call_timeout_s, deadline - time.monotonic())
+    """One structured LLM call with the per-call timeout, capped by the run's `deadline` (monotonic)."""
+    timeout = config.call_timeout_s
+    if deadline is not None:
+        timeout = min(timeout, deadline - time.monotonic())
     if timeout <= 0:
         raise LLMTimeout(f"{spec.agent_name}: run budget of {config.total_budget_s}s exhausted")
     try:
@@ -136,8 +137,8 @@ class AnalystStep:
                 MOMENT_ANALYST,
                 user=analyst_prompt(ctx, issues),
                 schema=Explanation,
-                ctx=ctx,
                 config=self.config,
+                deadline=ctx._cache.get("deadline"),
             )
         except Exception as e:  # noqa: BLE001 — any LLM failure is routed, not raised
             _record_failure(ctx, MOMENT_ANALYST.agent_name, e)
@@ -161,8 +162,8 @@ class PersonaEditorStep:
                 PERSONA_EDITOR,
                 user=editor_prompt(ctx, ctx.explanation, issues),
                 schema=EditorOutput,
-                ctx=ctx,
                 config=self.config,
+                deadline=ctx._cache.get("deadline"),
             )
         except Exception as e:  # noqa: BLE001
             _record_failure(ctx, PERSONA_EDITOR.agent_name, e)
@@ -204,7 +205,12 @@ class FactCheckStep:
     async def _review(self, ctx: MomentContext) -> list[str]:
         try:
             verdict = await call_llm(
-                self.llm, FACT_REVIEWER, user=review_prompt(ctx), schema=ReviewOutput, ctx=ctx, config=self.config
+                self.llm,
+                FACT_REVIEWER,
+                user=review_prompt(ctx),
+                schema=ReviewOutput,
+                config=self.config,
+                deadline=ctx._cache.get("deadline"),
             )
         except Exception as e:  # noqa: BLE001 — the reviewer is advisory; never block on it
             ctx.notes.append(f"attempt {ctx.attempt}: reviewer skipped ({type(e).__name__}: {e})")
