@@ -17,8 +17,9 @@ make dev      # FULCRUM_BUS=memory: POST /api/matches starts sim (or a replay) +
 ```
 | Env | Default | Meaning |
 |---|---|---|
-| `FULCRUM_BUS` | `memory` | `eventhubs` in Azure (then nothing runs in-process unless `FULCRUM_INPROCESS=1`) |
-| `FULCRUM_INPROCESS` | on for memory bus | run engine/agents/sim inside the API process |
+| `FULCRUM_BUS` | `memory` | `eventhubs` in Azure |
+| `FULCRUM_TOPOLOGY` | – | `split` \| `inprocess` \| `hybrid` (`fulcrum.topology`, docs/DEPLOY.md §4). hybrid: engine + agents run in this process on Event Hubs, the sim is the service at `FULCRUM_SIM_URL` |
+| `FULCRUM_INPROCESS` | on for memory bus | older switch, used when `FULCRUM_TOPOLOGY` is unset: `1` = inprocess, `0` = split |
 | `FULCRUM_RUN_SIM` / `FULCRUM_RUN_AGENTS` | `1` | switch the in-process simulator / agents off |
 | `FULCRUM_REPLAY_FILE` | – | replay this `{"topic","data"}` JSONL instead of simulating (deterministic demos) |
 | `FULCRUM_ALLOWED_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | CORS, comma-separated |
@@ -51,6 +52,6 @@ without `fulcrum.agents` moments still flow but there are no insights.
   model's latest `MatchState`; 503 without a running agents service, 429 past the per-IP limit
   (`studio.RateLimiter`, `FULCRUM_ASK_RATE`, default `6/30`, `Retry-After` header).
 
-- Out of process (Azure, `FULCRUM_INPROCESS` off): with `FULCRUM_SIM_URL` set, `POST /api/matches` forwards the
+- split / hybrid topology: with `FULCRUM_SIM_URL` set, `POST /api/matches` forwards the
   config to the sim service (`POST {FULCRUM_SIM_URL}/matches`). If the sim is unreachable or refuses, the API
   answers 502 and does not keep the match registered.
