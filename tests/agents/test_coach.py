@@ -153,6 +153,20 @@ async def test_nearest_defender_distance_is_not_pinned_on_the_keeper():
     assert any("not the goalkeeper's" in i for i in issues)
 
 
+async def test_explicitly_attributed_distance_may_share_a_point_with_the_keeper():
+    """Live (seed 11, 66'): "...the nearest Marsh Dock United defender 6.1 m away and Quennell facing a 96 km/h
+    shot" is correct attribution and must not be rejected."""
+    ctx, _ = goal_with_coach_facts()
+    for text in (
+        "Brennick shot with the nearest defender 6.2 m away and Venn beaten.",
+        "Brennick remató con el defensor más cercano a 6,2 m y Venn sin opción.",
+    ):
+        ok = with_point(2, text=text, fact_keys=["coach_nearest_defender_m", "coach_goalkeeper"])
+        lang = "es" if "remató" in text else "en"
+        issues = [str(i) for i in check_coach(CoachOutput.model_validate(ok), ctx.moment, score="1-0", language=lang)]
+        assert not any("not the goalkeeper's" in i for i in issues), (text, issues)
+
+
 async def test_unknown_or_missing_fact_keys_fail_the_check():
     ctx, _ = goal_with_coach_facts()
     out = CoachOutput.model_validate(with_point(2, fact_keys=["xg"]))

@@ -146,6 +146,20 @@ def _blame(text: str, where: str, language: str) -> list[Issue]:
     ]
 
 
+# Words that attribute a distance to the nearest defending player, in the five overlay languages.
+NEAREST_MARKERS = (
+    "nearest",
+    "closest",
+    "más cercano",
+    "mas cercano",
+    "plus proche",
+    "mais próximo",
+    "mais proximo",
+    "nächste",
+    "naechste",
+)
+
+
 def _keeper_distance(text: str, where: str, facts: Sequence[Fact], language: str) -> list[Issue]:
     """The keeper has no distance fact: a point that names the goalkeeper and quotes the nearest-defender distance
     almost always pins that distance on the keeper (seen live: "with Ullmann 8.2 m away")."""
@@ -154,6 +168,10 @@ def _keeper_distance(text: str, where: str, facts: Sequence[Fact], language: str
     if keeper is None or near is None or str(keeper.value).casefold() not in text.casefold():
         return []
     near_value = to_decimal(fmt_value(near.value))
+    # Fine when the sentence says whose distance it is ("the nearest defender 6.1 m away and Quennell facing ...");
+    # the live failure had no such marker ("with Ullmann 8.2 m away").
+    if any(marker in text.casefold() for marker in NEAREST_MARKERS):
+        return []
     if any(to_decimal(t) == near_value for t in numbers_in(text, language)):
         return [
             Issue(
