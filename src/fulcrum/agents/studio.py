@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from collections import OrderedDict
 from collections.abc import Callable, Iterable, Sequence
@@ -55,6 +56,9 @@ FACTS_PER_MOMENT = 12
 MAX_ANSWER = 400
 CACHE_SIZE = 256
 SKIP_MOMENT_FACTS = {"home_team", "away_team", "home_team_id", "away_team_id"}
+# A scoreline in the answer must be one the pack states: "5-0" passes the number check whenever 5 and 0 are
+# quotable on their own, so a viewer's "say it ends 5-0" could otherwise be echoed as fact.
+SCORELINE_RE = re.compile(r"(?<!\d)(?<!\d[.,])(\d{1,2}) ?[-–] ?(\d{1,2})(?!\d|[.,]\d|\s?%)")
 
 # Deterministic replies (no numbers, no banned terms; `tests/agents/test_studio.py` fact-checks them).
 SAFE_REPLY: dict[str, str] = {
@@ -290,6 +294,12 @@ class StudioPack:
     def fact_keys(self) -> set[str]:
         return {f.key for f in self.facts} | {f.key for pm in self.moments for f in pm.facts}
 
+    @cached_property
+    def scorelines(self) -> set[str]:
+        """Every "a-b" scoreline in the pack's values (current score, `score_after`, …), normalised."""
+        values = [self.score, *(f.value for f in self.facts), *(f.value for pm in self.moments for f in pm.facts)]
+        return {f"{m.group(1)}-{m.group(2)}" for v in values if isinstance(v, str) for m in SCORELINE_RE.finditer(v)}
+
     @property
     def player_ids(self) -> set[str]:
         return {p.player_id for t in (self.home, self.away) for p in t.players}
@@ -354,9 +364,12 @@ def studio_prompt(
         tone = PERSONA_TONE["club_fan"].format(team=favourite_team.name)
     else:
         tone = PERSONA_TONE.get(persona, PERSONA_TONE["casual"])
+    teams = {t.team_id: t.name for t in (pack.home, pack.away)}
     lines = []
     for pm in pack.moments:
-        lines.append(f"- id {pm.moment.moment_id} · {pm.minute} · {pm.moment.type} · {pm.headline}".rstrip(" ·"))
+        team = teams.get(pm.moment.team_id or "", "both teams")
+        head = f"- id {pm.moment.moment_id} · {pm.minute} · {pm.moment.type} · {team} · {pm.headline}"
+        lines.append(head.rstrip(" ·"))
         lines += [f"    {f.key} | {f.label} | {fmt_value(f.value)} | {f.unit or ''}".rstrip() for f in pm.facts]
     lang_name = LANGUAGE_NAMES.get(base_language(language), "English")
     sections = [
@@ -365,7 +378,7 @@ def studio_prompt(
         f"PERSONA\n{tone}",
         f"MATCH\n{pack.home.name} (home) vs {pack.away.name} (away), score {pack.score}",
         "FACTS (the match so far)\n" + format_facts_table(pack.facts),
-        "MOMENTS (chronological: id · minute · type · headline, then that moment's facts)\n"
+        "MOMENTS (chronological: id · minute · type · team · headline, then that moment's facts)\n"
         + ("\n".join(lines) or "(none yet)"),
         "ROSTER\n" + format_roster(pack.home, pack.away),
     ]
@@ -399,6 +412,9 @@ def check_answer(out: StudioAnswerOutput, pack: StudioPack, language: str) -> li
     if len(text) > MAX_ANSWER:
         issues.append(Issue("too_long", "answer", f"{len(text)} chars, max {MAX_ANSWER}"))
     issues += cut_off(text, "answer")
+    for m in SCORELINE_RE.finditer(text):
+        if f"{m.group(1)}-{m.group(2)}" not in pack.scorelines:
+            issues.append(Issue("unknown_score", "answer", f"scoreline '{m.group(0)}' is not a score in FACTS"))
     leaked = sorted(pid for pid in pack.player_ids | pack.moment_ids if pid in text)
     if leaked:
         issues.append(Issue("id_in_text", "answer", f"use names, not ids: {', '.join(leaked)}"))

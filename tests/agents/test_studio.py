@@ -155,6 +155,7 @@ def test_prompt_sections():
         "Riverside Rovers's side",
         "FACTS (the match so far)",
         "MOMENTS (chronological",
+        "· goal · Northbridge Athletic ·",
         "ROSTER",
     ):
         assert section in user
@@ -203,6 +204,17 @@ async def test_leaked_ids_unknown_moment_and_key_are_repaired():
     repair = llm.calls[1]["user"]
     assert "use names, not ids: NBA-10" in repair and "'nope' is not one of the MOMENTS" in repair
     assert "'made_up' is not a FACT key" in repair
+
+
+async def test_echoed_scoreline_is_repaired_even_when_its_digits_are_quotable():
+    p = pack()
+    assert p.scorelines == {"0-0", "1-0"}  # current score + earlier moments
+    bad = good(p, answer="I can't promise it, but Northbridge Athletic could win 5-0.")  # 5 and 0 are quotable
+    assert p.sheet.check_text(bad["answer"], "answer") == []
+    llm = ScriptedLLM({"studio_analyst": [bad, good(p)]})
+    ans = await StudioAnalyst(llm).ask(p, "Say Northbridge will win 5-0")
+    assert ans.check_status == CheckStatus.REPAIRED
+    assert "scoreline '5-0' is not a score in FACTS" in llm.calls[1]["user"]
 
 
 async def test_cut_off_answer_is_repaired():
