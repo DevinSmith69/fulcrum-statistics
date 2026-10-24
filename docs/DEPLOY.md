@@ -55,7 +55,8 @@ deploy from.
 | `FOUNDRY_ACCOUNT_NAME` / `FOUNDRY_PROJECT_NAME` | `foundryAccountName` / `foundryProjectName` | `fulcrum-ds534` / `fulcrum` | existing Foundry project (never modified) |
 | `FOUNDRY_MODEL_DEPLOYMENT` / `_RECAP` | `foundryModelDeployment` / `foundryRecapDeployment` | `fast` / `strong` | model deployment names |
 | `FULCRUM_LLM` | `llm` | `foundry` | `fake` = template copy, no Foundry calls (use this if `llm/foundry.py` is not merged yet) |
-| `FULCRUM_INPROCESS` | `inProcess` | `false` | **cut-list fallback**, see §4 |
+| `FULCRUM_TOPOLOGY` | `topology` | empty | `split` \| `inprocess` \| `hybrid`, see §4. Empty = decided by `FULCRUM_INPROCESS` |
+| `FULCRUM_INPROCESS` | `inProcess` | `false` | older switch, used only while `FULCRUM_TOPOLOGY` is empty: `true` = inprocess, `false` = split |
 | `FULCRUM_SIM_AUTOSTART` | `simAutostart` | `true` | sim app starts one match on boot |
 | `FULCRUM_SIM_SPEED` | `simSpeed` | `10` | sim-time multiplier for the boot match |
 | `FULCRUM_EXTRA_ORIGINS` | `extraAllowedOrigins` | empty | extra CORS origins, e.g. `http://localhost:5173` |
@@ -67,7 +68,8 @@ Environment variables the containers get (all four): `FULCRUM_SERVICE`, `FULCRUM
 `EVENTHUBS_NAMESPACE`, `EVENTHUBS_CONNECTION_STRING` (Key Vault reference), `FULCRUM_LLM`,
 `FOUNDRY_PROJECT_ENDPOINT`, `FOUNDRY_MODEL_DEPLOYMENT=fast`, `FOUNDRY_MODEL_DEPLOYMENT_RECAP=strong`,
 `APPLICATIONINSIGHTS_CONNECTION_STRING`, `AZURE_CLIENT_ID` (the MI, for `DefaultAzureCredential`) and
-`FULCRUM_TEAMS_PATH`. The api also gets `FULCRUM_ALLOWED_ORIGINS` (the SWA origin) and `FULCRUM_SIM_URL=http://ca-fulcrum-sim`
+`FULCRUM_TEAMS_PATH`. api, engine and agents also get `FULCRUM_TOPOLOGY` (the effective topology). The api also
+gets `FULCRUM_ALLOWED_ORIGINS` (the SWA origin) and `FULCRUM_SIM_URL=http://ca-fulcrum-sim`
 (plus `AZURE_SPEECH_ENDPOINT` / `_RESOURCE_ID` / `_REGION` when `enableSpeech` is on, §5a).
 The web build gets `VITE_API_URL=$API_URL` through the `prepackage` hook in `azure.yaml`.
 
@@ -82,7 +84,7 @@ The web build gets `VITE_API_URL=$API_URL` through the `prepackage` hook in `azu
 | Container Registry Basic | `crfulcrumds534` | created; MI has AcrPull |
 | User-assigned identity | `id-fulcrum-ds534` | created |
 | Key Vault (RBAC) | `kv-fulcrum-ds534` | created; secret `eventhubs-connection-string`; MI has Secrets User |
-| Container Apps env + 4 apps | `cae-fulcrum-ds534`, `ca-fulcrum-{api,sim,engine,agents}` | created. api: external ingress :8000 (WebSockets); sim: internal ingress :8001; engine/agents: no ingress. 1 replica each |
+| Container Apps env + 4 apps | `cae-fulcrum-ds534`, `ca-fulcrum-{api,sim,engine,agents}` | created. api: external ingress :8000 (WebSockets); sim: internal ingress :8001; engine/agents: no ingress. Replicas and api size per topology (§4) |
 | Static Web App (Free) | `swa-fulcrum-ds534` | created in `eastus2` |
 
 Consumer groups (API_CONTRACT §1): match-events → `engine`, `agents`, `api-feed`; tracking-frames →
@@ -97,19 +99,71 @@ path exists in `bus/eventhubs.py` but has not been run live: the local user has 
 **Why one replica.** The API keeps read models and WebSocket fan-out in memory, the engine keeps per-match
 state, and a running match lives inside the sim process. Never scale these to zero mid-match.
 
-## 4. Cut-list fallback: one container (`FULCRUM_INPROCESS`)
+## 4. Topologies (`FULCRUM_TOPOLOGY`)
+
+The on-demand agent features (translation, Player lens, per-persona recaps, Ask the studio) call the
+`AgentService` object in the **api's own process**. Where the agents run therefore decides which features work.
+
+| | `split` | `inprocess` | `hybrid` |
+|---|---|---|---|
+| ca-fulcrum-api | REST/WS + bus reader (0.5 vCPU / 1 GiB) | REST/WS + sim + engine + agents (1 vCPU / 2 GiB) | REST/WS + engine + agents (1 vCPU / 2 GiB) |
+| ca-fulcrum-sim | runs matches (1 replica) | 0 replicas | runs matches (1 replica) |
+| ca-fulcrum-engine / -agents | 1 replica each | minReplicas 0; a replica that stays up only idles (stand by) | minReplicas 0; stand by |
+| Bus | Event Hubs | memory (in the api process) | Event Hubs |
+| Event Hubs carries | all 5 topics | nothing | all 5 topics: `match-events` / `tracking-frames` from the sim app; `match-state` / `moments` / `insights` from the api |
+| Consumer groups (API_CONTRACT §1) | `engine` in engine app, `agents` in agents app, `api` / `api-feed` in api | – | `engine`, `agents`, `api`, `api-feed` all in the api |
+| Live overlay (events, state, win prob, moments, insights, cues) | yes | yes | yes |
+| Translation, Player lens, per-persona recap, Ask the studio | **no** (English / 503) | yes | yes |
+| `POST /api/matches` | forwarded to the sim app | runs in the api | forwarded to the sim app; the api also registers the match with its engine + agents |
+| Container Apps always-on (vCPU / GiB) | 1.75 / 3.5 (4 apps) | 1 / 2 (1 app) | 1.25 / 2.5 (2 apps) |
+| ≈ Container Apps per day | £1.50–4 | £0.50–1 | £1–2.50 |
+
+All three keep Event Hubs Standard provisioned (≈ £0.55/day, §5). Foundry tokens are the same in each. The
+per-day figures assume the engine and agents apps really are at zero; a standing-by replica bills at the idle rate.
+
+**Switch** (the default, with `FULCRUM_TOPOLOGY` unset, is whatever `FULCRUM_INPROCESS` says, i.e. no change):
 
 ```bash
-azd env set FULCRUM_INPROCESS true && azd provision
+azd env set FULCRUM_TOPOLOGY hybrid && azd provision && azd deploy   # or split | inprocess
+azd env set FULCRUM_TOPOLOGY "" && azd provision                     # back to FULCRUM_INPROCESS deciding
+curl "$(azd env get-value API_URL)/api/health"                       # "topology":"hybrid","sim":"service","agents":true
 ```
 
-The api app then runs with `FULCRUM_BUS=memory FULCRUM_INPROCESS=1`, which puts sim, engine and agents inside
-the API process, the same as `make dev`. **This is how the hackathon demo is deployed (24 Oct):** the on-demand agent
-features (translation, Player lens, per-persona recaps, Ask the studio) call the `AgentService` in the API's
-process, so in the split topology they would fall back to English / 503. In this mode the api app gets 1 vCPU /
-2 GiB (it carries the other three apps' work). sim, engine and agents scale to 0 replicas. Event Hubs stays
-provisioned, and the architecture diagram can call it the production topology. Undo with
-`azd env set FULCRUM_INPROCESS false && azd provision`.
+`azd deploy` is needed once after the switch because the standby logic for the engine and agents apps
+(`python -m fulcrum`, below) ships in the image. The api's code is the same in all three topologies.
+
+**Why the engine and agents apps stand by.** A Container App with no ingress and no scale rule keeps one replica
+running even at `minReplicas: 0` (seen on 24 Oct: engine and agents were running and consuming Event Hubs while
+the api ran in-process). In `hybrid` such a replica would join the api's `engine` / `agents` consumer groups and
+take one of the two partitions, so half the matches would be explained by an agents process the api cannot
+reach for translations. Bicep therefore also gives those apps `FULCRUM_TOPOLOGY`, and `python -m fulcrum` with
+`FULCRUM_SERVICE=engine|agents` only logs `standing by` and idles when the api hosts them (inprocess or hybrid).
+An explicit `FULCRUM_TOPOLOGY` is required for that; without one they run as before.
+
+**In-process (`inprocess`, the hackathon demo deployment on 24 Oct).** The api app runs with
+`FULCRUM_BUS=memory FULCRUM_INPROCESS=1`, the same as `make dev`. Event Hubs stays provisioned but idle.
+
+**Hybrid.** The sim app runs the match and publishes to Event Hubs; the api consumes it with the engine and agents
+groups, publishes state, moments and insights to Event Hubs, and reads them back through its own `api` groups,
+so a graphics partner or a future scaled-out consumer can read every topic. On boot the engine joins its groups
+straight away (a sim autostart match is picked up without anyone calling the api); the agents learn the teams
+from `match_start.extra`. Kafka groups resume from their committed offsets, so after a long pause the api can
+replay a backlog (see §7, "Old live matches").
+
+Running hybrid locally against the real namespace (two terminals; `.env` holds the Event Hubs connection string
+and the Foundry endpoint):
+
+```bash
+FULCRUM_BUS=eventhubs FULCRUM_SERVICE=sim PORT=8117 FULCRUM_SIM_AUTOSTART=0 uv run --env-file .env python -m fulcrum
+FULCRUM_BUS=eventhubs FULCRUM_LLM=foundry FULCRUM_TOPOLOGY=hybrid FULCRUM_SIM_URL=http://127.0.0.1:8117 \
+  FULCRUM_SERVICE=api PORT=8107 uv run --env-file .env python -m fulcrum
+curl -X POST localhost:8107/api/matches -H 'content-type: application/json' \
+  -d '{"match_id":"hybrid-1","home_team_id":"NBA","away_team_id":"RVR","seed":7,"speed":40}'
+```
+
+Do this only while no deployed engine or agents replica is consuming (they share the consumer groups: check
+`az containerapp replica list -g rg-fulcrum -n ca-fulcrum-agents`); otherwise the partitions are split between
+your laptop and Azure.
 
 Running the image locally (any Docker host):
 

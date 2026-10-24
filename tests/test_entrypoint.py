@@ -33,3 +33,22 @@ def test_asgi_services_run_uvicorn(monkeypatch: pytest.MonkeyPatch, service: str
     monkeypatch.setenv("PORT", "9000")
     assert entry.main(service.upper()) == 0
     assert calls == [(app, port), (app, 9000)]
+
+
+@pytest.mark.parametrize("topology", ["hybrid", "inprocess"])
+@pytest.mark.parametrize("service", ["engine", "agents"])
+def test_bus_services_stand_by_when_the_api_hosts_them(monkeypatch: pytest.MonkeyPatch, service, topology):
+    """hybrid / inprocess: the engine and agents apps must not join the api's consumer groups."""
+    ran, idled = [], []
+    monkeypatch.setattr(entry.runpy, "run_module", lambda name, **kw: ran.append(name))
+    monkeypatch.setenv("FULCRUM_TOPOLOGY", topology)
+    assert entry.main(service, idle=lambda: idled.append(True)) == 0
+    assert ran == [] and idled == [True]
+
+
+@pytest.mark.parametrize("env", [{"FULCRUM_TOPOLOGY": "split"}, {}, {"FULCRUM_BUS": "memory"}])
+def test_bus_services_run_without_an_explicit_hosting_topology(env):
+    # no explicit FULCRUM_TOPOLOGY → behave as before (the split deployment's apps have no topology set)
+    assert entry.standby_reason("engine", env) is None
+    assert entry.standby_reason("agents", env) is None
+    assert entry.standby_reason("sim", {"FULCRUM_TOPOLOGY": "hybrid"}) is None

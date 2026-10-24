@@ -28,10 +28,16 @@ Producers publish `InsightsEnvelope.wrap(item)`; consumers subscribe with `Insig
 **Single-process dev mode:** with `FULCRUM_BUS=memory` the API process starts sim, engine and agents as
 asyncio tasks on the shared `MemoryBus` (`api/app.py` lifespan). In Azure each runs as its own Container App.
 
+**Topologies** (`FULCRUM_TOPOLOGY`, `fulcrum.topology`, docs/DEPLOY.md §4) change *which process* runs each
+consumer, never the topics or the consumer groups above: in `hybrid` the API process hosts the engine (group
+`engine`) and the agents (group `agents`) next to its own `api` / `api-feed` consumers, reading the sim's
+topics from Event Hubs and publishing `match-state` / `moments` / `insights` back to it. A group must have only
+one kind of process in it, so in `hybrid` the engine and agents apps stand by instead of consuming.
+
 ## 2. REST (FastAPI, `fulcrum.api.app:app`, prefix `/api`)
 | Method | Path | Body / Query | Returns |
 |---|---|---|---|
-| GET | `/api/health` | – | `{"status":"ok","bus":"memory","llm":"fake","in_process":true,"sim":"simulator","agents":true,"agents_state":"running","agents_error":null,"speech":false,"match_controls":true}` (`match_controls`: see Match controls below); `agents` is true only once the agents service is running (it starts with the first match); `agents_state` is `off` \| `unavailable` \| `not_started` \| `starting` \| `running` \| `failed` (reason in `agents_error`) |
+| GET | `/api/health` | – | `{"status":"ok","bus":"memory","llm":"fake","topology":"inprocess","in_process":true,"sim":"simulator","agents":true,"agents_state":"running","agents_error":null,"speech":false,"match_controls":true}` (`match_controls`: see Match controls below); `topology` is `split` \| `inprocess` \| `hybrid`; `sim` is `simulator` \| `replay` (in this process), `service` (forwarded to `FULCRUM_SIM_URL`) or null; `agents*` are null in `split`; `agents` is true only once the agents service is running (it starts with the first match); `agents_state` is `off` \| `unavailable` \| `not_started` \| `starting` \| `running` \| `failed` (reason in `agents_error`) |
 | GET | `/api/teams` | – | `Team[]` (from data/teams.json) |
 | POST | `/api/matches` | `MatchConfig` (match_id optional) | `{"match_id": str}` — starts a simulated match |
 | GET | `/api/matches` | – | `[{match_id, home_team_id, away_team_id, status, clock_ms, score}]` |

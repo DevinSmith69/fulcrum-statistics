@@ -12,6 +12,7 @@
     "foundryRecapDeployment": { "value": "${FOUNDRY_MODEL_DEPLOYMENT_RECAP=strong}" },
     "llm": { "value": "${FULCRUM_LLM=foundry}" },
     "inProcess": { "value": "${FULCRUM_INPROCESS=false}" },
+    "topology": { "value": "${FULCRUM_TOPOLOGY=}" },
     "simAutostart": { "value": "${FULCRUM_SIM_AUTOSTART=true}" },
     "simSpeed": { "value": "${FULCRUM_SIM_SPEED=10}" },
     "extraAllowedOrigins": { "value": "${FULCRUM_EXTRA_ORIGINS=}" },

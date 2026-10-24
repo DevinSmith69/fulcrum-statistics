@@ -77,6 +77,8 @@ Fixtures: `data/matches/sample_seed7.jsonl` (NBA v RVR, match_id `nba-rvr-s7`) a
   `FULCRUM_ALLOWED_ORIGINS` to the Static Web App origin. With `FULCRUM_BUS=eventhubs`, `POST /api/matches`
   only registers the match (`TODO(azure)` in `api/app.py`: trigger the sim app). Alternatively set
   `FULCRUM_INPROCESS=1` to run sim + engine + agents inside the API container (the cut-list fallback).
+  Update: the API forwards to the sim app via `FULCRUM_SIM_URL`, and `FULCRUM_TOPOLOGY=hybrid` runs engine +
+  agents inside the API on Event Hubs with the same consumer groups (docs/DEPLOY.md §4).
 
 ### Decisions made overnight (no one to ask — change them in `engine/params.py` if you disagree)
 - **WP model:** MODEL_SPEC §3 exactly. The spec's reference values (0.417 / 0.248 at KO, 0.927 at 89',

@@ -3,8 +3,9 @@
     uvicorn fulcrum.api.app:app --port 8000          (module-level `app`)
     create_app(bus=MemoryBus(), run_sim=False)       (tests)
 
-With FULCRUM_BUS=memory (default) the lifespan runs everything in one process: the hub always consumes the
-bus; the engine, agents and simulator are started by the first `POST /api/matches` (see `pipeline.py`).
+The hub always consumes the bus. What else runs in this process depends on the topology (`fulcrum.topology`):
+inprocess (the default with FULCRUM_BUS=memory) runs sim + engine + agents here (see `pipeline.py`); hybrid runs
+engine + agents here and forwards `POST /api/matches` to the sim service; split only forwards.
 """
 
 from __future__ import annotations
@@ -46,6 +47,7 @@ from fulcrum.engine.service import EngineService
 from fulcrum.engine.teams import load_teams
 from fulcrum.sim.control import DEFAULT_SKIP_SIGNIFICANCE, MAX_SPEED, MIN_SPEED, MatchControl
 from fulcrum.telemetry import configure_telemetry
+from fulcrum.topology import Topology, parse_topology, resolve_topology
 
 from . import personalise as ps
 from .evalreports import latest_reports
@@ -114,16 +116,25 @@ def create_app(
     *,
     teams: dict[str, Team] | None = None,
     in_process: bool | None = None,
+    topology: Topology | str | None = None,
     run_sim: bool | None = None,
     run_agents: bool | None = None,
     speech: SpeechSynth | None = None,
 ) -> FastAPI:
     """Build the app.
 
-    `in_process` defaults to FULCRUM_BUS=memory; `run_sim` / `run_agents` to FULCRUM_RUN_SIM / FULCRUM_RUN_AGENTS
-    (default on). Tests switch them off and publish onto the bus themselves. `speech` defaults to
-    `SpeechSynth.from_env()` (None = Azure Speech not configured, `POST /api/speech` answers 503).
+    `topology` defaults to `resolve_topology()` (FULCRUM_TOPOLOGY, else FULCRUM_INPROCESS, else FULCRUM_BUS);
+    `in_process=True|False` is the older spelling of inprocess|split. `run_sim` / `run_agents` default to
+    FULCRUM_RUN_SIM / FULCRUM_RUN_AGENTS (default on); hybrid never runs the sim here. Tests switch them off and
+    publish onto the bus themselves. `speech` defaults to `SpeechSynth.from_env()` (None = Azure Speech not
+    configured, `POST /api/speech` answers 503).
     """
+    if topology is not None:
+        topo: Topology | None = parse_topology(topology)
+    elif in_process is not None:
+        topo = Topology.INPROCESS if in_process else Topology.SPLIT
+    else:
+        topo = None  # resolved from the environment at start-up
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -133,18 +144,16 @@ def create_app(
         translator = Translator()
         hub = Hub(the_bus, registry, translator)
         hub.start()
-        inproc = (
-            in_process
-            if in_process is not None
-            else _env_flag("FULCRUM_INPROCESS", os.getenv("FULCRUM_BUS", "memory") == "memory")
-        )
+        the_topology = topo or resolve_topology()
+        _warn_misconfigured(the_topology, the_bus)
         pipeline = None
-        if inproc:
-            sim = run_sim if run_sim is not None else _env_flag("FULCRUM_RUN_SIM", True)
+        if the_topology.api_hosts_pipeline:
+            sim = the_topology.api_runs_sim and (run_sim if run_sim is not None else _env_flag("FULCRUM_RUN_SIM", True))
             agents = run_agents if run_agents is not None else _env_flag("FULCRUM_RUN_AGENTS", True)
             engine = EngineService(the_bus, teams=registry.teams)
             pipeline = Pipeline(the_bus, registry, engine, translator, run_sim=sim, run_agents=agents)
             hub.moment_listeners.append(pipeline.on_moment)
+        app.state.topology = the_topology
         app.state.bus, app.state.registry, app.state.hub = the_bus, registry, hub
         app.state.translator, app.state.pipeline = translator, pipeline
         app.state.speech = speech if speech is not None else SpeechSynth.from_env()
@@ -153,6 +162,10 @@ def create_app(
         app.state.speech_limiter = RateLimiter.from_env("FULCRUM_SPEECH_RATE", DEFAULT_SPEECH_RATE)
         app.state.speech_global = RateLimiter(600, 60)
         if pipeline is not None:
+            if not the_topology.api_runs_sim:
+                # hybrid: events come from another process (and from sim autostarts nobody POSTed), so the engine
+                # joins its consumer groups now rather than racing the first match's kick-off.
+                pipeline.engine.start()
             pipeline.prestart()  # agents warm up now, not on the first match
         try:
             yield
@@ -196,6 +209,17 @@ def create_app(
     return app
 
 
+def _warn_misconfigured(topology: Topology, bus: Bus) -> None:
+    """Log (don't fail) topologies that cannot work as configured, so a misconfigured container still serves."""
+    from fulcrum.bus.base import MemoryBus
+
+    if topology.needs_shared_bus and isinstance(bus, MemoryBus) and os.getenv("FULCRUM_SIM_URL"):
+        log.warning("topology %s with the memory bus: the sim service's events will not reach this process", topology)
+    if not topology.api_runs_sim and not os.getenv("FULCRUM_SIM_URL"):
+        log.warning("topology %s without FULCRUM_SIM_URL: POST /api/matches cannot start a simulated match", topology)
+    log.info("api topology: %s", topology)
+
+
 def _jsonable(errors: Any) -> Any:
     return [
         {k: (v if isinstance(v, (str, int, float, list, type(None))) else str(v)) for k, v in e.items()} for e in errors
@@ -220,12 +244,18 @@ def _router() -> APIRouter:
     @r.get("/health")
     async def health(request: Request) -> dict[str, Any]:
         pipeline: Pipeline | None = request.app.state.pipeline
+        topology: Topology = request.app.state.topology
+        if topology.api_runs_sim:
+            sim = "simulator" if pipeline is not None and pipeline.sim_available else "replay"
+        else:
+            sim = "service" if os.getenv("FULCRUM_SIM_URL") else None
         return {
             "status": "ok",
             "bus": os.getenv("FULCRUM_BUS", "memory"),
             "llm": os.getenv("FULCRUM_LLM", "fake"),
-            "in_process": pipeline is not None,
-            "sim": None if pipeline is None else ("simulator" if pipeline.sim_available else "replay"),
+            "topology": topology.value,
+            "in_process": topology is Topology.INPROCESS,
+            "sim": sim,
             # True only once the agents service is actually running (it starts with the first match);
             # agents_state says why not otherwise (e.g. "failed" with agents_error = a missing Foundry setting).
             "agents": None if pipeline is None else pipeline.agents_state == "running",
@@ -258,9 +288,10 @@ def _router() -> APIRouter:
         reg.create(config)
         pipeline: Pipeline | None = request.app.state.pipeline
         if pipeline is not None:
+            # inprocess: also starts the sim here. hybrid: engine + agents learn the teams before the first event.
             await pipeline.start_match(config)
-        elif sim_url := os.getenv("FULCRUM_SIM_URL"):
-            # Out-of-process (Azure): the sim Container App runs the match and publishes to Event Hubs.
+        if not request.app.state.topology.api_runs_sim and (sim_url := os.getenv("FULCRUM_SIM_URL")):
+            # split / hybrid (Azure): the sim Container App runs the match and publishes to Event Hubs.
             try:
                 await start_on_sim(request.app, sim_url, config)
             except Exception:
