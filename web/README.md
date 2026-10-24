@@ -79,6 +79,19 @@ The API base comes from `VITE_API_URL` (default `http://localhost:8000`); the We
   pitch to the run of play with a REPLAY badge and the moment caption, then returns to live; `R` replays the
   newest big moment, `Esc` goes back to live (it no longer exits Broadcast while a replay is on). The live pitch
   stays mounted underneath and its overlay cues are hidden during the replay.
+- **Your highlights** (`src/components/HighlightsReel.tsx`; pure logic in `src/lib/highlights.ts`, tested in
+  `tests/highlights.test.ts`): a ~60 s full-screen reel at full time, in the viewer's persona and language. Moments:
+  every goal and red card plus the recap's `key_moment_ids` (most significant first, 6 in total); without a recap,
+  the most significant moments. One per run of play (a goal's brace milestone is dropped), in match order. Each
+  moment replays on the big pitch (`useMomentReplay`, now pausable) under a lower third (minute, moment type,
+  insight headline, first sentence of the body) with a running score bug that flips when the goal goes in, while
+  the insight's `commentary_line` is spoken (Azure voice → browser fallback, own `SpeechPlayer`; the live
+  co-commentator is held meanwhile). It moves on when both the replay and the line are done, with a safety
+  timeout; a missing insight shows a template label and skips speech. Intro card (match · persona · language) and
+  outro (final score, player of the match, first share post). Open with the button on the recap, on the Match
+  Studio full-time banner, in Broadcast (hover controls), or `H` once the match is over. In the reel: `Space`
+  pause/resume, `→`/`←` next/previous, `M` sound on/off (remembered), `F` full screen, `H` watch again, `Esc` exit.
+  The reel takes keys first (`src/lib/keyGate.ts`), so no other shortcut fires behind it.
 - **Demo director** (`src/components/DemoPanel.tsx`, `src/lib/useDirector.ts`, `src/lib/director.ts`;
   API_CONTRACT §2 "Match controls"): a control bar in Match Studio and Broadcast, off by default — open the page
   with `?demo=1` or press `C`. New demo match (seed 11, Harlow Cross v Marsh Dock United, at the selected speed;

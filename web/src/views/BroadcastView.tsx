@@ -38,10 +38,12 @@ interface Props {
   audio: AudioPrefs;
   onAudioChange: (p: Partial<AudioPrefs>) => void;
   commentary: Commentary;
+  /** Opens the highlights reel (set once the match is over). */
+  onPlayHighlights?: () => void;
 }
 
 /** Broadcast mode: pitch and overlays only, full screen, with a toggleable cue inspector (key I) and voice (V). */
-export function BroadcastView({ feed, prefs, audio, onAudioChange, commentary }: Props) {
+export function BroadcastView({ feed, prefs, audio, onAudioChange, commentary, onPlayHighlights }: Props) {
   const [inspector, setInspector] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -72,6 +74,11 @@ export function BroadcastView({ feed, prefs, audio, onAudioChange, commentary }:
           <a href="#/" className="rounded-md bg-ink-900/90 px-3 py-1.5 text-sm text-ink-100 ring-1 ring-ink-700 hover:text-ink-50">
             Exit <kbd className="ml-1 text-ink-500">Esc</kbd>
           </a>
+          {onPlayHighlights && (
+            <button onClick={onPlayHighlights} className="rounded-md bg-signal px-3 py-1.5 text-sm font-semibold text-ink-950 ring-1 ring-signal">
+              Play your highlights <kbd className="ml-1 text-ink-800">H</kbd>
+            </button>
+          )}
           <BroadcastAudioButtons audio={audio} onChange={onAudioChange} commentary={commentary} />
           <button onClick={toggleFullscreen} className="rounded-md bg-ink-900/90 px-3 py-1.5 text-sm text-ink-100 ring-1 ring-ink-700 hover:text-ink-50">
             Full screen <kbd className="ml-1 text-ink-500">F</kbd>
