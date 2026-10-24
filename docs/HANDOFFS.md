@@ -22,7 +22,7 @@ Fixtures: `data/matches/sample_seed7.jsonl` (NBA v RVR, match_id `nba-rvr-s7`) a
   are `sample_seed*.jsonl`. Regenerate them with
   `uv run python -m fulcrum.sim --home NBA --away RVR --seed 7 --out data/matches/sample_seed7.jsonl`
   (and HLC/MDU/11). I left the Makefile alone because it's shared.
-- [ ] (WS1 → WS5) The container image needs `data/teams.json`, or set `FULCRUM_TEAMS_PATH`.
+- [x] (WS1 → WS5) The container image needs `data/teams.json`, or set `FULCRUM_TEAMS_PATH`. **Done (WS5):** the image copies `data/` and sets `FULCRUM_TEAMS_PATH=/app/data/teams.json`.
 
 ### WS1 decisions (made unattended; shout if you disagree)
 - No contract changes. Extra info goes in `MatchEvent.extra` (`offside`, `cutback`, `fouled_player_id`,
@@ -65,7 +65,7 @@ Fixtures: `data/matches/sample_seed7.jsonl` (NBA v RVR, match_id `nba-rvr-s7`) a
   `player_tag` cues for `followed_player_id` arrive at most every 20 s of sim time, `anchor=top_right`,
   priority 2, English. The agents additionally emit moment-linked `player_tag` cues for `player_lens`.
   De-dupe by `seq` / ids: a `hello` and the live stream may overlap by one item.
-- [ ] (WS2 → WS5) Entry points: `uvicorn fulcrum.api.app:app` (api) and `python -m fulcrum.engine` (engine).
+- [x] (WS2 → WS5) **Done (WS5): `python -m fulcrum` dispatches on `FULCRUM_SERVICE`; api has external ingress with WebSockets, CORS = SWA origin; consumer groups in Bicep.** Entry points: `uvicorn fulcrum.api.app:app` (api) and `python -m fulcrum.engine` (engine).
   Consumer groups: engine = `engine` on `match-events` + `tracking-frames`; api = `api-feed` on `match-events`
   and `api` on `match-state`, `moments`, `insights`. The API needs WebSocket ingress. Set
   `FULCRUM_ALLOWED_ORIGINS` to the Static Web App origin. With `FULCRUM_BUS=eventhubs`, `POST /api/matches`
@@ -199,7 +199,7 @@ Fixtures: `data/matches/sample_seed7.jsonl` (NBA v RVR, match_id `nba-rvr-s7`) a
   `pressure_bar` top_left, `stat_card` bottom_right, `player_tag` bottom_left.
 - [ ] (WS4 → WS2) `wp_swing` copy wants to say "inside 90 seconds"; please include the window in the fact pack
   (the mock uses `window_s = 90`, unit `s`) so the fact-checker allows the number.
-- [ ] (WS4 → WS5) Static Web App build: `cd web && npm ci && npm run build`, output `web/dist`, env
+- [x] (WS4 → WS5) **Done (WS5): azd `web` service (SWA), `prepackage` hook writes `VITE_API_URL=$API_URL` to `web/.env.production.local`.** Static Web App build: `cd web && npm ci && npm run build`, output `web/dist`, env
   `VITE_API_URL=https://<api-container-app>` at build time. WebSocket path is `/ws` on the same host.
 - [ ] (WS4 → WS6) Recording tips: `npm run mock -- --from 82` lands just before the winning goal; `#/split` with
   Analyst·EN v Casual·ES is the money shot; `#/broadcast` then `I` shows the cue inspector.
@@ -213,3 +213,66 @@ Fixtures: `data/matches/sample_seed7.jsonl` (NBA v RVR, match_id `nba-rvr-s7`) a
 - Prefs persist per view in `localStorage` (`fulcrum.prefs.*`). Default studio viewer: Casual · EN following NBA-10.
 - Team colours are used as data only (kit stripes, dots, chart series via OKLCH re-derivation). The single UI accent
   is signal cyan `#3DE0FF`. Overlays have no backdrop blur: it forced a GPU blur over the animating canvas every frame.
+
+## WS5 (infra + Event Hubs bus): 2026-10-24
+Delivered: `bus/eventhubs.py`, `Dockerfile` / `.dockerignore`, `python -m fulcrum` (container entrypoint),
+`sim/service.py`, `azure.yaml`, `infra/` and `docs/DEPLOY.md`. A full match (HLC v MDU, seed 11, 30x) ran out of
+process on the real namespace: sim → engine → agents → api in 4 processes. Result: 30 moments, 30 insights,
+157 cues and a recap, and the WebSocket `hello` carried teams and moments.
+
+**Glue outside `bus/` + `infra/` (please review):**
+- `src/fulcrum/__main__.py`: `python -m fulcrum` runs `FULCRUM_SERVICE=api|sim|engine|agents`
+  (tests: `tests/test_entrypoint.py`).
+- `src/fulcrum/sim/service.py` (WS1 folder): the sim as a long-running service, `uvicorn fulcrum.sim.service:app`.
+  It provides `POST /matches` (MatchConfig → 202, 409 duplicate, 422 unknown team), `GET /matches`, `GET /health`,
+  and `FULCRUM_SIM_AUTOSTART=1` (with `FULCRUM_SIM_HOME/AWAY/SEED/SPEED`, `FULCRUM_SIM_LOOP`, `FULCRUM_SIM_GAP_S`).
+  A bus wrapper stamps `home_team_id` / `away_team_id` into `match_start.extra`; the deterministic engine is
+  untouched. Tests: `tests/sim/test_sim_service.py`.
+
+### Requests
+- [ ] (WS5 → WS2) **Wire the `TODO(azure)` in `POST /api/matches`.** With `FULCRUM_SIM_URL` set (Bicep sets
+  `http://ca-fulcrum-sim` on the api app), forward the config to the sim service. Without this, a match POSTed by
+  the web in Azure is registered but never starts. Only the sim's boot-time match runs. Suggested code:
+  ```python
+  sim_url = os.getenv("FULCRUM_SIM_URL")
+  if pipeline is None and sim_url:
+      async with httpx.AsyncClient(timeout=10) as client:
+          r = await client.post(f"{sim_url}/matches", json=config.model_dump(mode="json"))
+      if r.status_code >= 400:
+          raise HTTPException(502, f"sim refused the match: {r.text}")
+  ```
+- [ ] (WS5 → WS1) The sim does not put `home_team_id` / `away_team_id` in `match_start.extra` (WS2 asked
+  for this too). `sim/service.py` adds them on the way to the bus, so Azure works today. Moving it into
+  `engine.py` is cleaner, but it changes the fixtures, so it is your call. If you do move it, keep the wrapper; it
+  is idempotent.
+- [ ] (WS5 → WS2/WS4) **Stale "live" matches.** Kafka groups resume from committed offsets. After an API restart
+  (or an aborted match) `/api/matches` can list a match as `live` that will never finish, and the web picks
+  "the first unfinished match". Suggestion: the web prefers the newest live match, or the API marks a match
+  `stale` when no event arrives for N minutes.
+- [ ] (WS5 → WS3b) `APPLICATIONINSIGHTS_CONNECTION_STRING` and `AZURE_CLIENT_ID` (user-assigned MI) are set on
+  every container, but no code calls `azure.monitor.opentelemetry.configure_azure_monitor()` yet. Please call it
+  in the agents (and ideally the api) when the variable is set. `DefaultAzureCredential` then picks the MI
+  through `AZURE_CLIENT_ID`. The MI has **Foundry User** on the project and on the account.
+  `FULCRUM_LLM=foundry` is the Bicep default. If `llm/foundry.py` is not merged by deploy time, set
+  `azd env set FULCRUM_LLM fake`.
+- [ ] (WS5 → WS4) Please add `*.local` to `web/.gitignore`. The azd `prepackage` hook writes
+  `web/.env.production.local` (`VITE_API_URL`), and a `postdeploy` hook deletes it again, but ignoring it is safer.
+- [ ] (WS5 → Devin) Docker Desktop is **not installed** on this machine (`docker` not found, no WSL distro), so
+  `docker build` was not run locally. `azure.yaml` uses `remoteBuild: true` (ACR builds the image), so the
+  deploy does not need it. Checked instead: all 216 locked packages resolve to manylinux wheels for py3.12
+  (`uv pip install --dry-run --python-platform x86_64-manylinux_2_28`), the Dockerfile uses no BuildKit-only
+  syntax, and the entrypoint is unit-tested.
+- [ ] (WS5 → Devin) `azd down` deletes the **whole resource group**, Foundry included. See DEPLOY.md §6 for
+  the selective teardown.
+
+### WS5 decisions
+- Publish is fire-and-log (queued, not acked per message). At 30x with `send_and_wait` the sim was limited by
+  the ~40 ms round trip. Per-partition order is unchanged. Set `FULCRUM_EVENTHUBS_SYNC=1` for strict acks.
+- Unparseable bus messages are skipped and logged, not raised. Raising would make the consumer re-subscribe
+  and re-read the same offset forever.
+- All apps run 1 replica, never scaled to zero, because the api, engine and sim hold in-memory state.
+  The sim has internal ingress (it needs one for `POST /matches`); engine and agents have none.
+- The Static Web App is in `eastus2`. It is not offered in Sweden Central, and what-if rejected West Europe
+  ("not accepting new customers").
+- Event Hubs is adopted, not duplicated. Hubs and consumer groups show *NoChange* in what-if. Apps use a new
+  Send+Listen SAS rule (`fulcrum-apps`) via Key Vault, not RootManageSharedAccessKey.

@@ -1,0 +1,26 @@
+# Keep the build context small and secret-free.
+.env
+.env.*
+.git
+.github
+.azure
+.venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.idea
+.vscode
+web
+infra
+docs
+tests
+schemas
+scripts
+*.md
+!README.md
+fulcrum-ws*.txt
+# Recorded matches: only the committed replay fixture goes in (the API's fallback when the sim is absent).
+data/matches/*
+!data/matches/sample_seed7.jsonl

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": { "value": "${AZURE_ENV_NAME}" },
+    "location": { "value": "${AZURE_LOCATION=swedencentral}" },
+    "suffix": { "value": "${FULCRUM_SUFFIX=ds534}" },
+    "eventHubsNamespaceName": { "value": "${EVENTHUBS_NAMESPACE=evh-fulcrum-ds534}" },
+    "foundryAccountName": { "value": "${FOUNDRY_ACCOUNT_NAME=fulcrum-ds534}" },
+    "foundryProjectName": { "value": "${FOUNDRY_PROJECT_NAME=fulcrum}" },
+    "foundryModelDeployment": { "value": "${FOUNDRY_MODEL_DEPLOYMENT=fast}" },
+    "foundryRecapDeployment": { "value": "${FOUNDRY_MODEL_DEPLOYMENT_RECAP=strong}" },
+    "llm": { "value": "${FULCRUM_LLM=foundry}" },
+    "inProcess": { "value": "${FULCRUM_INPROCESS=false}" },
+    "simAutostart": { "value": "${FULCRUM_SIM_AUTOSTART=true}" },
+    "simSpeed": { "value": "${FULCRUM_SIM_SPEED=10}" },
+    "extraAllowedOrigins": { "value": "${FULCRUM_EXTRA_ORIGINS=}" },
+    "apiExists": { "value": "${SERVICE_API_RESOURCE_EXISTS=false}" },
+    "simExists": { "value": "${SERVICE_SIM_RESOURCE_EXISTS=false}" },
+    "engineExists": { "value": "${SERVICE_ENGINE_RESOURCE_EXISTS=false}" },
+    "agentsExists": { "value": "${SERVICE_AGENTS_RESOURCE_EXISTS=false}" }
+  }
+}
