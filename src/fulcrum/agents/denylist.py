@@ -1,9 +1,8 @@
 """Words the agents must never output: real football brands and gambling language.
 
 Fulcrum is fictional end to end (CLAUDE.md rule 2), and the copy must never read like betting content
-(AI_PROMPT_DESIGN §5.4). Matching is done by `factcheck.py` on word boundaries:
-multi-word phrases and `CASE_INSENSITIVE` entries ignore case; single capitalised club words are
-matched case-sensitively so ordinary words ("arsenal of passes", "wolves") are not flagged in lower case.
+(AI_PROMPT_DESIGN §5.4). Matching is done by `factcheck.py` on word boundaries and ignores case, except
+for `CASE_SENSITIVE_CLUB_WORDS` (nicknames that are ordinary words, e.g. "wolves").
 
 Deliberately NOT listed: generic words that collide with our fictional clubs or normal prose
 ("United", "City", "Villa", "Forest", "Palace", "Rovers", "Athletic", "Saints", "Blues", "Reds").
@@ -116,9 +115,24 @@ BANNED_TERMS: dict[str, tuple[str, ...]] = {
         "accumulator",
     ),
     "es": ("apuesta", "apuestas", "apostar", "apostador", "cuota", "cuotas", "casa de apuestas", "mercado", "precio"),
-    "fr": ("pari", "paris sportifs", "parier", "parieur", "cote", "cotes", "bookmaker", "marché", "marchés"),
+    "fr": ("pari", "paris sportifs", "parier", "parieur", "bookmaker", "marché", "marchés"),
     "pt": ("aposta", "apostas", "apostar", "apostador", "casa de apostas", "mercado", "preço", "cotação"),
-    "de": ("Wette", "Wetten", "wetten", "Buchmacher", "Wettquote", "Quote", "Quoten", "Markt", "Preis"),
+    # not "Quote" (de) / "cote" (fr): both also mean an ordinary rate or rating ("Passquote", "cote de popularité")
+    "de": ("Wette", "Wetten", "Buchmacher", "Wettquote", "Wettquoten", "Markt", "Preis"),
 }
+
+# Club nicknames that are also ordinary English words: matched only when capitalised.
+CASE_SENSITIVE_CLUB_WORDS: tuple[str, ...] = (
+    "Wolves",
+    "Spurs",
+    "Foxes",
+    "Hammers",
+    "Magpies",
+    "Seagulls",
+    "Cherries",
+    "Hatters",
+    "Toffees",
+    "Gunners",
+)
 
 ALL_BANNED_TERMS: tuple[str, ...] = tuple(sorted({t for terms in BANNED_TERMS.values() for t in terms}))

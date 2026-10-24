@@ -12,6 +12,7 @@ import os
 from collections import deque
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
+from decimal import Decimal
 from pathlib import Path
 
 from fulcrum.contracts import (
@@ -58,11 +59,15 @@ def resolve_team(value: object, league: Iterable[Team]) -> Team | None:
 def foreign_names(home: Team, away: Team, league: Iterable[Team]) -> list[str]:
     """Names of league teams and players that are NOT in this match (they must not appear in copy)."""
     in_match = {home.team_id, away.team_id}
+    own_words = {w.casefold() for t in (home, away) for w in t.name.split()}
     names: list[str] = []
     for team in league:
         if team.team_id in in_match:
             continue
         names += [team.name]
+        first = team.name.split()[0]  # distinctive first word: "Harlow", "Marsh"
+        if first.casefold() not in own_words:
+            names.append(first)
         names += [p.short_name for p in team.players]
     return names
 
@@ -73,9 +78,12 @@ def foreign_names(home: Team, away: Team, league: Iterable[Team]) -> list[str]:
 
 
 def fmt_value(value: float | int | str) -> str:
-    """Render a fact value exactly as agents must quote it (engine formatting is preserved)."""
+    """Render a fact value exactly as agents must quote it (engine formatting is preserved, never 1e-05)."""
     if isinstance(value, bool):
         return str(value).lower()
+    if isinstance(value, float):
+        text = str(value)
+        return format(Decimal(text), "f") if "e" in text or "E" in text else text
     return str(value)
 
 

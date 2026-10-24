@@ -7,11 +7,13 @@ A text fails if it contains:
    the value of a fact, a number inside a string fact or label (e.g. `"2-1"`, `"67'"`, "last 5 min"), the
    current score or the moment's minute. A comparison is *numeric* after normalising decimal commas, so
    `0,34` (translations) and `0.34` match, and `0.30` matches a fact stored as `0.3`. Sign is ignored
-   (a `-22` delta may be written as "dropped 22 points"). Small scorelines (`1-0`, `2–1`, digits 0–3) are
-   allowed as phrases, per §5.1.
+   (a `-22` delta may be written as "dropped 22 points"). Thousands groups ("11,240") are one number.
+   Scorelines get no special allowance: "3-2" fails unless 3 and 2 are fact-pack numbers. This is stricter
+   than §5.1, whose 0–3 scoreline allowance would let a wrong score through.
 2. **an unknown fact key** in `Explanation.key_fact_keys`.
 3. **an unknown name**: a real club or competition from `denylist.py`, or a team/player from the fictional
-   league who is not in this match (all names in our league are unique, see tests/contracts).
+   league who is not in this match (all names in our league are unique, see tests/contracts). Case is
+   ignored, except for club nicknames that are ordinary words ("wolves").
 4. **banned language**: gambling words in English plus the copy's own language.
 5. **a length violation**: headline > 90, body > 300, commentary_line > 160 chars or > 25 words.
 
@@ -27,11 +29,13 @@ from decimal import Decimal, InvalidOperation
 
 from fulcrum.contracts import Explanation, Fact, InsightVariant, Persona
 
-from .denylist import BANNED_TERMS, COMPETITION_NAMES, REAL_CLUB_NAMES
+from .denylist import BANNED_TERMS, CASE_SENSITIVE_CLUB_WORDS, COMPETITION_NAMES, REAL_CLUB_NAMES
+from .schemas import MomentContext
 
 NUMBER_RE = re.compile(r"\d+(?:[.,]\d+)?")
-# A scoreline phrase like "1-0", "2–1" or "3:3" (digits 0–3 only, not part of a longer number).
-SCORE_PHRASE_RE = re.compile(r"(?<![\d.,])[0-3]\s?[-–—:]\s?[0-3](?!\d|[.,]\d|\s?[-–—:]\s?\d)")
+# Thousands groups: "11,240" in any language; "11.240" only outside English (de/es/pt/fr style).
+THOUSANDS_COMMA_RE = re.compile(r"(?<![\d.,])[1-9]\d{0,2}(?:,\d{3})+(?![\d,]|\.\d)")
+THOUSANDS_DOT_RE = re.compile(r"(?<![\d.,])[1-9]\d{0,2}(?:\.\d{3})+(?![\d.]|,\d)")
 
 MAX_HEADLINE = 90
 MAX_BODY = 300
@@ -45,17 +49,19 @@ def _word_pattern(terms: Iterable[str], *, ignore_case: bool, hyphen_is_word: bo
 
     With `hyphen_is_word`, a hyphen counts as part of a word, so "Bell" does not match inside
     "Nakamura-Bell" (needed for roster surnames); otherwise "Arsenal-style" matches "Arsenal".
+    Inside multi-word terms any run of spaces, NBSPs or hyphens matches ("Premier-League").
     """
     terms = sorted({t for t in terms if t}, key=len, reverse=True)
     if not terms:
         return None
-    body = "|".join(re.escape(t) for t in terms)
+    body = "|".join(r"[\s -]+".join(re.escape(w) for w in re.split(r"[\s-]+", t)) for t in terms)
     edge = r"[\w-]" if hyphen_is_word else r"\w"
     return re.compile(rf"(?<!{edge})(?:{body})(?!{edge})", re.IGNORECASE if ignore_case else 0)
 
 
 _COMPETITIONS_RE = _word_pattern(COMPETITION_NAMES, ignore_case=True)
-_CLUBS_RE = _word_pattern(REAL_CLUB_NAMES, ignore_case=False)
+_CLUBS_RE = _word_pattern([c for c in REAL_CLUB_NAMES if c not in CASE_SENSITIVE_CLUB_WORDS], ignore_case=True)
+_CLUB_WORDS_RE = _word_pattern(CASE_SENSITIVE_CLUB_WORDS, ignore_case=False)
 _BANNED_RE: dict[str, re.Pattern[str] | None] = {
     lang: _word_pattern(terms, ignore_case=True) for lang, terms in BANNED_TERMS.items()
 }
@@ -69,9 +75,18 @@ def to_decimal(token: str) -> Decimal | None:
         return None
 
 
-def numbers_in(text: str) -> list[str]:
-    """All numeric tokens in `text`, as written."""
-    return NUMBER_RE.findall(text)
+def numbers_in(text: str, language: str = "en") -> list[str]:
+    """Numeric tokens in `text`. Thousands groups ("11,240"; "11.240" outside English) become one integer."""
+    grouped: list[str] = []
+
+    def take(m: re.Match[str]) -> str:
+        grouped.append(re.sub(r"[.,]", "", m.group(0)))
+        return " "
+
+    text = THOUSANDS_COMMA_RE.sub(take, text)
+    if base_language(language) != "en":
+        text = THOUSANDS_DOT_RE.sub(take, text)
+    return grouped + NUMBER_RE.findall(text)
 
 
 def base_language(language: str | None) -> str:
@@ -166,7 +181,7 @@ class FactSheet:
             numbers=frozenset(numbers),
             keys=frozenset(keys),
             foreign_names=names,
-            _foreign_re=_word_pattern(names, ignore_case=False, hyphen_is_word=True),
+            _foreign_re=_word_pattern(names, ignore_case=True, hyphen_is_word=True),
         )
 
     # ----------------------------------------------------------------------------------------- #
@@ -174,14 +189,14 @@ class FactSheet:
     def check_text(self, text: str, where: str, *, language: str = "en") -> list[Issue]:
         """Rules 1, 3 and 4 on one string."""
         issues: list[Issue] = []
-        stripped = SCORE_PHRASE_RE.sub(" ", text)
-        for token in numbers_in(stripped):
+        for token in numbers_in(text, language):
             value = to_decimal(token)
             if value is None or value not in self.numbers:
                 issues.append(Issue("unknown_number", where, f"number '{token}' is not in FACTS"))
         for pattern, code, what in (
             (_COMPETITIONS_RE, "denylisted_name", "real competition"),
             (_CLUBS_RE, "denylisted_name", "real club"),
+            (_CLUB_WORDS_RE, "denylisted_name", "real club"),
             (self._foreign_re, "foreign_name", "name not in this match's ROSTER"),
         ):
             if pattern is not None:
@@ -193,6 +208,15 @@ class FactSheet:
                 for m in pattern.finditer(text):
                     issues.append(Issue("banned_term", where, f"banned betting/market term '{m.group(0)}'"))
         return issues
+
+
+def context_sheet(ctx: MomentContext) -> FactSheet:
+    """The (cached) fact sheet for one workflow run's moment."""
+    if "sheet" not in ctx._cache:
+        ctx._cache["sheet"] = FactSheet.build(
+            ctx.moment.facts, score=ctx.score, clock_ms=ctx.moment.clock_ms, foreign_names=ctx.foreign_names
+        )
+    return ctx._cache["sheet"]
 
 
 def _length(text: str, limit: int, where: str) -> list[Issue]:

@@ -39,7 +39,7 @@ from fulcrum.llm import LLMClient
 
 from .context import analyst_prompt, editor_prompt, review_prompt
 from .cues import build_cues
-from .factcheck import FactSheet, check_insight_copy, required_variants
+from .factcheck import check_insight_copy, context_sheet, required_variants
 from .prompts import FACT_REVIEWER, MOMENT_ANALYST, PERSONA_EDITOR, PromptSpec
 from .schemas import EditorOutput, MomentContext, ReviewOutput
 from .templates import fallback_explanation, fallback_variants
@@ -63,15 +63,6 @@ class OrchestratorConfig:
 
 class LLMTimeout(TimeoutError):
     """An LLM call exceeded its time budget."""
-
-
-def fact_sheet(ctx: MomentContext) -> FactSheet:
-    """The (cached) fact sheet for this run's moment."""
-    if "sheet" not in ctx._cache:
-        ctx._cache["sheet"] = FactSheet.build(
-            ctx.moment.facts, score=ctx.score, clock_ms=ctx.moment.clock_ms, foreign_names=ctx.foreign_names
-        )
-    return ctx._cache["sheet"]
 
 
 async def call_llm[T: BaseModel](
@@ -183,7 +174,7 @@ class FactCheckStep:
 
     async def run(self, ctx: MomentContext) -> None:
         result = check_insight_copy(
-            ctx.explanation, ctx.variants, fact_sheet(ctx), home_id=ctx.home.team_id, away_id=ctx.away.team_id
+            ctx.explanation, ctx.variants, context_sheet(ctx), home_id=ctx.home.team_id, away_id=ctx.away.team_id
         )
         issues, explanation_failed = result.messages, result.explanation_failed
         if not issues and self._review_wanted(ctx):

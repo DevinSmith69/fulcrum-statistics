@@ -25,7 +25,16 @@ from string import Formatter
 from fulcrum.contracts import Explanation, InsightVariant, Moment, MomentType, Persona, TacticalTag, Team
 
 from .context import fact_map, fmt_value, moment_minute
-from .factcheck import MAX_BODY, MAX_COMMENTARY, MAX_COMMENTARY_WORDS, MAX_HEADLINE, MAX_WHY, required_variants
+from .factcheck import (
+    MAX_BODY,
+    MAX_COMMENTARY,
+    MAX_COMMENTARY_WORDS,
+    MAX_HEADLINE,
+    MAX_WHY,
+    FactSheet,
+    context_sheet,
+    required_variants,
+)
 from .schemas import MomentContext
 
 
@@ -652,7 +661,10 @@ WHY: dict[MomentType, list[WhyTemplate]] = {
     MomentType.HALF_TIME: [WhyTemplate("At the break it is {score}, with xG {xg_home} to {xg_away}.")],
     MomentType.FULL_TIME: [WhyTemplate("It ends {score}, with xG {xg_home} to {xg_away}.")],
 }
-GENERIC_WHY = [WhyTemplate("This moment on {minute} shapes a match that stands at {score}.")]
+GENERIC_WHY = [
+    WhyTemplate("This moment on {minute} shapes a match that stands at {score}."),
+    WhyTemplate("This moment shapes the match."),  # slot-free: always passes the fact-checker
+]
 
 TACTICAL_TAGS: dict[MomentType, TacticalTag] = {
     MomentType.GOAL: TacticalTag.TURNING_POINT,
@@ -767,12 +779,17 @@ def _fits(headline: str, body: str, line: str) -> bool:
     )
 
 
-def render(template: Template, slots: Slots) -> tuple[str, str, str] | None:
-    """Fill `template`, or return None if a placeholder is missing or a length limit is exceeded."""
+def render(template: Template, slots: Slots, sheet: FactSheet | None = None) -> tuple[str, str, str] | None:
+    """Fill `template`, or return None if a placeholder is missing, a length limit is exceeded or (given a
+    `sheet`) the output fails the fact-checker — e.g. a string fact naming a player not in this match."""
     if not template.fields <= slots.values.keys():
         return None
     out = tuple(part.format_map(slots.values) for part in (template.headline, template.body, template.line))
-    return out if _fits(*out) else None  # type: ignore[return-value]
+    if not _fits(*out):
+        return None
+    if sheet is not None and any(sheet.check_text(part, "template") for part in out):
+        return None
+    return out  # type: ignore[return-value]
 
 
 def persona_key(persona: str, moment_team_id: str | None, perspective_team_id: str | None) -> str:
@@ -793,20 +810,26 @@ def candidates(mtype: MomentType | str, key: str) -> list[Template]:
     return [*specific, *GENERIC["fan" if key.startswith("fan_") else key]]
 
 
-def _first(templates: list[Template], slots: Slots) -> tuple[Template, tuple[str, str, str]]:
+def _first(templates: list[Template], slots: Slots, sheet: FactSheet | None) -> tuple[Template, tuple[str, str, str]]:
     for template in templates:
-        if (out := render(template, slots)) is not None:
+        if (out := render(template, slots, sheet)) is not None:
             return template, out
     raise AssertionError("GENERIC templates must always render")  # pragma: no cover
 
 
 def render_variant(
-    moment: Moment, home: Team, away: Team, score: str, persona: str, perspective_team_id: str | None = None
+    moment: Moment,
+    home: Team,
+    away: Team,
+    score: str,
+    persona: str,
+    perspective_team_id: str | None = None,
+    sheet: FactSheet | None = None,
 ) -> InsightVariant:
-    """The fallback variant for one persona (English)."""
+    """The fallback variant for one persona (English). With `sheet`, only fact-check-clean copy is used."""
     slots = build_slots(moment, home, away, score, perspective_team_id)
     _, (headline, body, line) = _first(
-        candidates(moment.type, persona_key(persona, moment.team_id, perspective_team_id)), slots
+        candidates(moment.type, persona_key(persona, moment.team_id, perspective_team_id)), slots, sheet
     )
     return InsightVariant(
         persona=persona,
@@ -820,8 +843,9 @@ def render_variant(
 
 def fallback_variants(ctx: MomentContext) -> list[InsightVariant]:
     """The four required variants (analyst, casual, club_fan home, club_fan away) from templates."""
+    sheet = context_sheet(ctx)
     return [
-        render_variant(ctx.moment, ctx.home, ctx.away, ctx.score, persona, team)
+        render_variant(ctx.moment, ctx.home, ctx.away, ctx.score, persona, team, sheet)
         for persona, team in required_variants(ctx.home.team_id, ctx.away.team_id)
     ]
 
@@ -829,13 +853,14 @@ def fallback_variants(ctx: MomentContext) -> list[InsightVariant]:
 def fallback_explanation(ctx: MomentContext) -> Explanation:
     """A persona-neutral explanation from templates; `key_fact_keys` lists the facts actually used."""
     slots = build_slots(ctx.moment, ctx.home, ctx.away, ctx.score)
-    template, (headline, _, _) = _first(candidates(ctx.moment.type, "analyst"), slots)
+    sheet = context_sheet(ctx)
+    template, (headline, _, _) = _first(candidates(ctx.moment.type, "analyst"), slots, sheet)
     headline_fields = {f for _, f, _, _ in Formatter().parse(template.headline) if f}
     for why in [*WHY.get(MomentType(ctx.moment.type), []), *GENERIC_WHY]:
         if not why.fields <= slots.values.keys():
             continue
         text = why.why.format_map(slots.values)
-        if len(text) > MAX_WHY:
+        if len(text) > MAX_WHY or sheet.check_text(text, "template"):
             continue
         keys = sorted({slots.sources[f] for f in why.fields | headline_fields if f in slots.sources})
         return Explanation(

@@ -123,14 +123,20 @@ def test_score_and_minute_from_context_are_allowed():
     assert codes(s.check_text("4 goals", "t")) == ["unknown_number"]
 
 
-def test_small_scoreline_phrases_allowed_but_not_large_ones():
-    s = FactSheet.build([])
-    assert s.check_text("from 0-0 to 1–0, never a 3:3", "t") == []
-    assert codes(s.check_text("a 5-0 rout", "t")) == ["unknown_number", "unknown_number"]
-    # formation strings are not scorelines
+def test_scorelines_need_fact_pack_digits():
+    s = FactSheet.build([], score="1-0")
+    assert s.check_text("from 0-0 to 1–0", "t") == []
+    assert [i.code for i in s.check_text("Northbridge lead 3-2", "t")] == ["unknown_number", "unknown_number"]
     assert "unknown_number" in codes(s.check_text("in a 4-3-3", "t"))
-    # digits inside larger numbers are not freed by the scoreline allowance
     assert codes(s.check_text("a 71-29 split", "t")) == ["unknown_number", "unknown_number"]
+
+
+def test_thousands_separators():
+    s = FactSheet.build([F("distance_m", 11240, "m"), F("value", 1)])
+    assert s.check_text("he has covered 11,240 m", "t") == []
+    assert s.check_text("11.240 m recorridos", "t", language="es") == []
+    assert "unknown_number" in codes(s.check_text("1.000 Pässe", "t", language="de"))
+    assert s.check_text("0,34 xG", "t", language="es") != []  # still a decimal, and not a fact here
 
 
 def test_numbers_in_labels_are_allowed(sheet):
@@ -155,6 +161,11 @@ def test_player_ids_are_not_numbers_we_allow(sheet):
         ("Spurs would have loved that", "Spurs"),
         ("the Gunners of Northbridge", "Gunners"),
         ("like an EPL winger", "EPL"),
+        ("ARSENAL take note", "ARSENAL"),
+        ("like arsenal did", "arsenal"),
+        ("a Premier-League style finish", "Premier-League"),
+        ("a Premier League finish", "Premier League"),
+        ("Aston  Villa would", "Aston  Villa"),
     ],
 )
 def test_denylisted_real_names_fail(sheet, text, hit):
@@ -179,6 +190,15 @@ def test_league_names_outside_this_match_fail(sheet):
     assert codes(issues) == ["foreign_name", "foreign_name"]
 
 
+@pytest.mark.parametrize("text", ["harlow are next", "a Marsh Dock United fan", "ULLMANN scores", "Harlow Cross"])
+def test_foreign_names_any_case_and_distinctive_first_word(sheet, text):
+    assert "foreign_name" in codes(sheet.check_text(text, "t"))
+
+
+def test_own_team_names_any_case_pass(sheet):
+    assert sheet.check_text("riverside rovers respond; NORTHBRIDGE lead", "t") == []
+
+
 def test_roster_names_in_match_pass_including_hyphenated(sheet):
     assert sheet.check_text("Fenwick-Shaw finds Nakamura-Bell's weak side; Brennick finishes", "t") == []
 
@@ -201,7 +221,7 @@ def test_foreign_name_not_matched_inside_hyphenated_name():
         ("the market has moved", "en"),
         ("bookmakers are nervous", "en"),
         ("las apuestas cambian", "es"),
-        ("les cotes bougent", "fr"),
+        ("les paris sportifs s'affolent", "fr"),
         ("as apostas sobem", "pt"),
         ("die Wetten laufen", "de"),
         ("the odds have shifted", "es"),  # English betting words are banned in every language
@@ -211,9 +231,18 @@ def test_banned_terms_fail(sheet, text, language):
     assert "banned_term" in codes(sheet.check_text(text, "t", language=language))
 
 
-@pytest.mark.parametrize("text", ["a better ball between the lines", "a marked man", "pricey? no: priceless"])
-def test_banned_terms_need_whole_words(sheet, text):
-    assert sheet.check_text(text, "t") == []
+@pytest.mark.parametrize(
+    "text, language",
+    [
+        ("a better ball between the lines", "en"),
+        ("a marked man", "en"),
+        ("pricey? no: priceless", "en"),
+        ("Seine Quote liegt bei 71 %", "de"),
+        ("sa cote de popularité", "fr"),
+    ],
+)
+def test_banned_terms_need_whole_words(sheet, text, language):
+    assert sheet.check_text(text, "t", language=language) == []
 
 
 def test_base_language():

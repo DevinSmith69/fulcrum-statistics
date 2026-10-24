@@ -142,3 +142,50 @@ def test_casual_bodies_quote_at_most_one_fact_number():
 def test_possessive_team_names():
     ctx = make_context(make_moment(MomentType.WP_SWING))  # team = Riverside Rovers
     assert "Riverside Rovers' win probability" in fallback_explanation(ctx).why_it_matters
+
+
+def _copy_passes(ctx) -> list[str]:
+    return check_insight_copy(
+        fallback_explanation(ctx),
+        fallback_variants(ctx),
+        sheet_for(ctx),
+        home_id=ctx.home.team_id,
+        away_id=ctx.away.team_id,
+    ).messages
+
+
+def test_tiny_float_is_not_rendered_in_scientific_notation():
+    base = make_moment(MomentType.GOAL)
+    facts = [F("xg", 5e-05, "xG", "Shot xG") if f.key == "xg" else f for f in base.facts]
+    ctx = make_context(make_moment(MomentType.GOAL, facts=facts))
+    assert _copy_passes(ctx) == []
+    assert "0.00005 xG" in fallback_variants(ctx)[0].body
+
+
+@pytest.mark.parametrize("value", ["Ullmann interception", "Arsenal-style press", "a betting-slip moment"])
+def test_bad_string_facts_fall_through_to_clean_templates(value):
+    base = make_moment(MomentType.WP_SWING)
+    facts = [F("cause_event", value) if f.key == "cause_event" else f for f in base.facts]
+    ctx = make_context(make_moment(MomentType.WP_SWING, facts=facts))
+    assert _copy_passes(ctx) == []
+    assert all(value not in v.body for v in fallback_variants(ctx))
+
+
+@pytest.mark.parametrize("mtype", ALL_TYPES)
+def test_fallback_passes_for_every_team_pairing(mtype):
+    from fulcrum.agents.context import MatchContextStore
+    from fulcrum.contracts import MatchConfig
+    from tests.agents.factories import league
+
+    teams = league()
+    for home in teams:
+        for away in teams:
+            if home.team_id == away.team_id:
+                continue
+            store = MatchContextStore(teams)
+            store.register_match(MatchConfig(match_id="m", home_team_id=home.team_id, away_team_id=away.team_id))
+            base = make_moment(mtype, match_id="m")
+            team_id = {HOME: home.team_id, AWAY: away.team_id}.get(base.team_id)
+            facts = [f for f in base.facts if f.key not in ("home_team", "away_team")]
+            ctx = store.build_context(make_moment(mtype, match_id="m", team_id=team_id, facts=facts))
+            assert _copy_passes(ctx) == [], (home.team_id, away.team_id)
