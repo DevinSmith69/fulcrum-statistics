@@ -46,7 +46,7 @@ The API base comes from `VITE_API_URL` (default `http://localhost:8000`); the We
 
 | Route | Screen | Notes |
 |---|---|---|
-| `#/` | **Match Studio** | Scoreboard, live 2D pitch, overlay cues, outcome probability chart, momentum, pressure/control gauges, the explained-moments feed ("analysing…" until the insight lands, then a Passed / Repaired / Fallback badge) |
+| `#/` | **Match Studio** | Scoreboard, live 2D pitch, overlay cues, outcome probability chart, momentum, pressure/control gauges, the explained-moments feed ("analysing…" until the insight lands, then a Passed / Repaired / Fallback badge), and the collapsible **Ask the studio** panel (`POST /api/matches/{id}/ask`: type a question or pick a suggestion; the answer comes in your language and persona with its check badge, and cited moments are chips that scroll to and ring the moment in the feed) |
 | prefs drawer | **Viewer preferences** | "Viewing as …" in the header: persona, language, favourite club, searchable roster to follow a player. Sends `update_prefs` live |
 | `#/split` | **Split view** | Two independent WebSocket subscriptions with their own prefs (default Analyst·EN v Casual·ES) |
 | `#/broadcast` | **Broadcast mode** | Pitch + overlays only. `I` toggles the **cue inspector** (raw `OverlayCue` JSON + the REST feed URL), `F` full screen, `Esc` back |

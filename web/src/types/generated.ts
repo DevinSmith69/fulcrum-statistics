@@ -6,15 +6,16 @@
 
 /**
  * This interface was referenced by `FulcrumContracts`'s JSON-Schema
+ * via the `definition` "CheckStatus".
+ */
+export type CheckStatus = "passed" | "repaired" | "fallback";
+/**
+ * This interface was referenced by `FulcrumContracts`'s JSON-Schema
  * via the `definition` "Persona".
  */
 export type Persona = "analyst" | "casual" | "club_fan" | "player_lens";
 export type Persona1 = "analyst" | "casual" | "club_fan" | "player_lens";
-/**
- * This interface was referenced by `FulcrumContracts`'s JSON-Schema
- * via the `definition` "CheckStatus".
- */
-export type CheckStatus = "passed" | "repaired" | "fallback";
+export type Persona2 = "analyst" | "casual" | "club_fan" | "player_lens";
 /**
  * This interface was referenced by `FulcrumContracts`'s JSON-Schema
  * via the `definition` "TacticalTag".
@@ -106,10 +107,12 @@ export type MomentType =
 export type Position = "GK" | "DF" | "MF" | "FW";
 
 export interface FulcrumContracts {
+  CheckStatus?: CheckStatus;
   Persona?: Persona;
+  AskAnswer?: AskAnswer;
+  AskRequest?: AskRequest;
   ViewerPrefs?: ViewerPrefs;
   ClientMessage?: ClientMessage;
-  CheckStatus?: CheckStatus;
   Explanation?: Explanation;
   InsightVariant?: InsightVariant;
   TacticalTag?: TacticalTag;
@@ -147,11 +150,59 @@ export interface FulcrumContracts {
   WinProbPoint?: WinProbPoint;
 }
 /**
+ * The Studio Analyst's answer, grounded only in this match's data and fact-checked like every insight.
+ *
+ * `answerable` is false when the question can't be answered from the match data (or is off-topic): `answer`
+ * then politely says what can be asked instead.
+ *
+ * This interface was referenced by `FulcrumContracts`'s JSON-Schema
+ * via the `definition` "AskAnswer".
+ */
+export interface AskAnswer {
+  match_id: string;
+  question: string;
+  answer: string;
+  answerable: boolean;
+  check_status: CheckStatus;
+  /**
+   * Moments the answer relies on
+   */
+  cited_moment_ids?: string[];
+  /**
+   * Context-pack fact keys the answer used
+   */
+  fact_keys?: string[];
+  persona?: Persona1;
+  language?: string;
+  latency_ms?: number | null;
+}
+/**
+ * Body of `POST /api/matches/{id}/ask` ("Ask the studio"): a viewer's question about the live match.
+ *
+ * This interface was referenced by `FulcrumContracts`'s JSON-Schema
+ * via the `definition` "AskRequest".
+ */
+export interface AskRequest {
+  question: string;
+  /**
+   * Tone of the answer; default casual
+   */
+  persona?: Persona | null;
+  /**
+   * Answer language (en/es/fr/pt/de); default en
+   */
+  language?: string | null;
+  /**
+   * For the club_fan persona: whose side to take
+   */
+  favourite_team_id?: string | null;
+}
+/**
  * This interface was referenced by `FulcrumContracts`'s JSON-Schema
  * via the `definition` "ViewerPrefs".
  */
 export interface ViewerPrefs {
-  persona?: Persona1;
+  persona?: Persona2;
   language?: string;
   favourite_team_id?: string | null;
   followed_player_id?: string | null;
