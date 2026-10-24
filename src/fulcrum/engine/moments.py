@@ -54,6 +54,11 @@ def ri(x: float) -> int:
     return int(math.floor(x + 0.5))
 
 
+def outcome_swing(before: WinProbability, after: WinProbability) -> float:
+    """Largest absolute change across home win / draw / away win (0-1)."""
+    return max(abs(after.home - before.home), abs(after.draw - before.draw), abs(after.away - before.away))
+
+
 @dataclass
 class _Candidate:
     type: MomentType
@@ -303,7 +308,9 @@ class MomentDetector:
                 Fact(key="scorer_goals_in_match", label="Scorer's goals this match", value=t.players[g.scorer_id].goals)
             )
         facts += self._wp_facts(before, wp_after)
-        sig = self.p.goal_base + min(self.p.goal_wp_cap, abs(getattr(wp_after, side) - getattr(before, side)))
+        # Swing across all three outcomes: a late equaliser barely moves the scorer's win chance but turns the
+        # draw from unlikely to near-certain, and it is one of the biggest moments of a match.
+        sig = self.p.goal_base + min(self.p.goal_wp_cap, outcome_swing(before, wp_after))
         return _Candidate(
             MT.GOAL,
             sig,

@@ -25,7 +25,7 @@ from fulcrum.contracts import (
 
 from . import metrics as mx
 from .params import BOX_X, BOX_Y_MAX, BOX_Y_MIN, DEFAULT_PARAMS, FINAL_THIRD_X, HALF_X, EngineParams
-from .winprob import TeamStrength, win_probability
+from .winprob import TeamStrength, pre_match_rates, recent_xg_rate, win_probability
 
 E = EventType
 ON_BALL = {E.PASS, E.CARRY, E.DRIBBLE, E.SHOT, E.CLEARANCE}
@@ -203,7 +203,7 @@ class MatchTracker:
         mp = params.metrics
         self.pass_window: mx.Window[PassRecord] = mx.Window(mp.window_s)
         self.turnover_window: mx.Window[str] = mx.Window(mp.window_s)  # team that LOST the ball
-        self.shot_window: mx.Window[ShotRecord] = mx.Window(max(mp.window_s, params.winprob.xg_window_min * 60))
+        self.shot_window: mx.Window[ShotRecord] = mx.Window(max(mp.window_s, params.winprob.xg_memory_min * 60))
         self.box_entry_window: mx.Window[str] = mx.Window(mp.window_s)
         self.phase = mx.PhaseTracker(mp)
         self.momentum = 0.0
@@ -727,17 +727,24 @@ class MatchTracker:
     def win_prob(self) -> WinProbability:
         """Live outcome probability for the current state (MODEL_SPEC §3)."""
         wpp = self.params.winprob
-        xg_h = sum(s.xg for s in self.recent_shots(self.home_id, wpp.xg_window_min * 60))
-        xg_a = sum(s.xg for s in self.recent_shots(self.away_id, wpp.xg_window_min * 60))
+        home, away = TeamStrength.from_team(self.home, wpp), TeamStrength.from_team(self.away, wpp)
+        lam_h, lam_a = pre_match_rates(home, away, wpp)
+        stamped = self.shot_window.stamped(self.clock_ms)
+        elapsed_min = self.clock_ms / 60000
+
+        def rate(team_id: str | None, prior_per_90: float) -> float | None:
+            shots = [((self.clock_ms - t) / 60000, s.xg) for t, s in stamped if s.team_id == team_id]
+            return recent_xg_rate(shots, elapsed_min, prior_per_90 / 90, wpp)
+
         return win_probability(
-            home=TeamStrength.from_team(self.home, wpp),
-            away=TeamStrength.from_team(self.away, wpp),
+            home=home,
+            away=away,
             period=self.period,
             minute=self.minute,
             score_home=self.score_home,
             score_away=self.score_away,
-            xg_last_window_home=xg_h,
-            xg_last_window_away=xg_a,
+            xg_rate_home=rate(self.home_id, lam_h),
+            xg_rate_away=rate(self.away_id, lam_a),
             reds_home=self.team(self.home_id).red_cards if self.home_id else 0,
             reds_away=self.team(self.away_id).red_cards if self.away_id else 0,
             finished=self.finished,

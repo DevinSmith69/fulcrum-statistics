@@ -120,7 +120,10 @@ Independent Poisson goals for the remaining time.
 pre-match rate per 90:   λ_home = home.pre_match_goal_rate · (75/away.defence_rating) · 1.08
                          λ_away = away.pre_match_goal_rate · (75/home.defence_rating) · 0.95
 per-minute:              r = λ/90
-in-play (after 15'):     r_live = 0.7·r_pre + 0.3·(team xG in last 15 min / 15)
+in-play:                 r_live = (1 − w)·r_pre + w·r_recent,  w = 0.3·min(1, minute/30)   (ramps in, no step)
+recent xG rate:          r_recent = (Σ xG_i·e^(−age_i/10) + r_pre·10) / (10·(1 − e^(−elapsed/10)) + 10)
+                         (exponential decay τ = 10 min instead of a hard 15-min window, shrunk towards r_pre
+                          by 10 pseudo-minutes so one early big chance can't double the rate)
 red card:                team down ×0.65, opponent ×1.25 (per red, multiplicative)
 game state after 60':    trailing ×1.15, leading ×0.90
 remaining minutes:       T = max(0, 90 + expected_stoppage(4) − minute_now)   (in H1 use 45-min halves sum)
@@ -131,6 +134,9 @@ Sanity tests (must pass; reference values from the formulas above in brackets): 
 1-0 at 89' → leader ≥ 0.90 [0.927]; 0-0 goal at 80' → scorer ≥ 0.80 [0.829]; probabilities sum to 1 ± 1e-6.
 Present it in UI as **"Match outcome probability"**, never as odds/prices — this is not a betting product.
 Store a `WinProbPoint` per event for the WP chart.
+*Changed 2026-10-24:* the original hard switch at 15' and the 15-minute window edge made the chart jump by
+up to 34 points with nothing happening (blend switching on; a chance dropping out of the window). Every
+step in the chart should now come from a shot, card or goal.
 
 ## 4. Moment detection (`engine/moments.py`)
 
@@ -140,7 +146,7 @@ Target **20 – 35 moments per match**; if over, raise thresholds in params, don
 
 | Type | Rule | Significance | Required facts (keys) |
 |---|---|---|---|
-| goal | every goal | 0.6 + min(0.4, \|ΔWP scorer\|) | scorer, minute, xg, shot_speed_kmh, distance_m, wp_scorer_before, wp_scorer_after, score_after, assist (if any), pass_difficulty_of_assist |
+| goal | every goal | 0.6 + min(0.4, largest \|Δ\| across P(home), P(draw), P(away)) | scorer, minute, xg, shot_speed_kmh, distance_m, wp_scorer_before, wp_scorer_after, score_after, assist (if any), pass_difficulty_of_assist |
 | big_chance | shot xG ≥ 0.30 not scored | 0.3 + 0.5·xG | shooter, xg, outcome, distance_m, team_xg_total |
 | wp_swing | \|ΔP(home) or ΔP(away)\| ≥ 0.06 within 90 s, not a goal | min(1, 5·\|Δ\|) | wp_*_before, wp_*_after, cause_event, minute, pressure_index_* |
 | pressure_shift | sign flip of (P_home − P_away) with \|diff\| ≥ 25, or +30 in 3 min | 0.4–0.6 | pressure_index_*_before/after, shots_last_5, box_entries_last_5 |

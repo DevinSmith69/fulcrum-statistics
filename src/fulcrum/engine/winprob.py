@@ -6,6 +6,7 @@ Pure functions, no state. Presented in the UI as "Match outcome probability", ne
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from fulcrum.contracts import Team, WinProbability
@@ -45,17 +46,47 @@ def remaining_minutes(period: int, minute: float, params: WinProbParams = DEFAUL
     return max(0.0, 2 * half + params.expected_stoppage_min - minute)
 
 
+def recent_xg_rate(
+    shots: Iterable[tuple[float, float]],
+    elapsed_min: float,
+    prior_rate: float | None = None,
+    params: WinProbParams = DEFAULT_PARAMS.winprob,
+) -> float | None:
+    """Recent attacking rate (xG per minute) from `(age_min, xg)` shots, exponentially decayed.
+
+    Each shot's weight is exp(−age/τ), normalised by the weight mass of the minutes played so far, so a team
+    creating xG at a steady rate r reads r, and a chance fades out smoothly instead of falling off a window
+    edge. With `prior_rate`, the estimate is shrunk towards it by `xg_prior_min` pseudo-minutes so one big
+    chance early on cannot double the rate. None before any time has been played.
+    """
+    tau = params.xg_decay_min
+    norm = tau * (1.0 - math.exp(-max(0.0, elapsed_min) / tau))
+    if norm <= 1e-9:
+        return None
+    decayed = sum(xg * math.exp(-max(0.0, age) / tau) for age, xg in shots)
+    if prior_rate is None:
+        return decayed / norm
+    k = params.xg_prior_min
+    return (decayed + prior_rate * k) / (norm + k)
+
+
+def live_weight(minute: float, params: WinProbParams = DEFAULT_PARAMS.winprob) -> float:
+    """Weight of the live xG rate: ramps linearly from 0 at kick-off to `w_live` at `live_ramp_min`."""
+    return params.w_live * min(1.0, max(0.0, minute) / params.live_ramp_min)
+
+
 def live_rate_per_min(
     pre_per_90: float,
     minute: float,
-    xg_last_window: float | None,
+    recent_rate: float | None,
     params: WinProbParams = DEFAULT_PARAMS.winprob,
 ) -> float:
-    """Per-minute rate, blended with recent xG after `live_after_min` (None = no live data → pre-match rate)."""
+    """Per-minute rate: pre-match rate blended with the recent xG rate (None = no live data → pre-match rate)."""
     r_pre = pre_per_90 / 90.0
-    if minute < params.live_after_min or xg_last_window is None:
+    if recent_rate is None:
         return r_pre
-    return params.w_pre * r_pre + params.w_live * (xg_last_window / params.xg_window_min)
+    w = live_weight(minute, params)
+    return (1.0 - w) * r_pre + w * recent_rate
 
 
 def _poisson_pmf(lam: float, n: int) -> list[float]:
@@ -101,17 +132,17 @@ def win_probability(
     minute: float,
     score_home: int,
     score_away: int,
-    xg_last_window_home: float | None = None,
-    xg_last_window_away: float | None = None,
+    xg_rate_home: float | None = None,
+    xg_rate_away: float | None = None,
     reds_home: int = 0,
     reds_away: int = 0,
     finished: bool = False,
     params: WinProbParams = DEFAULT_PARAMS.winprob,
 ) -> WinProbability:
-    """Full MODEL_SPEC §3 model. `xg_last_window_*` is team xG in the last 15 minutes (None → pre-match rate)."""
+    """Full MODEL_SPEC §3 model. `xg_rate_*` is the team's recent xG per minute (`recent_xg_rate`; None → pre-match)."""
     lam_h90, lam_a90 = pre_match_rates(home, away, params)
-    r_home = live_rate_per_min(lam_h90, minute, xg_last_window_home, params)
-    r_away = live_rate_per_min(lam_a90, minute, xg_last_window_away, params)
+    r_home = live_rate_per_min(lam_h90, minute, xg_rate_home, params)
+    r_away = live_rate_per_min(lam_a90, minute, xg_rate_away, params)
 
     r_home *= params.red_card_down**reds_home * params.red_card_opponent**reds_away
     r_away *= params.red_card_down**reds_away * params.red_card_opponent**reds_home

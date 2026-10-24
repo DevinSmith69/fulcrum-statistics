@@ -41,3 +41,11 @@ uv run python scripts/print_moments.py data/matches/sample_seed7.jsonl --all-fac
 ## Moment tuning (MODEL_SPEC §4 target 20–35 per match)
 Tuned on five WS1 matches (seeds 3, 7, 11, 21, 42): 21 / 27 / 25 / 35 / 23 moments, every goal kept. The
 values that differ from the spec's starting values are listed in `docs/HANDOFFS.md` (WS2 section).
+
+## Win probability and goal significance (changed 2026-10-24, after watching a live match)
+- The live xG blend ramps in over the first 30' and uses exponentially decayed xG (τ = 10 min, shrunk
+  towards the pre-match rate) instead of switching on at 15' over a hard 15-minute window. The old version
+  moved the chart up to 34 points with no event. Check a recording with
+  `uv run python scripts/print_moments.py <file>`; every step in the chart should come from a shot, card or goal.
+- Goal significance uses the largest swing across home/draw/away, so a stoppage-time equaliser ranks as a
+  top moment (it used to rank 6th, behind a red card).

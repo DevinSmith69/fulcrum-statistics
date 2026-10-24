@@ -6,8 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from fulcrum.contracts import EventType, MatchEvent, Moment, Outcome, PassAttributes, ShotAttributes
+from fulcrum.contracts import EventType, MatchEvent, Moment, Outcome, PassAttributes, ShotAttributes, WinProbability
 from fulcrum.engine.match import MatchEngine
+from fulcrum.engine.moments import outcome_swing
 from fulcrum.engine.params import DEFAULT_PARAMS
 from fulcrum.engine.replay import run_file
 from fulcrum.engine.teams import load_teams
@@ -49,6 +50,24 @@ def test_target_moment_count_on_sim_samples(path):
     n_goals = engine.tracker.score_home + engine.tracker.score_away
     assert [m.type for m in engine.moments].count("goal") == n_goals
     assert 20 <= len(engine.moments) <= 35
+
+
+SEED11 = Path(__file__).resolve().parents[2] / "data" / "matches" / "sample_seed11.jsonl"
+
+
+def test_outcome_swing_counts_the_draw():
+    before = WinProbability(home=0.01, draw=0.03, away=0.96)
+    after = WinProbability(home=0.08, draw=0.89, away=0.03)  # stoppage-time equaliser
+    assert outcome_swing(before, after) == pytest.approx(0.93)
+
+
+@pytest.mark.skipif(not SEED11.exists(), reason="WS1 sample fixtures not merged yet")
+def test_late_equaliser_is_the_top_moment():
+    """sample_seed11 ends 2-2 with a 94' equaliser; scoring on the scorer's win chance alone ranked it 6th."""
+    engine = run_file(SEED11)
+    story = [m for m in engine.moments if m.type not in ("half_time", "full_time")]
+    top = max(story, key=lambda m: (m.significance, m.clock_ms))
+    assert top.type == "goal" and top.clock_ms > 90 * 60_000
 
 
 def test_goal_fact_pack(replayed):

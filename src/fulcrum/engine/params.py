@@ -88,10 +88,11 @@ class WinProbParams:
     away_factor: float = 0.95
     default_goal_rate: float = 1.35
     default_defence: float = 75.0
-    live_after_min: float = 15.0
-    w_pre: float = 0.7
-    w_live: float = 0.3
-    xg_window_min: float = 15.0
+    w_live: float = 0.3  # full weight of the recent xG rate (pre-match rate gets 1 − w)
+    live_ramp_min: float = 30.0  # the live weight ramps in linearly from kick-off (no step at 15')
+    xg_decay_min: float = 10.0  # τ of the exponential decay on recent xG (no hard window edge)
+    xg_prior_min: float = 10.0  # pseudo-minutes at the pre-match rate the recent rate is shrunk towards
+    xg_memory_min: float = 40.0  # shots older than this are dropped (weight e^-4 ≈ 0.02)
     red_card_down: float = 0.65
     red_card_opponent: float = 1.25
     game_state_after_min: float = 60.0
