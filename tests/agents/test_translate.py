@@ -119,3 +119,17 @@ async def test_translated_cues_are_built_and_cached():
     cues = await tr.cues(insight, ctx.moment, ctx.home, ctx.away, "es")
     assert cues and {c.language for c in cues} == {"es"}
     assert await tr.cues(insight, ctx.moment, ctx.home, ctx.away, "es") is cues
+
+
+async def test_english_phase_words_get_one_repair_but_never_force_english():
+    ctx, insight = setup()
+    leaky = spanish(insight, body="El partido pasa de balanced a control de Northbridge. ¡Brennick marca! 0,34 xG.")
+    clean = spanish(insight)
+    llm = ScriptedLLM({"translator": [leaky, clean]})
+    out = await Translator(llm).translate(insight, ctx.moment, ctx.home, ctx.away, "es")
+    assert out[0].headline == "¡Gol de Brennick!" and "balanced" not in out[0].body
+    assert "'balanced' is English" in llm.calls[1]["user"]
+    # still leaky on the repair: accept it rather than fall back to English
+    llm2 = ScriptedLLM({"translator": leaky})
+    out2 = await Translator(llm2).translate(insight, ctx.moment, ctx.home, ctx.away, "es")
+    assert out2[0].language == "es" and len(llm2.calls) == 2

@@ -67,10 +67,12 @@ Return JSON: {"variants":[...one InsightVariant per required variant, in the lis
 
 TRANSLATOR = PromptSpec(
     agent_name="translator",
-    version="translator/1.1.0",
+    version="translator/1.2.0",
     system="""\
 Translate each variant into {language}. Keep tone and persona. Keep all numbers, player and team names
-EXACTLY as in the source. Respect max lengths (headline 90, body 300, commentary_line 160): translations
+EXACTLY as in the source; translate every other word, including descriptive words quoted from the match data
+(e.g. "chaotic", "balanced", "in control"), so no English is left.
+Respect max lengths (headline 90, body 300, commentary_line 160): translations
 often run longer than English, so tighten the wording to fit, as complete sentences; never let text run past
 the limit, because it is cut off mid-word. Return JSON.""",
 )

@@ -19,7 +19,7 @@ from fulcrum.llm import LLMClient
 
 from .context import fact_map, fmt_value, translator_prompt
 from .cues import build_cues
-from .factcheck import FactSheet, Issue, check_variants, variant_label
+from .factcheck import FactSheet, Issue, base_language, check_variants, variant_label
 from .orchestrator import LLMTimeout, OrchestratorConfig, call_llm
 from .prompts import TRANSLATOR
 from .schemas import TranslationOutput
@@ -46,6 +46,23 @@ def _structure_issues(source: Sequence[InsightVariant], translated: Sequence[Ins
             t.perspective_player_id,
         ):
             issues.append(Issue("variants", f"variants[{i}]", f"must stay {variant_label(s)} (same order as source)"))
+    return issues
+
+
+# Engine phase wording that reaches copy through fact values ("balanced", "Harlow Cross in control").
+UNTRANSLATED_TERMS = ("balanced", "chaotic", "in control")
+
+
+def untranslated_terms(variants: Sequence[InsightVariant]) -> list[Issue]:
+    """English phase words left in non-English copy (they come from fact values the model treats as data)."""
+    issues = []
+    for v in variants:
+        if base_language(v.language) == "en":
+            continue
+        text = f"{v.headline} {v.body} {v.commentary_line}".lower()
+        for term in UNTRANSLATED_TERMS:
+            if term in text:
+                issues.append(Issue("untranslated", variant_label(v), f"'{term}' is English: translate it too"))
     return issues
 
 
@@ -148,6 +165,10 @@ class Translator:
                 continue
             translated = [v.model_copy(update={"language": lang}) for v in out.variants]
             problems = _structure_issues(source, translated) + check_variants(translated, sheet).issues
+            # English phase words the model tends to quote verbatim: worth one repair, never worth falling back
+            # to all-English copy, so they only count on the first attempt.
+            if attempt == 1:
+                problems += untranslated_terms(translated)
             if not problems:
                 self._cache[(insight.insight_id, lang)] = translated
                 return translated
