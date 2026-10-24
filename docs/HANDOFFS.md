@@ -230,7 +230,7 @@ process on the real namespace: sim → engine → agents → api in 4 processes.
   untouched. Tests: `tests/sim/test_sim_service.py`.
 
 ### Requests
-- [ ] (WS5 → WS2) **Wire the `TODO(azure)` in `POST /api/matches`.** With `FULCRUM_SIM_URL` set (Bicep sets
+- [x] (WS5 → WS2) **Done 2026-10-24 (main, `api.app.start_on_sim`; 502 + not registered if the sim refuses).** **Wire the `TODO(azure)` in `POST /api/matches`.** With `FULCRUM_SIM_URL` set (Bicep sets
   `http://ca-fulcrum-sim` on the api app), forward the config to the sim service. Without this, a match POSTed by
   the web in Azure is registered but never starts. Only the sim's boot-time match runs. Suggested code:
   ```python

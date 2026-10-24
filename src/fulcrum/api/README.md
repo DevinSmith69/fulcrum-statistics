@@ -37,3 +37,7 @@ without `fulcrum.agents` moments still flow but there are no insights.
   by `seq` / `moment_id` / `insight_id` / `cue_id` — a `hello` and the live stream may overlap by an item.
 - A viewer with no variant for their persona gets the casual one; missing languages are translated on demand
   (English until the agents answer).
+
+- Out of process (Azure, `FULCRUM_INPROCESS` off): with `FULCRUM_SIM_URL` set, `POST /api/matches` forwards the
+  config to the sim service (`POST {FULCRUM_SIM_URL}/matches`). If the sim is unreachable or refuses, the API
+  answers 502 and does not keep the match registered.

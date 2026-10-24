@@ -15,6 +15,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -64,6 +65,21 @@ def problem(status: int, title: str, detail: Any = None, **extra: Any) -> JSONRe
     """RFC 7807 problem response."""
     body = {"type": "about:blank", "title": title, "status": status, "detail": detail, **extra}
     return JSONResponse(body, status_code=status, media_type="application/problem+json")
+
+
+async def start_on_sim(app: FastAPI, sim_url: str, config: MatchConfig) -> None:
+    """Ask the sim service (`fulcrum.sim.service`, `POST /matches`) to run `config`; 502 if it can't."""
+    client: httpx.AsyncClient | None = getattr(app.state, "sim_client", None)
+    try:
+        if client is not None:
+            r = await client.post(f"{sim_url.rstrip('/')}/matches", json=config.model_dump(mode="json"))
+        else:
+            async with httpx.AsyncClient(timeout=10) as c:
+                r = await c.post(f"{sim_url.rstrip('/')}/matches", json=config.model_dump(mode="json"))
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, f"sim service unreachable: {exc}") from exc
+    if r.status_code >= 400:
+        raise HTTPException(502, f"sim refused the match ({r.status_code}): {r.text[:200]}")
 
 
 def create_app(
@@ -180,8 +196,13 @@ def _router() -> APIRouter:
         pipeline: Pipeline | None = request.app.state.pipeline
         if pipeline is not None:
             await pipeline.start_match(config)
-        # TODO(azure): out-of-process mode — ask the sim Container App to start this match (it listens on
-        # its own; for the demo the sim app starts a match on boot and the API picks it up from the bus).
+        elif sim_url := os.getenv("FULCRUM_SIM_URL"):
+            # Out-of-process (Azure): the sim Container App runs the match and publishes to Event Hubs.
+            try:
+                await start_on_sim(request.app, sim_url, config)
+            except Exception:
+                reg.matches.pop(config.match_id, None)  # let the client retry with the same match_id
+                raise
         return {"match_id": config.match_id}
 
     @r.get("/matches")

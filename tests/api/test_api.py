@@ -423,3 +423,36 @@ def wait_for_hello_periods(ws, attempts: int = 20):
         ws.send_json({"type": "update_prefs", "prefs": {"persona": "casual"}})
         hello = ws.receive_json()
     return hello
+
+
+def _stub_sim(status: int):
+    """A stand-in for the sim Container App that records what it was asked to start."""
+    from fastapi import FastAPI, Response
+
+    stub, started = FastAPI(), []
+
+    @stub.post("/matches")
+    async def start(body: dict) -> Response:
+        started.append(body)
+        return Response(status_code=status)
+
+    return stub, started
+
+
+@pytest.mark.parametrize("sim_status", [202, 500])
+def test_out_of_process_post_forwards_to_sim(monkeypatch, sim_status):
+    import httpx
+
+    monkeypatch.setenv("FULCRUM_SIM_URL", "http://ca-fulcrum-sim")
+    stub, started = _stub_sim(sim_status)
+    app = create_app(MemoryBus(), in_process=False)
+    with TestClient(app) as c:
+        app.state.sim_client = httpx.AsyncClient(transport=httpx.ASGITransport(app=stub))
+        r = c.post("/api/matches", json=CONFIG)
+        assert started and started[0]["match_id"] == MID and started[0]["home_team_id"] == "NBA"
+        if sim_status < 400:
+            assert r.status_code == 201
+            assert [m["match_id"] for m in c.get("/api/matches").json()] == [MID]
+        else:
+            assert r.status_code == 502
+            assert c.get("/api/matches").json() == []  # not left registered, so a retry can reuse the id
