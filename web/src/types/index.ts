@@ -1,5 +1,7 @@
 // App-level types. Contract types are GENERATED from ../schemas (npm run types) — never edit those by hand.
 export type {
+  AskAnswer,
+  AskRequest,
   CheckStatus,
   Fact,
   Insight,

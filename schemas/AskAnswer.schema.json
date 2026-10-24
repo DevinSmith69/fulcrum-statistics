@@ -1,0 +1,93 @@
+{
+  "$defs": {
+    "CheckStatus": {
+      "enum": [
+        "passed",
+        "repaired",
+        "fallback"
+      ],
+      "title": "CheckStatus",
+      "type": "string"
+    },
+    "Persona": {
+      "enum": [
+        "analyst",
+        "casual",
+        "club_fan",
+        "player_lens"
+      ],
+      "title": "Persona",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The Studio Analyst's answer, grounded only in this match's data and fact-checked like every insight.\n\n`answerable` is false when the question can't be answered from the match data (or is off-topic): `answer`\nthen politely says what can be asked instead.",
+  "properties": {
+    "match_id": {
+      "title": "Match Id",
+      "type": "string"
+    },
+    "question": {
+      "title": "Question",
+      "type": "string"
+    },
+    "answer": {
+      "maxLength": 400,
+      "title": "Answer",
+      "type": "string"
+    },
+    "answerable": {
+      "title": "Answerable",
+      "type": "boolean"
+    },
+    "check_status": {
+      "$ref": "#/$defs/CheckStatus"
+    },
+    "cited_moment_ids": {
+      "description": "Moments the answer relies on",
+      "items": {
+        "type": "string"
+      },
+      "title": "Cited Moment Ids",
+      "type": "array"
+    },
+    "fact_keys": {
+      "description": "Context-pack fact keys the answer used",
+      "items": {
+        "type": "string"
+      },
+      "title": "Fact Keys",
+      "type": "array"
+    },
+    "persona": {
+      "$ref": "#/$defs/Persona",
+      "default": "casual"
+    },
+    "language": {
+      "default": "en",
+      "title": "Language",
+      "type": "string"
+    },
+    "latency_ms": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Latency Ms"
+    }
+  },
+  "required": [
+    "match_id",
+    "question",
+    "answer",
+    "answerable",
+    "check_status"
+  ],
+  "title": "AskAnswer",
+  "type": "object"
+}

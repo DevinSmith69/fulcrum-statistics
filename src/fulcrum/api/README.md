@@ -47,6 +47,9 @@ without `fulcrum.agents` moments still flow but there are no insights.
 - `GET /api/eval/latest` (`evalreports.py`) reads the newest `scripts/eval_live.py` report and
   `scripts/eval_foundry.py` summary from `data/eval/` (or `FULCRUM_EVAL_DIR`) on each request; `null` for a kind
   with no file. Read-only; the web app's `#quality` view shows it.
+- `POST …/ask` (Ask the studio, `AskRequest` → `AskAnswer`) calls `AgentService.ask` in-process with the read
+  model's latest `MatchState`; 503 without a running agents service, 429 past the per-IP limit
+  (`studio.RateLimiter`, `FULCRUM_ASK_RATE`, default `6/30`, `Retry-After` header).
 
 - Out of process (Azure, `FULCRUM_INPROCESS` off): with `FULCRUM_SIM_URL` set, `POST /api/matches` forwards the
   config to the sim service (`POST {FULCRUM_SIM_URL}/matches`). If the sim is unreachable or refuses, the API

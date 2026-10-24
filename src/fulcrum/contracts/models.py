@@ -504,6 +504,34 @@ class Recap(_Base):
     )
 
 
+class AskRequest(_Base):
+    """Body of `POST /api/matches/{id}/ask` ("Ask the studio"): a viewer's question about the live match."""
+
+    question: str = Field(min_length=1, max_length=300)
+    persona: Persona | None = Field(default=None, description="Tone of the answer; default casual")
+    language: str | None = Field(default=None, description="Answer language (en/es/fr/pt/de); default en")
+    favourite_team_id: str | None = Field(default=None, description="For the club_fan persona: whose side to take")
+
+
+class AskAnswer(_Base):
+    """The Studio Analyst's answer, grounded only in this match's data and fact-checked like every insight.
+
+    `answerable` is false when the question can't be answered from the match data (or is off-topic): `answer`
+    then politely says what can be asked instead.
+    """
+
+    match_id: str
+    question: str
+    answer: str = Field(max_length=400)
+    answerable: bool
+    check_status: CheckStatus
+    cited_moment_ids: list[str] = Field(default_factory=list, description="Moments the answer relies on")
+    fact_keys: list[str] = Field(default_factory=list, description="Context-pack fact keys the answer used")
+    persona: Persona = Persona.CASUAL
+    language: str = "en"
+    latency_ms: int | None = None
+
+
 class InsightsEnvelope(_Base):
     """Wrapper for the `insights` topic, which carries three message types.
 
@@ -575,4 +603,6 @@ ALL_MODELS: list[type[BaseModel]] = [
     InsightsEnvelope,
     ClientMessage,
     ServerMessage,
+    AskRequest,
+    AskAnswer,
 ]

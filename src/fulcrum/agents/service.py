@@ -2,7 +2,7 @@
 
 Runs standalone (`python -m fulcrum.agents`, one Container App) or in-process in single-process dev mode, where
 the API lifespan creates one `AgentService` on the shared bus and calls `start()`. The API also uses it for the
-on-demand paths: `translate`, `translate_cues`, `recap` and `register_match`.
+on-demand paths: `translate`, `translate_cues`, `player_lens`, `recap`, `ask` and `register_match`.
 
 Per match, moments are explained strictly in arrival order (one worker per match); matches run in parallel.
 For each moment the service publishes the Insight, then its OverlayCues; after the full-time moment it also
@@ -22,12 +22,14 @@ from fulcrum.contracts import (
     TOPIC_EVENTS,
     TOPIC_INSIGHTS,
     TOPIC_MOMENTS,
+    AskAnswer,
     Explanation,
     Insight,
     InsightsEnvelope,
     InsightVariant,
     MatchConfig,
     MatchEvent,
+    MatchState,
     Moment,
     MomentType,
     OverlayCue,
@@ -40,9 +42,10 @@ from fulcrum.llm import LLMClient
 from .context import MatchContextStore, foreign_names, load_teams
 from .orchestrator import ExplainMomentWorkflow, MomentProcessor, OrchestratorConfig
 from .player_lens import PlayerLens
-from .prompts import FACT_REVIEWER, MOMENT_ANALYST, PERSONA_EDITOR, PromptSpec
+from .prompts import FACT_REVIEWER, MOMENT_ANALYST, PERSONA_EDITOR, STUDIO_ANALYST, PromptSpec
 from .recap import RecapService
-from .schemas import EditorOutput, MomentContext, ReviewOutput
+from .schemas import EditorOutput, MomentContext, ReviewOutput, StudioAnswerOutput
+from .studio import StudioAnalyst, build_pack
 from .translate import Translator, normalise_language
 
 log = logging.getLogger("fulcrum.agents")
@@ -55,6 +58,7 @@ _PROMPT_AGENTS: tuple[tuple[PromptSpec, type], ...] = (
     (MOMENT_ANALYST, Explanation),
     (PERSONA_EDITOR, EditorOutput),
     (FACT_REVIEWER, ReviewOutput),
+    (STUDIO_ANALYST, StudioAnswerOutput),
 )
 PROMPT_AGENT_ROLES = tuple((spec.agent_name, spec.system, spec.version, schema) for spec, schema in _PROMPT_AGENTS)
 
@@ -85,6 +89,7 @@ class AgentService:
         self.translator = Translator(llm, self.config)
         self.recaps = RecapService(llm, self.config)
         self.player_lenses = PlayerLens(llm, self.config)
+        self.studio = StudioAnalyst(llm, self.config)
         self._seen: set[str] = set()
         self._insights: dict[str, tuple[Moment, Insight, str]] = {}  # id -> (moment, insight, score)
         self._pending: dict[str, list[Moment]] = {}
@@ -277,6 +282,40 @@ class AgentService:
             language,
             foreign_names=foreign_names(home, away, self.store.league),
             score=score,
+        )
+
+    async def ask(
+        self,
+        match_id: str,
+        question: str,
+        *,
+        persona: Persona | str = Persona.CASUAL,
+        language: str = "en",
+        favourite_team_id: str | None = None,
+        state: MatchState | None = None,
+    ) -> AskAnswer:
+        """Ask the studio: answer a viewer's question from this match's data only (cached; never raises).
+
+        `state` is the latest `MatchState` (the API's read model has it; the agents don't consume that topic).
+        Moments and their insights come from this service's own history. Unknown teams → the safe reply.
+        """
+        teams = self._teams(match_id)
+        if teams is None:
+            return self.studio.reply(match_id, question, persona=str(Persona(persona)), language=language)
+        home, away = teams
+        mc = self.store.get(match_id)
+        score = f"{state.score_home}-{state.score_away}" if state is not None else mc.score
+        pack = build_pack(
+            match_id,
+            home,
+            away,
+            state=state,
+            history=mc.history,
+            score=score,
+            foreign_names=foreign_names(home, away, self.store.league),
+        )
+        return await self.studio.ask(
+            pack, question, persona=persona, language=language, favourite_team_id=favourite_team_id
         )
 
     async def recap(self, match_id: str, persona: Persona | str = Persona.CASUAL, language: str = "en") -> Recap | None:

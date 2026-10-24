@@ -1,5 +1,5 @@
 import { API_URL, DEFAULT_FIXTURE } from "./config";
-import type { MatchEvent, MatchSummary, Team, ViewerPrefs } from "../types";
+import type { AskAnswer, AskRequest, MatchEvent, MatchSummary, Team, ViewerPrefs } from "../types";
 import { pickMatch, requestedMatchId } from "./matchPick";
 import type { EvalLatest } from "./quality";
 
@@ -49,6 +49,9 @@ export const fetchEvents = (matchId: string, sinceSeq = -1) =>
 
 /** Newest offline evaluation reports (live agent run + Foundry evaluator scores), for the Quality view. */
 export const fetchEvalLatest = () => getJson<EvalLatest>("/api/eval/latest");
+/** Ask the studio: the Studio Analyst answers from this match's data only (fact-checked). Throws "<status> …". */
+export const askStudio = (matchId: string, body: AskRequest) =>
+  getJson<AskAnswer>(`/api/matches/${encodeURIComponent(matchId)}/ask`, { method: "POST", body: JSON.stringify(body) });
 
 /** URL of the machine-readable overlay cue feed for a graphics partner (shown in the cue inspector). */
 export function overlayCuesUrl(matchId: string, prefs: ViewerPrefs) {

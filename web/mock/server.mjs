@@ -342,6 +342,25 @@ const server = createServer(async (req, res) => {
         const m = session.momentById(ins.moment_id);
         return send(res, 200, ["analyst", "casual"].map((p) => variant(m, p, lang, session.ctx)));
       }
+      case "ask": {
+        // Ask the studio (mock): echo the latest moment's headline as the answer, citing that moment.
+        const body = await readJson(req);
+        const question = String(body?.question ?? "").trim();
+        if (!question) return problem(res, 422, "Unprocessable Entity", "question is required");
+        const last = s.insights[s.insights.length - 1];
+        return send(res, 200, {
+          match_id: session.matchId,
+          question,
+          answer: last ? `${last.explanation.headline}.` : "Nothing has happened yet: ask again after the first moment.",
+          answerable: Boolean(last),
+          check_status: last ? "passed" : "fallback",
+          cited_moment_ids: last ? [last.moment_id] : [],
+          fact_keys: [],
+          persona: body?.persona ?? "casual",
+          language: "en",
+          latency_ms: 0,
+        });
+      }
       default:
         return problem(res, 404, "Not found", `Unknown resource ${sub}`);
     }

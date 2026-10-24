@@ -26,6 +26,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from fulcrum.bus import Bus, get_bus
 from fulcrum.contracts import (
+    AskAnswer,
+    AskRequest,
     ClientMessage,
     Insight,
     InsightVariant,
@@ -49,6 +51,7 @@ from .hub import Connection, Hub
 from .pipeline import Pipeline
 from .readmodel import MatchReadModel, Registry
 from .speech import MAX_TEXT_CHARS, SpeechError, SpeechSynth, voice_for
+from .studio import RateLimiter
 from .translation import Translator
 
 log = logging.getLogger("fulcrum.api")
@@ -129,6 +132,7 @@ def create_app(
         app.state.bus, app.state.registry, app.state.hub = the_bus, registry, hub
         app.state.translator, app.state.pipeline = translator, pipeline
         app.state.speech = speech if speech is not None else SpeechSynth.from_env()
+        app.state.ask_limiter = RateLimiter.from_env()
         if pipeline is not None:
             pipeline.prestart()  # agents warm up now, not on the first match
         try:
@@ -151,10 +155,13 @@ def create_app(
             404: "Not Found",
             409: "Conflict",
             422: "Unprocessable Entity",
+            429: "Too Many Requests",
             502: "Bad Gateway",
             503: "Service Unavailable",
         }
-        return problem(exc.status_code, titles.get(exc.status_code, "Error"), exc.detail)
+        resp = problem(exc.status_code, titles.get(exc.status_code, "Error"), exc.detail)
+        resp.headers.update(getattr(exc, "headers", None) or {})
+        return resp
 
     @app.exception_handler(RequestValidationError)
     async def _validation_problem(_: Request, exc: RequestValidationError) -> JSONResponse:
@@ -308,6 +315,32 @@ def _router() -> APIRouter:
         if best is None:
             raise HTTPException(404, "recap not ready yet")
         return best
+
+    @r.post("/matches/{match_id}/ask", response_model=AskAnswer)
+    async def ask(request: Request, match_id: str, body: AskRequest) -> AskAnswer:
+        """Ask the studio: the Studio Analyst answers from this match's data only (fact-checked, cached)."""
+        rm = match(request, match_id)
+        agents = request.app.state.translator.agents
+        if agents is None or getattr(agents, "ask", None) is None:
+            raise HTTPException(
+                503, "the agents service is not running, so the studio can't answer questions right now"
+            )
+        client = request.client.host if request.client else "unknown"
+        wait = request.app.state.ask_limiter.allow(client)
+        if wait is not None:
+            raise HTTPException(
+                429,
+                "too many questions: wait a few seconds and ask again",
+                headers={"Retry-After": str(max(1, round(wait)))},
+            )
+        return await agents.ask(
+            match_id,
+            body.question,
+            persona=body.persona or Persona.CASUAL,
+            language=body.language or "en",
+            favourite_team_id=body.favourite_team_id,
+            state=rm.state,
+        )
 
     @r.post("/matches/{match_id}/translate", response_model=list[InsightVariant])
     async def translate(request: Request, match_id: str, body: TranslateRequest) -> list[InsightVariant]:

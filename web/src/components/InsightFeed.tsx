@@ -25,7 +25,7 @@ export function CheckBadge({ status }: { status: CheckStatus }) {
   );
 }
 
-function Item({ m, insight, feed, lang, dense, newest }: { m: Moment; insight?: Insight; feed: MatchFeed; lang: string; dense: boolean; newest: boolean }) {
+function Item({ m, insight, feed, lang, dense, newest, anchor, highlighted }: { m: Moment; insight?: Insight; feed: MatchFeed; lang: string; dense: boolean; newest: boolean; anchor: boolean; highlighted: boolean }) {
   const team = m.team_id === feed.home?.team_id ? feed.home : m.team_id === feed.away?.team_id ? feed.away : null;
   const v = insight?.variants[0];
   const major = m.type === "goal" || m.type === "red_card" || m.type === "full_time";
@@ -39,7 +39,10 @@ function Item({ m, insight, feed, lang, dense, newest }: { m: Moment; insight?: 
   const trailId = useId();
   const minute = minuteLabel(m.clock_ms, m.period, feed.periodStarts);
   return (
-    <li className={`feed-in relative rounded-md bg-ink-850 ring-1 ${major ? "ring-ink-600" : "ring-ink-700/70"} ${dense ? "p-2.5" : "p-3"}`}>
+    <li
+      id={anchor && m.moment_id ? momentAnchorId(m.moment_id) : undefined}
+      className={`feed-in relative rounded-md bg-ink-850 transition-shadow ${highlighted ? "ring-2 ring-signal" : `ring-1 ${major ? "ring-ink-600" : "ring-ink-700/70"}`} ${dense ? "p-2.5" : "p-3"}`}
+    >
       <div className="flex items-center gap-2 text-xs">
         <KitStripe team={team} className="h-3.5 w-1" />
         <span className="font-display text-sm font-semibold text-ink-50">{minute}</span>
@@ -116,8 +119,26 @@ function Item({ m, insight, feed, lang, dense, newest }: { m: Moment; insight?: 
   );
 }
 
-/** Newest-first feed of moments; shows "analysing…" until the insight for a moment arrives. */
-export function InsightFeed({ feed, lang, limit = 30, dense = false }: { feed: MatchFeed; lang: string; limit?: number; dense?: boolean }) {
+/** DOM id of a moment's feed item (only on an `anchored` feed), used by "Ask the studio" citations. */
+export const momentAnchorId = (momentId: string) => `moment-${momentId}`;
+
+/** Newest-first feed of moments; shows "analysing…" until the insight for a moment arrives.
+ * `anchored` gives each item a DOM id (one anchored feed per page); `highlightId` rings that moment. */
+export function InsightFeed({
+  feed,
+  lang,
+  limit = 30,
+  dense = false,
+  anchored = false,
+  highlightId = null,
+}: {
+  feed: MatchFeed;
+  lang: string;
+  limit?: number;
+  dense?: boolean;
+  anchored?: boolean;
+  highlightId?: string | null;
+}) {
   const items = [...feed.moments].reverse().slice(0, limit);
   if (!items.length) {
     return <p className="rounded-md border border-dashed border-ink-700 p-4 text-sm text-ink-400">{t(lang, "waiting")}.</p>;
@@ -125,7 +146,7 @@ export function InsightFeed({ feed, lang, limit = 30, dense = false }: { feed: M
   return (
     <ul className="flex flex-col gap-2">
       {items.map((m, i) => (
-        <Item key={m.moment_id} m={m} insight={m.moment_id ? feed.insights[m.moment_id] : undefined} feed={feed} lang={lang} dense={dense} newest={i === 0} />
+        <Item key={m.moment_id} m={m} insight={m.moment_id ? feed.insights[m.moment_id] : undefined} feed={feed} lang={lang} dense={dense} newest={i === 0} anchor={anchored} highlighted={highlightId != null && m.moment_id === highlightId} />
       ))}
     </ul>
   );

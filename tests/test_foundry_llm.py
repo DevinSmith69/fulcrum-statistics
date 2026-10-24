@@ -166,6 +166,6 @@ def test_service_publishes_the_fixed_prompt_roles():
     from fulcrum.agents.service import PROMPT_AGENT_ROLES
 
     names = [r[0] for r in PROMPT_AGENT_ROLES]
-    assert names == ["moment_analyst", "persona_editor", "fact_reviewer"]
+    assert names == ["moment_analyst", "persona_editor", "fact_reviewer", "studio_analyst"]
     for _, system, _, _ in PROMPT_AGENT_ROLES:  # no per-call placeholders in a published prompt
         assert not any(f"{{{p}}}" in system for p in ("language", "persona", "player"))

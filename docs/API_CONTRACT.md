@@ -46,6 +46,19 @@ asyncio tasks on the shared `MemoryBus` (`api/app.py` lifespan). In Azure each r
 | GET | `/api/speech` | – | `{"enabled": bool, "auth": "key" \| "entra" \| null, "voices": {lang: voice}}` — is neural voice configured? |
 | POST | `/api/speech` | `{"text"` (1–400 chars)`, "language"}` | `audio/mpeg`: the line in that language's Azure AI Speech neural voice (cached per voice + text). **503** when Azure Speech is not configured (the overlay then uses the browser's `speechSynthesis`); 502 if the Speech service fails |
 | GET | `/api/eval/latest` | – | `{"live": report \| null, "foundry": summary \| null}` — read-only, the newest offline evaluation reports in `data/eval/` (`FULCRUM_EVAL_DIR` overrides). `live` = `scripts/eval_live.py` (`status_counts`, `status_rates_pct`, `latency_ms.p50/p95/mean`, `tokens_total`, `llm`, `recap`, …); `foundry` = `scripts/eval_foundry.py` (`evaluators.{groundedness,relevance,coherence,fluency}.{mean,min,n,pass_rate_pct}` on the 1–5 scale, `by_check_status`, `lowest[]` with judge `reasons`, `report_url` to the Foundry portal, `judge_deployment`). Both carry `file` and `generated_at`; per-item detail is omitted |
+| POST | `/api/matches/{id}/ask` | `AskRequest` `{"question", "persona"?, "language"?, "favourite_team_id"?}` | `AskAnswer` `{answer, answerable, check_status, cited_moment_ids, fact_keys, persona, language, latency_ms, …}` — **Ask the studio** (see below) |
+
+**Ask the studio** (`POST /api/matches/{id}/ask`): the Studio Analyst agent answers a viewer's question (1–300
+chars) about the live match in `language` (en/es/fr/pt/de, default en) and the `persona`'s tone (default casual;
+`favourite_team_id` sets the club_fan side). It uses only a context pack built from the match so far (score,
+minute, team and top-player live stats from `MatchState`, the most significant + latest moments with their
+facts, rosters), and every number is fact-checked against that pack (one repair). `answerable=false` with
+`check_status="fallback"` is a safe deterministic reply: the question was about betting/odds or a real club
+(refused without an LLM call), or the answer could not be verified. Answers are cached per (match, normalised
+question, language, persona, team, number of moments so far). Errors: 404 unknown match · 422 bad body ·
+429 rate limit (per client IP, `FULCRUM_ASK_RATE`, default `6/30` = 6 questions per 30 s; `Retry-After` header) ·
+503 when no agents service is running in the API process (out-of-process deployments, or the agents failed
+to start).
 
 The API keeps per-match read models in memory (dict of match_id → ring buffers). Persistence is a stretch
 goal (Cosmos DB) — do not build it before Sunday evening.

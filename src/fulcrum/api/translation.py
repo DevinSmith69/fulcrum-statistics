@@ -25,6 +25,9 @@ class AgentHooks(Protocol):
     async def recap(self, match_id: str, persona: Persona | str, language: str) -> Recap | None: ...
     async def player_lens(self, insight_id: str, player_id: str, language: str) -> list[InsightVariant]: ...
 
+    # Ask the studio (`POST /api/matches/{id}/ask`) calls the agents directly, not through this facade:
+    # async def ask(match_id, question, *, persona, language, favourite_team_id, state) -> AskAnswer
+
 
 def _slot(x: InsightVariant | OverlayCue) -> tuple[Any, ...]:
     """What makes a variant/cue 'the same' across languages."""
