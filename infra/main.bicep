@@ -35,8 +35,12 @@ param foundryRecapDeployment string = 'strong'
 @description('LLM client for the agents. `fake` = deterministic template copy (no Foundry calls).')
 param llm string = 'foundry'
 
-@description('Cut-list fallback: run sim + engine + agents inside the api container on the memory bus.')
+@description('Older switch, used only when `topology` is empty: true = inprocess, false = split.')
 param inProcess bool = false
+
+@allowed(['', 'split', 'inprocess', 'hybrid'])
+@description('split: sim, engine, agents, api each in their own app over Event Hubs. inprocess: everything in the api app on the memory bus. hybrid: sim app publishes to Event Hubs; the api app hosts engine + agents on Event Hubs. Empty = derive from `inProcess`.')
+param topology string = ''
 
 @description('Start one match when the sim app boots (a fresh deployment then has a live match).')
 param simAutostart bool = true
@@ -234,15 +238,22 @@ var kvSecrets = [
   { name: 'eventhubs-connection-string', keyVaultUrl: eventHubs.outputs.connectionStringSecretUri }
 ]
 
-// In the in-process fallback the api runs everything on the memory bus; the other three apps scale to zero.
+// Topology (src/fulcrum/topology.py, docs/DEPLOY.md §4):
+//   split     api | sim | engine | agents, all on Event Hubs
+//   inprocess api runs sim + engine + agents on the memory bus; the other three apps scale to zero
+//   hybrid    sim app -> Event Hubs -> api (engine + agents in-process, consumer groups engine/agents/api);
+//             engine and agents apps scale to zero
+var effectiveTopology = empty(topology) ? (inProcess ? 'inprocess' : 'split') : topology
+var apiHostsPipeline = effectiveTopology != 'split'
 var apiEnv = concat(
-  inProcess
+  effectiveTopology == 'inprocess'
     ? concat(filter(commonEnv, e => e.name != 'FULCRUM_BUS'), [
         { name: 'FULCRUM_BUS', value: 'memory' }
         { name: 'FULCRUM_INPROCESS', value: '1' }
       ])
     : concat(commonEnv, [{ name: 'FULCRUM_SIM_URL', value: 'http://${names.sim}' }]),
   [
+    { name: 'FULCRUM_TOPOLOGY', value: effectiveTopology }
     { name: 'FULCRUM_SERVICE', value: 'api' }
     { name: 'FULCRUM_ALLOWED_ORIGINS', value: allowedOrigins }
   ],
@@ -254,7 +265,11 @@ var apiEnv = concat(
       ]
     : []
 )
-var backendReplicas = inProcess ? 0 : 1
+var simReplicas = effectiveTopology == 'inprocess' ? 0 : 1
+// engine + agents must never consume alongside an api that runs them (same consumer groups → split partitions).
+// minReplicas 0 alone is not enough: an app with no ingress and no scale rule keeps one replica running (seen
+// 24 Oct), so these apps also get FULCRUM_TOPOLOGY and `python -m fulcrum` stands by instead of consuming.
+var backendReplicas = apiHostsPipeline ? 0 : 1
 
 module apiImage 'modules/fetch-image.bicep' = {
   name: 'api-image'
@@ -288,9 +303,9 @@ module api 'modules/containerapp.bicep' = {
     keyVaultSecrets: kvSecrets
     ingress: 'external'
     targetPort: 8000
-    // In-process the api also runs sim + engine + agents, so it gets the CPU the other three apps would have had.
-    cpu: inProcess ? '1.0' : '0.5'
-    memory: inProcess ? '2Gi' : '1Gi'
+    // inprocess / hybrid: the api also runs engine + agents (and the sim), so it gets the CPU those apps would have had.
+    cpu: apiHostsPipeline ? '1.0' : '0.5'
+    memory: apiHostsPipeline ? '2Gi' : '1Gi'
     // One replica: the API keeps per-match read models and WebSocket fan-out in memory.
     minReplicas: 1
     maxReplicas: 1
@@ -311,7 +326,7 @@ module sim 'modules/containerapp.bicep' = {
     image: simExists ? simImage.outputs.containers[0].image : placeholderImage
     env: concat(commonEnv, [
       { name: 'FULCRUM_SERVICE', value: 'sim' }
-      { name: 'FULCRUM_SIM_AUTOSTART', value: simAutostart && !inProcess ? '1' : '0' }
+      { name: 'FULCRUM_SIM_AUTOSTART', value: simAutostart && simReplicas > 0 ? '1' : '0' }
       { name: 'FULCRUM_SIM_SPEED', value: simSpeed }
     ])
     keyVaultSecrets: kvSecrets
@@ -319,7 +334,7 @@ module sim 'modules/containerapp.bicep' = {
     targetPort: 8001
     cpu: '0.25'
     memory: '0.5Gi'
-    minReplicas: backendReplicas // a running match lives in this process: never scale it to zero mid-match
+    minReplicas: simReplicas // a running match lives in this process: never scale it to zero mid-match
     maxReplicas: 1
   }
   dependsOn: [acrPull, kvSecretsUser]
@@ -336,7 +351,10 @@ module engine 'modules/containerapp.bicep' = {
     identityId: identity.id
     registryServer: registry.properties.loginServer
     image: engineExists ? engineImage.outputs.containers[0].image : placeholderImage
-    env: concat(commonEnv, [{ name: 'FULCRUM_SERVICE', value: 'engine' }])
+    env: concat(commonEnv, [
+      { name: 'FULCRUM_SERVICE', value: 'engine' }
+      { name: 'FULCRUM_TOPOLOGY', value: effectiveTopology } // inprocess/hybrid: stands by (see backendReplicas)
+    ])
     keyVaultSecrets: kvSecrets
     cpu: '0.5'
     memory: '1Gi'
@@ -357,7 +375,10 @@ module agents 'modules/containerapp.bicep' = {
     identityId: identity.id
     registryServer: registry.properties.loginServer
     image: agentsExists ? agentsImage.outputs.containers[0].image : placeholderImage
-    env: concat(commonEnv, [{ name: 'FULCRUM_SERVICE', value: 'agents' }])
+    env: concat(commonEnv, [
+      { name: 'FULCRUM_SERVICE', value: 'agents' }
+      { name: 'FULCRUM_TOPOLOGY', value: effectiveTopology } // inprocess/hybrid: stands by (see backendReplicas)
+    ])
     keyVaultSecrets: kvSecrets
     cpu: '0.5'
     memory: '1Gi'
