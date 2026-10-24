@@ -1,0 +1,849 @@
+{
+  "$defs": {
+    "CheckStatus": {
+      "enum": [
+        "passed",
+        "repaired",
+        "fallback"
+      ],
+      "title": "CheckStatus",
+      "type": "string"
+    },
+    "Explanation": {
+      "additionalProperties": false,
+      "description": "Moment Analyst output (persona-neutral).",
+      "properties": {
+        "headline": {
+          "maxLength": 90,
+          "title": "Headline",
+          "type": "string"
+        },
+        "why_it_matters": {
+          "maxLength": 400,
+          "title": "Why It Matters",
+          "type": "string"
+        },
+        "tactical_tag": {
+          "$ref": "#/$defs/TacticalTag"
+        },
+        "key_fact_keys": {
+          "description": "Fact.key values used \u2014 must exist in the moment's fact pack",
+          "items": {
+            "type": "string"
+          },
+          "title": "Key Fact Keys",
+          "type": "array"
+        }
+      },
+      "required": [
+        "headline",
+        "why_it_matters",
+        "tactical_tag",
+        "key_fact_keys"
+      ],
+      "title": "Explanation",
+      "type": "object"
+    },
+    "Fact": {
+      "additionalProperties": false,
+      "description": "An atomic, verifiable fact. Agents may ONLY quote numbers that appear here.",
+      "properties": {
+        "key": {
+          "examples": [
+            "wp_home_before"
+          ],
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "examples": [
+            "Home win probability before"
+          ],
+          "title": "Label",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "examples": [
+            "%",
+            "km/h",
+            "m",
+            "xG"
+          ],
+          "title": "Unit"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "value"
+      ],
+      "title": "Fact",
+      "type": "object"
+    },
+    "HeldItem": {
+      "additionalProperties": false,
+      "description": "An insight (and its overlay cues) held by the API until the producer approves, edits or kills it.",
+      "properties": {
+        "insight": {
+          "$ref": "#/$defs/Insight"
+        },
+        "cues": {
+          "items": {
+            "$ref": "#/$defs/OverlayCue"
+          },
+          "title": "Cues",
+          "type": "array"
+        },
+        "moment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Moment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The moment it explains (for the fact trail)"
+        },
+        "held_at": {
+          "format": "date-time",
+          "title": "Held At",
+          "type": "string"
+        },
+        "age_s": {
+          "description": "Seconds since it was held",
+          "minimum": 0,
+          "title": "Age S",
+          "type": "number"
+        },
+        "auto_release_in_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Seconds until auto-approve, if it is on",
+          "title": "Auto Release In S"
+        }
+      },
+      "required": [
+        "insight",
+        "held_at",
+        "age_s"
+      ],
+      "title": "HeldItem",
+      "type": "object"
+    },
+    "Insight": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "default": "1.0.0",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "insight_id": {
+          "title": "Insight Id",
+          "type": "string"
+        },
+        "match_id": {
+          "title": "Match Id",
+          "type": "string"
+        },
+        "moment_id": {
+          "title": "Moment Id",
+          "type": "string"
+        },
+        "clock_ms": {
+          "title": "Clock Ms",
+          "type": "integer"
+        },
+        "explanation": {
+          "$ref": "#/$defs/Explanation"
+        },
+        "variants": {
+          "items": {
+            "$ref": "#/$defs/InsightVariant"
+          },
+          "title": "Variants",
+          "type": "array"
+        },
+        "check_status": {
+          "$ref": "#/$defs/CheckStatus"
+        },
+        "check_notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Check Notes",
+          "type": "array"
+        },
+        "agent_trace_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "OpenTelemetry trace id for the agent run",
+          "title": "Agent Trace Id"
+        },
+        "latency_ms": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latency Ms"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "match_id",
+        "moment_id",
+        "clock_ms",
+        "explanation",
+        "variants",
+        "check_status"
+      ],
+      "title": "Insight",
+      "type": "object"
+    },
+    "InsightVariant": {
+      "additionalProperties": false,
+      "properties": {
+        "persona": {
+          "$ref": "#/$defs/Persona"
+        },
+        "language": {
+          "default": "en",
+          "title": "Language",
+          "type": "string"
+        },
+        "perspective_team_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Set for club_fan variants",
+          "title": "Perspective Team Id"
+        },
+        "perspective_player_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Set for player_lens variants",
+          "title": "Perspective Player Id"
+        },
+        "headline": {
+          "maxLength": 90,
+          "title": "Headline",
+          "type": "string"
+        },
+        "body": {
+          "maxLength": 300,
+          "title": "Body",
+          "type": "string"
+        },
+        "commentary_line": {
+          "description": "One spoken-style line, <= 25 words",
+          "maxLength": 160,
+          "title": "Commentary Line",
+          "type": "string"
+        }
+      },
+      "required": [
+        "persona",
+        "headline",
+        "body",
+        "commentary_line"
+      ],
+      "title": "InsightVariant",
+      "type": "object"
+    },
+    "Moment": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "default": "1.0.0",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "moment_id": {
+          "title": "Moment Id",
+          "type": "string"
+        },
+        "match_id": {
+          "title": "Match Id",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/MomentType"
+        },
+        "significance": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Significance",
+          "type": "number"
+        },
+        "period": {
+          "title": "Period",
+          "type": "integer"
+        },
+        "clock_ms": {
+          "title": "Clock Ms",
+          "type": "integer"
+        },
+        "seq_start": {
+          "title": "Seq Start",
+          "type": "integer"
+        },
+        "seq_end": {
+          "title": "Seq End",
+          "type": "integer"
+        },
+        "team_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Team Id"
+        },
+        "player_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Player Ids",
+          "type": "array"
+        },
+        "wp_before": {
+          "$ref": "#/$defs/WinProbability"
+        },
+        "wp_after": {
+          "$ref": "#/$defs/WinProbability"
+        },
+        "facts": {
+          "description": "The fact pack \u2014 the only numbers agents may use",
+          "items": {
+            "$ref": "#/$defs/Fact"
+          },
+          "title": "Facts",
+          "type": "array"
+        },
+        "trigger": {
+          "description": "Human-readable rule that fired, e.g. 'abs(dWP_home) >= 0.05 within 60s'",
+          "title": "Trigger",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "match_id",
+        "type",
+        "significance",
+        "period",
+        "clock_ms",
+        "seq_start",
+        "seq_end",
+        "wp_before",
+        "wp_after",
+        "facts",
+        "trigger"
+      ],
+      "title": "Moment",
+      "type": "object"
+    },
+    "MomentType": {
+      "enum": [
+        "goal",
+        "big_chance",
+        "wp_swing",
+        "pressure_shift",
+        "phase_change",
+        "tempo_change",
+        "red_card",
+        "speed_record",
+        "elite_pass",
+        "player_milestone",
+        "momentum_run",
+        "half_time",
+        "full_time"
+      ],
+      "title": "MomentType",
+      "type": "string"
+    },
+    "OverlayAnchor": {
+      "enum": [
+        "top_left",
+        "top_right",
+        "bottom_left",
+        "bottom_right",
+        "bottom_center"
+      ],
+      "title": "OverlayAnchor",
+      "type": "string"
+    },
+    "OverlayCue": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "default": "1.0.0",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "cue_id": {
+          "title": "Cue Id",
+          "type": "string"
+        },
+        "match_id": {
+          "title": "Match Id",
+          "type": "string"
+        },
+        "moment_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Moment Id"
+        },
+        "insight_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Insight Id"
+        },
+        "template": {
+          "$ref": "#/$defs/OverlayTemplate"
+        },
+        "anchor": {
+          "$ref": "#/$defs/OverlayAnchor",
+          "default": "bottom_left"
+        },
+        "priority": {
+          "description": "5 = interrupt everything (goal)",
+          "maximum": 5,
+          "minimum": 1,
+          "title": "Priority",
+          "type": "integer"
+        },
+        "sync_clock_ms": {
+          "description": "Match clock the cue is synced to",
+          "title": "Sync Clock Ms",
+          "type": "integer"
+        },
+        "sync_seq": {
+          "title": "Sync Seq",
+          "type": "integer"
+        },
+        "show_at_clock_ms": {
+          "title": "Show At Clock Ms",
+          "type": "integer"
+        },
+        "duration_ms": {
+          "maximum": 30000,
+          "minimum": 1000,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "persona": {
+          "$ref": "#/$defs/Persona"
+        },
+        "language": {
+          "default": "en",
+          "title": "Language",
+          "type": "string"
+        },
+        "perspective_team_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Perspective Team Id"
+        },
+        "perspective_player_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Perspective Player Id"
+        },
+        "team_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Team Id"
+        },
+        "player_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Player Id"
+        },
+        "headline": {
+          "title": "Headline",
+          "type": "string"
+        },
+        "body": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Body"
+        },
+        "stats": {
+          "items": {
+            "$ref": "#/$defs/OverlayStat"
+          },
+          "title": "Stats",
+          "type": "array"
+        },
+        "origin": {
+          "anyOf": [
+            {
+              "enum": [
+                "agents",
+                "producer"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Who made the cue. None/'agents': a moment cue from the agent team (one per persona). 'producer': a graphic the studio producer requested and put on air (persona-neutral: every viewer gets it)",
+          "title": "Origin"
+        }
+      },
+      "required": [
+        "match_id",
+        "template",
+        "priority",
+        "sync_clock_ms",
+        "sync_seq",
+        "show_at_clock_ms",
+        "duration_ms",
+        "persona",
+        "headline"
+      ],
+      "title": "OverlayCue",
+      "type": "object"
+    },
+    "OverlayStat": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        }
+      },
+      "required": [
+        "label",
+        "value"
+      ],
+      "title": "OverlayStat",
+      "type": "object"
+    },
+    "OverlayTemplate": {
+      "enum": [
+        "lower_third",
+        "stat_card",
+        "wp_swing",
+        "player_tag",
+        "pressure_bar",
+        "recap_card"
+      ],
+      "title": "OverlayTemplate",
+      "type": "string"
+    },
+    "Persona": {
+      "enum": [
+        "analyst",
+        "casual",
+        "club_fan",
+        "player_lens"
+      ],
+      "title": "Persona",
+      "type": "string"
+    },
+    "ProducerLogEntry": {
+      "additionalProperties": false,
+      "description": "One editorial decision, newest first in `ProducerState.log`.",
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "action": {
+          "enum": [
+            "approve",
+            "edit",
+            "kill",
+            "auto_approve",
+            "release",
+            "air",
+            "drop"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "insight_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Insight Id"
+        },
+        "cue_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cue Id"
+        },
+        "headline": {
+          "default": "",
+          "title": "Headline",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "title": "ProducerLogEntry",
+      "type": "object"
+    },
+    "TacticalTag": {
+      "enum": [
+        "control",
+        "chaos",
+        "pressure_shift",
+        "rhythm",
+        "individual_brilliance",
+        "set_piece",
+        "turning_point"
+      ],
+      "title": "TacticalTag",
+      "type": "string"
+    },
+    "WinProbability": {
+      "additionalProperties": false,
+      "properties": {
+        "home": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Home",
+          "type": "number"
+        },
+        "draw": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Draw",
+          "type": "number"
+        },
+        "away": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Away",
+          "type": "number"
+        }
+      },
+      "required": [
+        "home",
+        "draw",
+        "away"
+      ],
+      "title": "WinProbability",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Producer console state for one match (`GET /api/matches/{id}/producer`).",
+  "properties": {
+    "match_id": {
+      "title": "Match Id",
+      "type": "string"
+    },
+    "approval_required": {
+      "default": false,
+      "title": "Approval Required",
+      "type": "boolean"
+    },
+    "auto_approve_s": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Auto-approve held items after this many seconds",
+      "title": "Auto Approve S"
+    },
+    "held": {
+      "description": "Oldest first",
+      "items": {
+        "$ref": "#/$defs/HeldItem"
+      },
+      "title": "Held",
+      "type": "array"
+    },
+    "log": {
+      "description": "Newest first, bounded",
+      "items": {
+        "$ref": "#/$defs/ProducerLogEntry"
+      },
+      "title": "Log",
+      "type": "array"
+    },
+    "graphics_available": {
+      "default": false,
+      "description": "True when the graphics producer agent can take requests",
+      "title": "Graphics Available",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "match_id"
+  ],
+  "title": "ProducerState",
+  "type": "object"
+}

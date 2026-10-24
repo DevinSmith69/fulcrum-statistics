@@ -8,7 +8,7 @@ workflow's shared state and each step becomes an executor that reads and writes 
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
@@ -69,6 +69,33 @@ class StudioAnswerOutput(BaseModel):
     cited_moment_ids: list[str] = Field(default_factory=list, description="MOMENT ids the answer relies on")
     fact_keys: list[str] = Field(default_factory=list, description="FACT keys the answer used")
     answerable: bool = Field(True, description="False if the CONTEXT PACK cannot answer it, or it is off-topic")
+
+
+class GraphicStatOutput(BaseModel):
+    """One stat tile the Graphics Producer wants: a pack fact key plus a short on-screen label."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    fact_key: str
+    label: str = Field(max_length=40)
+
+
+class GraphicOutput(BaseModel):
+    """Graphics Producer output. Turned into a `fulcrum.contracts.OverlayCue` after fact-checking.
+
+    Stat values are never written by the model: they are filled from the context pack by `fact_key`.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    doable: bool = Field(True, description="False if the CONTEXT PACK can't support it, or it is off-topic")
+    template: Literal["lower_third", "stat_card", "wp_swing", "pressure_bar", "player_tag"] = "lower_third"
+    headline: str = Field("", max_length=120)
+    body: str = Field("", max_length=300)
+    stats: list[GraphicStatOutput] = Field(default_factory=list)
+    team_id: str | None = None
+    player_id: str | None = None
+    fact_keys: list[str] = Field(default_factory=list)
 
 
 class MomentContext(BaseModel):

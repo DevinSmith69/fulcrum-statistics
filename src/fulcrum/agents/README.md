@@ -45,8 +45,9 @@ Design reference: `docs/AI_PROMPT_DESIGN.md`. Wire formats: `docs/API_CONTRACT.m
   on `FOUNDRY_MODEL_DEPLOYMENT` (`fast`, gpt-5.4-mini; temperature 0.4 for the Editor, 0.2 otherwise). Auth is
   `DefaultAzureCredential`. `AgentService.start()` calls `warm_up()` so the first moment isn't a cold start.
 - **Foundry prompt agents:** at warm-up the roles with a fixed system prompt (`PROMPT_AGENT_ROLES`: Analyst,
-  Editor, Reviewer, Studio Analyst) are published to the Foundry project as versioned prompt agents
-  (`fulcrum-moment-analyst`, `fulcrum-persona-editor`, `fulcrum-fact-reviewer`, `fulcrum-studio-analyst`) and
+  Editor, Reviewer, Studio Analyst, Graphics Producer) are published to the Foundry project as versioned prompt
+  agents (`fulcrum-moment-analyst`, `fulcrum-persona-editor`, `fulcrum-fact-reviewer`, `fulcrum-studio-analyst`,
+  `fulcrum-graphics-producer`) and
   called by name via `FoundryAgent`, so they are
   listed, versioned and traced in the Foundry portal. Model, instructions, temperature and output schema live
   in the agent definition; a new version is created only when they change (fingerprint + prompt version in the
@@ -119,6 +120,7 @@ The dashboard's `#quality` view shows these scores via `GET /api/eval/latest`.
 | `recap.py` | full-time Match Reporter, cached per (match, persona, language); template fallback |
 | `evaluation.py` | per-moment evaluation records (query / context / response) and the Foundry evaluation summary (`scripts/eval_live.py`, `scripts/eval_foundry.py`) |
 | `studio.py` | **Ask the studio**: the Studio Analyst answers a viewer's question from a deterministic context pack (`build_pack`: score, minute, team + top-player live stats from `MatchState`, the most significant + latest moments with their facts, rosters). Betting/real-club questions are refused without an LLM call; the answer is fact-checked against the whole pack (plus leaked ids, unknown moment ids / fact keys, cut-off copy), repaired once, else a safe deterministic reply (`answerable=false`). LRU cache per (match, normalised question, language, persona, team, moments so far). Exposed as `AgentService.ask(...)`, used by `POST /api/matches/{id}/ask` |
+| `producer.py` | **Producer console**: `apply_edit` (a producer's edited variants, re-checked with `check_insight_copy` against the moment's sheet, marked "edited by producer") and the **Graphics Producer** (`GraphicsProducer`): a plain-language overlay request → one `OverlayCue` (`origin="producer"`) from `graphics_pack` (the Studio Analyst pack + named players' live stats + earlier win probability). Stat values are filled from the pack by fact key; text/labels fact-checked, template rules, one repair, else a refusal; betting / real clubs / other matches' names refused without an LLM call. Exposed as `AgentService.graphic(...)` and `AgentService.update_insight(...)` |
 | `service.py` | `AgentService`: `moments` + `match-events` in, `InsightsEnvelope` out on `insights` |
 
 ## Fact-checker rules (`factcheck.py`)
@@ -175,3 +177,5 @@ PASSED/REPAIRED/FALLBACK paths, timeouts, the reviewer, crash handling, ordering
 language. `test_templates.py` renders every template and fact-checks it. `test_cues.py`, `test_translate.py`,
 `test_recap.py` and `test_service.py` cover the rest. `test_studio.py` covers Ask the studio: the context pack,
 grounded / repaired / safe-reply paths, timeouts, refusals without an LLM call, and the cache.
+`test_producer.py` covers producer edits (pass, invented number, other names, betting, length) and the Graphics
+Producer (pack, valid cue, repair, refusal after two failures, refusals without an LLM call, template rules).

@@ -18,12 +18,6 @@ export type Persona1 = "analyst" | "casual" | "club_fan" | "player_lens";
 export type Persona2 = "analyst" | "casual" | "club_fan" | "player_lens";
 /**
  * This interface was referenced by `FulcrumContracts`'s JSON-Schema
- * via the `definition` "TacticalTag".
- */
-export type TacticalTag =
-  "control" | "chaos" | "pressure_shift" | "rhythm" | "individual_brilliance" | "set_piece" | "turning_point";
-/**
- * This interface was referenced by `FulcrumContracts`'s JSON-Schema
  * via the `definition` "OverlayAnchor".
  */
 export type OverlayAnchor = "top_left" | "top_right" | "bottom_left" | "bottom_right" | "bottom_center";
@@ -33,6 +27,12 @@ export type OverlayAnchor = "top_left" | "top_right" | "bottom_left" | "bottom_r
  */
 export type OverlayTemplate = "lower_third" | "stat_card" | "wp_swing" | "player_tag" | "pressure_bar" | "recap_card";
 export type OverlayAnchor1 = "top_left" | "top_right" | "bottom_left" | "bottom_right" | "bottom_center";
+/**
+ * This interface was referenced by `FulcrumContracts`'s JSON-Schema
+ * via the `definition` "TacticalTag".
+ */
+export type TacticalTag =
+  "control" | "chaos" | "pressure_shift" | "rhythm" | "individual_brilliance" | "set_piece" | "turning_point";
 /**
  * This interface was referenced by `FulcrumContracts`'s JSON-Schema
  * via the `definition` "BodyPart".
@@ -113,14 +113,16 @@ export interface FulcrumContracts {
   AskRequest?: AskRequest;
   ViewerPrefs?: ViewerPrefs;
   ClientMessage?: ClientMessage;
-  Explanation?: Explanation;
-  InsightVariant?: InsightVariant;
-  TacticalTag?: TacticalTag;
-  Insight?: Insight;
   OverlayAnchor?: OverlayAnchor;
   OverlayCue?: OverlayCue;
   OverlayStat?: OverlayStat;
   OverlayTemplate?: OverlayTemplate;
+  GraphicProposal?: GraphicProposal;
+  GraphicRequest?: GraphicRequest;
+  Explanation?: Explanation;
+  InsightVariant?: InsightVariant;
+  TacticalTag?: TacticalTag;
+  Insight?: Insight;
   Recap?: Recap;
   InsightsEnvelope?: InsightsEnvelope;
   MatchConfig?: MatchConfig;
@@ -140,6 +142,12 @@ export interface FulcrumContracts {
   Fact?: Fact;
   MomentType?: MomentType;
   Moment?: Moment;
+  ProducerDecision?: ProducerDecision;
+  ProducerEdit?: ProducerEdit;
+  ProducerSettings?: ProducerSettings;
+  HeldItem?: HeldItem;
+  ProducerLogEntry?: ProducerLogEntry;
+  ProducerState?: ProducerState;
   ServerMessage?: ServerMessage;
   Player?: Player;
   PlayerRatings?: PlayerRatings;
@@ -217,6 +225,88 @@ export interface ClientMessage {
   prefs?: ViewerPrefs | null;
 }
 /**
+ * This interface was referenced by `FulcrumContracts`'s JSON-Schema
+ * via the `definition` "OverlayCue".
+ */
+export interface OverlayCue {
+  contract_version?: string;
+  cue_id?: string;
+  match_id: string;
+  moment_id?: string | null;
+  insight_id?: string | null;
+  template: OverlayTemplate;
+  anchor?: OverlayAnchor1;
+  /**
+   * 5 = interrupt everything (goal)
+   */
+  priority: number;
+  /**
+   * Match clock the cue is synced to
+   */
+  sync_clock_ms: number;
+  sync_seq: number;
+  show_at_clock_ms: number;
+  duration_ms: number;
+  persona: Persona;
+  language?: string;
+  perspective_team_id?: string | null;
+  perspective_player_id?: string | null;
+  team_id?: string | null;
+  player_id?: string | null;
+  headline: string;
+  body?: string | null;
+  stats?: OverlayStat[];
+  /**
+   * Who made the cue. None/'agents': a moment cue from the agent team (one per persona). 'producer': a graphic the studio producer requested and put on air (persona-neutral: every viewer gets it)
+   */
+  origin?: ("agents" | "producer") | null;
+}
+/**
+ * This interface was referenced by `FulcrumContracts`'s JSON-Schema
+ * via the `definition` "OverlayStat".
+ */
+export interface OverlayStat {
+  label: string;
+  value: string;
+  unit?: string | null;
+}
+/**
+ * The graphics producer's answer: a fact-checked `OverlayCue` to preview, or a refusal.
+ *
+ * This interface was referenced by `FulcrumContracts`'s JSON-Schema
+ * via the `definition` "GraphicProposal".
+ */
+export interface GraphicProposal {
+  proposal_id?: string;
+  match_id: string;
+  request: string;
+  ok: boolean;
+  cue?: OverlayCue | null;
+  check_status: CheckStatus;
+  /**
+   * Why no graphic was made (ok=false)
+   */
+  refusal?: string | null;
+  /**
+   * Fact-check issues of the last attempt, if any
+   */
+  issues?: string[];
+  /**
+   * Context-pack fact keys the graphic uses
+   */
+  fact_keys?: string[];
+  latency_ms?: number | null;
+}
+/**
+ * Body of `POST .../producer/graphics`: an overlay request in plain language.
+ *
+ * This interface was referenced by `FulcrumContracts`'s JSON-Schema
+ * via the `definition` "GraphicRequest".
+ */
+export interface GraphicRequest {
+  request: string;
+}
+/**
  * Moment Analyst output (persona-neutral).
  *
  * This interface was referenced by `FulcrumContracts`'s JSON-Schema
@@ -273,48 +363,6 @@ export interface Insight {
   agent_trace_id?: string | null;
   latency_ms?: number | null;
   created_at?: string;
-}
-/**
- * This interface was referenced by `FulcrumContracts`'s JSON-Schema
- * via the `definition` "OverlayCue".
- */
-export interface OverlayCue {
-  contract_version?: string;
-  cue_id?: string;
-  match_id: string;
-  moment_id?: string | null;
-  insight_id?: string | null;
-  template: OverlayTemplate;
-  anchor?: OverlayAnchor1;
-  /**
-   * 5 = interrupt everything (goal)
-   */
-  priority: number;
-  /**
-   * Match clock the cue is synced to
-   */
-  sync_clock_ms: number;
-  sync_seq: number;
-  show_at_clock_ms: number;
-  duration_ms: number;
-  persona: Persona;
-  language?: string;
-  perspective_team_id?: string | null;
-  perspective_player_id?: string | null;
-  team_id?: string | null;
-  player_id?: string | null;
-  headline: string;
-  body?: string | null;
-  stats?: OverlayStat[];
-}
-/**
- * This interface was referenced by `FulcrumContracts`'s JSON-Schema
- * via the `definition` "OverlayStat".
- */
-export interface OverlayStat {
-  label: string;
-  value: string;
-  unit?: string | null;
 }
 /**
  * This interface was referenced by `FulcrumContracts`'s JSON-Schema
@@ -596,6 +644,115 @@ export interface Moment {
    */
   trigger: string;
   created_at?: string;
+}
+/**
+ * Outcome of approve / edit / kill. `issues` lists fact-check failures when an edit is rejected.
+ *
+ * This interface was referenced by `FulcrumContracts`'s JSON-Schema
+ * via the `definition` "ProducerDecision".
+ */
+export interface ProducerDecision {
+  match_id: string;
+  insight_id: string;
+  action: "approve" | "edit" | "kill";
+  ok: boolean;
+  issues?: string[];
+  /**
+   * The insight as it went out (approve / edit)
+   */
+  insight?: Insight | null;
+  cues_released?: number;
+}
+/**
+ * Body of `POST .../producer/held/{insight_id}/edit`: replacement copy for one or more persona variants.
+ *
+ * Each variant replaces the held variant with the same persona, perspective and language. The result is
+ * fact-checked against the moment's facts with the same deterministic checker as agent copy.
+ *
+ * This interface was referenced by `FulcrumContracts`'s JSON-Schema
+ * via the `definition` "ProducerEdit".
+ */
+export interface ProducerEdit {
+  /**
+   * @minItems 1
+   */
+  variants: [InsightVariant, ...InsightVariant[]];
+}
+/**
+ * Body of `POST .../producer/settings`; omitted fields are left unchanged.
+ *
+ * This interface was referenced by `FulcrumContracts`'s JSON-Schema
+ * via the `definition` "ProducerSettings".
+ */
+export interface ProducerSettings {
+  approval_required?: boolean | null;
+  /**
+   * 0 turns auto-approve off; 1-600 seconds turns it on
+   */
+  auto_approve_s?: number | null;
+}
+/**
+ * An insight (and its overlay cues) held by the API until the producer approves, edits or kills it.
+ *
+ * This interface was referenced by `FulcrumContracts`'s JSON-Schema
+ * via the `definition` "HeldItem".
+ */
+export interface HeldItem {
+  insight: Insight;
+  cues?: OverlayCue[];
+  /**
+   * The moment it explains (for the fact trail)
+   */
+  moment?: Moment | null;
+  held_at: string;
+  /**
+   * Seconds since it was held
+   */
+  age_s: number;
+  /**
+   * Seconds until auto-approve, if it is on
+   */
+  auto_release_in_s?: number | null;
+}
+/**
+ * One editorial decision, newest first in `ProducerState.log`.
+ *
+ * This interface was referenced by `FulcrumContracts`'s JSON-Schema
+ * via the `definition` "ProducerLogEntry".
+ */
+export interface ProducerLogEntry {
+  at?: string;
+  action: "approve" | "edit" | "kill" | "auto_approve" | "release" | "air" | "drop";
+  insight_id?: string | null;
+  cue_id?: string | null;
+  headline?: string;
+  note?: string | null;
+}
+/**
+ * Producer console state for one match (`GET /api/matches/{id}/producer`).
+ *
+ * This interface was referenced by `FulcrumContracts`'s JSON-Schema
+ * via the `definition` "ProducerState".
+ */
+export interface ProducerState {
+  match_id: string;
+  approval_required?: boolean;
+  /**
+   * Auto-approve held items after this many seconds
+   */
+  auto_approve_s?: number | null;
+  /**
+   * Oldest first
+   */
+  held?: HeldItem[];
+  /**
+   * Newest first, bounded
+   */
+  log?: ProducerLogEntry[];
+  /**
+   * True when the graphics producer agent can take requests
+   */
+  graphics_available?: boolean;
 }
 /**
  * This interface was referenced by `FulcrumContracts`'s JSON-Schema

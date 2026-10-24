@@ -1,0 +1,20 @@
+{
+  "additionalProperties": false,
+  "description": "Body of `POST .../producer/graphics`: an overlay request in plain language.",
+  "properties": {
+    "request": {
+      "examples": [
+        "stat card on Brennick's passing"
+      ],
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Request",
+      "type": "string"
+    }
+  },
+  "required": [
+    "request"
+  ],
+  "title": "GraphicRequest",
+  "type": "object"
+}

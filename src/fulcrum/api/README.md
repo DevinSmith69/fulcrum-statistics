@@ -10,6 +10,7 @@ FastAPI app `fulcrum.api.app:app` implementing API_CONTRACT §2 (REST under `/ap
 | `personalise.py` | Persona / language / club / player filtering; server-side `player_tag` cues for a followed player. |
 | `translation.py` | On-demand translation + lazy recaps via the agents' `AgentService` hooks; English passthrough fallback. |
 | `pipeline.py` | Single-process dev mode: engine + agents + simulator as asyncio tasks, imported lazily and guarded. |
+| `producer.py` | Producer console: `ProducerDesk` is the hub's editorial gate (`Hub.gate`): per match it can hold insights + their cues for approve / edit (re-fact-checked) / kill, with auto-approve; it also puts producer graphics on air. |
 
 ## Running
 ```bash
@@ -51,6 +52,14 @@ without `fulcrum.agents` moments still flow but there are no insights.
 - `POST …/ask` (Ask the studio, `AskRequest` → `AskAnswer`) calls `AgentService.ask` in-process with the read
   model's latest `MatchState`; 503 without a running agents service, 429 past the per-IP limit
   (`studio.RateLimiter`, `FULCRUM_ASK_RATE`, default `6/30`, `Retry-After` header).
+- Producer console (API_CONTRACT §2 "Producer console"): `…/producer` endpoints. `Hub.on_envelope` asks
+  `ProducerDesk.intercept` first; a held item never reaches the read model or the fan-out until it is released
+  (`Hub.deliver`). Edits are checked with `fulcrum.agents.producer.apply_edit` against the moment's facts (score
+  from its `score` fact, else the event feed at `seq_end`) and its cues rebuilt with `agents.cues.build_cues`.
+  A background task (`ProducerDesk.run`) auto-approves every 0.5 s. Graphic requests call
+  `AgentService.graphic` with the read model's `MatchState` and win-probability history (503 without agents;
+  `FULCRUM_GRAPHIC_RATE`, default `10/30`). `FULCRUM_PRODUCER_KEY` set → `X-Producer-Key` header required (401).
+  `personalise.cue_matches` serves `origin="producer"` cues to every persona. Tests: `tests/api/test_producer.py`.
 
 - Match controls (demo director, API_CONTRACT §2 "Match controls"): `GET/POST …/control` drive the
   `fulcrum.sim.control.MatchControl` that `Pipeline` creates per in-process match (speed, pause / resume, next

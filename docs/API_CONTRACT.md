@@ -66,6 +66,50 @@ question, language, persona, team, number of moments so far). Errors: 404 unknow
 503 when no agents service is running in the API process (out-of-process deployments, or the agents failed
 to start).
 
+### Producer console (editorial gate + overlay requests in plain language)
+
+A broadcast graphics team does not put AI copy on air unseen. Per match, a producer can hold every new insight
+(and its cues) for approval, and can ask for a graphic in plain language.
+
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| GET | `/api/matches/{id}/producer` | – | `ProducerState` `{match_id, approval_required, auto_approve_s, held: HeldItem[], log: ProducerLogEntry[], graphics_available}` |
+| POST | `/api/matches/{id}/producer/settings` | `ProducerSettings` `{"approval_required"?: bool, "auto_approve_s"?: 0-600}` | `ProducerState` |
+| GET | `/api/matches/{id}/producer/held` | – | `HeldItem[]` `{insight, cues, moment, held_at, age_s, auto_release_in_s}`, oldest first |
+| POST | `/api/matches/{id}/producer/held/{insight_id}/approve` | – | `ProducerDecision` |
+| POST | `/api/matches/{id}/producer/held/{insight_id}/edit` | `ProducerEdit` `{"variants": InsightVariant[]}` | `ProducerDecision`; **422** problem JSON with `issues[]` if the edit fails the fact-check (it stays held) |
+| POST | `/api/matches/{id}/producer/held/{insight_id}/kill` | – | `ProducerDecision` |
+| POST | `/api/matches/{id}/producer/graphics` | `GraphicRequest` `{"request"}` (1–200 chars) | `GraphicProposal` `{proposal_id, ok, cue?, refusal?, issues, check_status, fact_keys, latency_ms}` |
+| POST | `/api/matches/{id}/producer/graphics/{proposal_id}/air` | – | the `OverlayCue` as published |
+
+- **Gate.** Off by default: nothing changes. With `approval_required` on, the API holds each new `Insight` from
+  the `insights` topic, and every `OverlayCue` whose `insight_id` is held, out of the read model, REST and the
+  WebSocket (viewers still get the `moment`, so they see "analysing…"). **Approve** releases it as published
+  (`check_notes` + `"approved by producer"`). **Edit** replaces the given variants (matched on persona,
+  perspective and language) and re-runs the agents' deterministic fact-checker against the moment's facts,
+  score and minute (`factcheck.check_insight_copy`); a pass releases it with `"edited by producer"` in
+  `check_notes` and cues rebuilt from the edited copy (the in-process agents learn the edit, so translations
+  start from it); a fail is a 422 with the checker's issues. **Kill** drops the insight and its cues (also cues
+  that arrive later). `auto_approve_s` releases items that have waited that long (`"auto-approved after N s"`);
+  `0` turns it off. Switching approval off releases everything still held, oldest first. At most 200 held items
+  per match (the oldest beyond that is dropped, never sent unseen). Released items are delivered by the API
+  process itself (not re-published to `insights`). Recaps and `player_tag` cues for a followed player are not
+  gated.
+- **Graphics.** The Graphics Producer agent turns the request ("stat card on Brennick's passing", "pressure bar
+  now", "win probability graphic") into one `OverlayCue` from a deterministic context pack (the Ask-the-studio
+  pack plus the live stats of every player the request names and each team's win probability ~15 minutes
+  earlier). Stat values are filled in from the pack by fact key, never written by the model; text and labels are
+  fact-checked (one repair). `ok=false` + `refusal` (+ `issues`) otherwise; betting / real clubs / a team or player
+  not in this match are refused without an LLM call. **Air** publishes a fresh copy of the previewed cue to every
+  viewer at once (`show_at_clock_ms` = the current match clock): `origin="producer"` cues are persona-neutral (every
+  persona gets them, in English), and appear in `overlay-cues` and on the WebSocket like any cue.
+- **Auth.** If `FULCRUM_PRODUCER_KEY` is set, every producer endpoint needs header `X-Producer-Key: <key>`
+  (else **401**). Unset = open (demo). Graphic requests are rate limited per client (`FULCRUM_GRAPHIC_RATE`,
+  default `10/30`, plus the shared LLM ceiling; **429** + `Retry-After`).
+- Errors: 404 unknown match / held item / proposal · 409 putting a refused proposal on air · 422 bad body or
+  failed edit · **503** for a graphic request when no agents service runs in the API process (in-process and
+  hybrid topologies host it; split does not).
+
 ### Match controls (demo director)
 
 | Method | Path | Body | Returns |
@@ -133,6 +177,8 @@ player is involved in an event (no LLM needed — template from facts).
   `sync_seq` lets a renderer align to the event feed. Renderers must never show two cues with the same
   `anchor` at once — higher `priority` pre-empts; equal priority queues.
 - Copy limits (enforced by the contract max_length): headline ≤ 90 chars, body ≤ 300, ≤ 4 stats.
+- `origin`: null / `"agents"` = a moment cue (one per persona); `"producer"` = a graphic the producer requested and
+  put on air (Producer console, §2): no `moment_id` / `insight_id`, persona-neutral (served to every persona).
 
 ## 5. Errors
 REST: RFC 7807 problem JSON (`{"type","title","status","detail"}`). WS: `{"type":"error","payload":{"code","message"}}`
@@ -140,4 +186,5 @@ then keep the socket open unless the code is `fatal`.
 
 ## 6. CORS / auth
 CORS: allow `http://localhost:5173` and the Static Web App origin (env `FULCRUM_ALLOWED_ORIGINS`).
-No auth for the hackathon demo (documented as a production gap in the README "Path to production" section).
+No auth for the hackathon demo (documented as a production gap in the README "Path to production" section),
+except the optional shared secret on the producer console (`FULCRUM_PRODUCER_KEY` → `X-Producer-Key`, §2).

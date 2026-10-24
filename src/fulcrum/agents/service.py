@@ -23,7 +23,9 @@ from fulcrum.contracts import (
     TOPIC_INSIGHTS,
     TOPIC_MOMENTS,
     AskAnswer,
+    CheckStatus,
     Explanation,
+    GraphicProposal,
     Insight,
     InsightsEnvelope,
     InsightVariant,
@@ -36,15 +38,17 @@ from fulcrum.contracts import (
     Persona,
     Recap,
     Team,
+    WinProbPoint,
 )
 from fulcrum.llm import LLMClient
 
 from .context import MatchContextStore, foreign_names, load_teams
 from .orchestrator import ExplainMomentWorkflow, MomentProcessor, OrchestratorConfig
 from .player_lens import PlayerLens
-from .prompts import FACT_REVIEWER, MOMENT_ANALYST, PERSONA_EDITOR, STUDIO_ANALYST, PromptSpec
+from .producer import GraphicsProducer, graphics_pack
+from .prompts import FACT_REVIEWER, GRAPHICS_PRODUCER, MOMENT_ANALYST, PERSONA_EDITOR, STUDIO_ANALYST, PromptSpec
 from .recap import RecapService
-from .schemas import EditorOutput, MomentContext, ReviewOutput, StudioAnswerOutput
+from .schemas import EditorOutput, GraphicOutput, MomentContext, ReviewOutput, StudioAnswerOutput
 from .studio import StudioAnalyst, build_pack
 from .translate import Translator, normalise_language
 
@@ -59,6 +63,7 @@ _PROMPT_AGENTS: tuple[tuple[PromptSpec, type], ...] = (
     (PERSONA_EDITOR, EditorOutput),
     (FACT_REVIEWER, ReviewOutput),
     (STUDIO_ANALYST, StudioAnswerOutput),
+    (GRAPHICS_PRODUCER, GraphicOutput),
 )
 PROMPT_AGENT_ROLES = tuple((spec.agent_name, spec.system, spec.version, schema) for spec, schema in _PROMPT_AGENTS)
 
@@ -90,6 +95,7 @@ class AgentService:
         self.recaps = RecapService(llm, self.config)
         self.player_lenses = PlayerLens(llm, self.config)
         self.studio = StudioAnalyst(llm, self.config)
+        self.graphics = GraphicsProducer(llm, self.config)
         self._seen: set[str] = set()
         self._insights: dict[str, tuple[Moment, Insight, str]] = {}  # id -> (moment, insight, score)
         self._pending: dict[str, list[Moment]] = {}
@@ -216,6 +222,19 @@ class AgentService:
         found = self._insights.get(insight_id)
         return found[1] if found else None
 
+    def update_insight(self, insight: Insight) -> bool:
+        """Replace a published insight's copy (a producer edit), so translations start from the edited text."""
+        found = self._insights.get(insight.insight_id)
+        if found is None:
+            return False
+        moment, _, score = found
+        self._insights[insight.insight_id] = (moment, insight, score)
+        history = self.store.get(moment.match_id).history
+        for n, (m, _i) in enumerate(history):
+            if m.moment_id == moment.moment_id:
+                history[n] = (m, insight)
+        return True
+
     def pending(self, match_id: str) -> list[Moment]:
         """Moments held because the match's teams are not known yet."""
         return list(self._pending.get(match_id, []))
@@ -318,6 +337,42 @@ class AgentService:
         return await self.studio.ask(
             pack, question, persona=persona, language=language, favourite_team_id=favourite_team_id
         )
+
+    async def graphic(
+        self,
+        match_id: str,
+        request: str,
+        *,
+        state: MatchState | None = None,
+        winprob: Sequence[WinProbPoint] = (),
+    ) -> GraphicProposal:
+        """Producer console: one overlay graphic for a plain-language request, from this match's data (never raises).
+
+        `state` / `winprob` come from the API's read model (the agents don't consume `match-state`).
+        """
+        teams = self._teams(match_id)
+        if teams is None:
+            return GraphicProposal(
+                match_id=match_id,
+                request=request,
+                ok=False,
+                check_status=CheckStatus.FALLBACK,
+                refusal="The match's teams aren't known yet. Try again in a moment.",
+            )
+        home, away = teams
+        mc = self.store.get(match_id)
+        score = f"{state.score_home}-{state.score_away}" if state is not None else mc.score
+        base = build_pack(
+            match_id,
+            home,
+            away,
+            state=state,
+            history=mc.history,
+            score=score,
+            foreign_names=foreign_names(home, away, self.store.league),
+        )
+        pack = graphics_pack(base, request, state=state, winprob=winprob)
+        return await self.graphics.propose(pack, request, seq=state.seq if state is not None else 0)
 
     async def recap(self, match_id: str, persona: Persona | str = Persona.CASUAL, language: str = "en") -> Recap | None:
         """The full-time recap for a persona/language (lazy, cached). None until the full-time moment is done."""

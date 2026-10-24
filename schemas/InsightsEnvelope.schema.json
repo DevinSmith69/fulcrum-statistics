@@ -355,6 +355,23 @@
           },
           "title": "Stats",
           "type": "array"
+        },
+        "origin": {
+          "anyOf": [
+            {
+              "enum": [
+                "agents",
+                "producer"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Who made the cue. None/'agents': a moment cue from the agent team (one per persona). 'producer': a graphic the studio producer requested and put on air (persona-neutral: every viewer gets it)",
+          "title": "Origin"
         }
       },
       "required": [
