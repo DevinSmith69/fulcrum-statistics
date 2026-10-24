@@ -46,6 +46,8 @@ class MetricParams:
     phase_chaos_threshold: float = 60.0
     phase_control_diff: float = 20.0
     phase_persist_s: float = 60.0
+    # No phase classification until the 5-minute window has filled (avoids "control" after two passes).
+    phase_min_elapsed_s: float = 300.0
 
     # Momentum: EMA per event of pressure_home - pressure_away.
     momentum_alpha: float = 0.2
@@ -106,6 +108,10 @@ class MomentParams:
 
     global_cooldown_s: float = 45.0
     same_type_cooldown_s: float = 180.0
+    # Exempt from every cooldown (and still reset the global cooldown clock when they fire).
+    fully_exempt: tuple[str, ...] = ("goal", "red_card", "half_time", "full_time")
+    # Exempt from the 45 s global cooldown only (same-type cooldown still applies).
+    global_exempt: tuple[str, ...] = ("big_chance",)
 
     goal_base: float = 0.6
     goal_wp_cap: float = 0.4
@@ -117,10 +123,14 @@ class MomentParams:
     wp_swing_delta: float = 0.06
     wp_swing_window_s: float = 90.0
     wp_swing_sig_per_delta: float = 5.0
+    # Only these events can *cause* a swing. In the §3 model WP moves on goals, reds (own moments) and
+    # shot xG; everything else is clock drift or the 15' xG window rolling over — not a story.
+    wp_swing_cause_types: tuple[str, ...] = ("shot",)
 
     pressure_flip_diff: float = 25.0
     pressure_rise: float = 30.0
     pressure_rise_window_s: float = 180.0
+    pressure_surge_min_after: float = 50.0  # a surge must end at a genuinely high index
     pressure_sig_min: float = 0.4
     pressure_sig_max: float = 0.6
 

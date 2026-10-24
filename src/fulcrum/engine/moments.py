@@ -7,8 +7,12 @@ minutes as `"67'"`. Derived deltas are always included (computed from the *round
 quoting before/after/delta is always arithmetically consistent).
 
 Cooldown policy (see docs/HANDOFFS.md): goal, red_card, half_time, full_time and goal milestones (brace /
-hat-trick) are exempt; every other moment needs ≥ 45 s since the previous moment of any type and ≥ 180 s
-since the previous moment of the same type for the same team (elite_pass: any team).
+hat-trick) are exempt; big_chance skips only the global cooldown; every other moment needs ≥ 45 s since the
+previous moment of any type and ≥ 180 s since the previous moment of the same type for the same team
+(elite_pass / phase_change: any team; player_milestone: same player).
+
+wp_swing only fires on a shot (`MomentParams.wp_swing_cause_types`): it compares the WP now with the WP just
+before each cause event in the last 90 s, so the swing is always attributable to on-pitch actions.
 """
 
 from __future__ import annotations
@@ -31,7 +35,6 @@ from .params import MomentParams
 from .state import EventEffects, FrameEffects, MatchTracker
 
 MT = MomentType
-EXEMPT = {MT.GOAL, MT.RED_CARD, MT.HALF_TIME, MT.FULL_TIME}
 
 
 def pct(p: float) -> int:
@@ -137,8 +140,9 @@ class MomentDetector:
     def _emit(self, c: _Candidate, wp_after: WinProbability) -> Moment | None:
         now = self.t.clock_ms
         key = (str(c.type), c.cooldown_team if c.cooldown_team is not None else c.team_id)
-        if not c.exempt:
-            if self._last_any_ms is not None and now - self._last_any_ms < self.p.global_cooldown_s * 1000:
+        if not (c.exempt or str(c.type) in self.p.fully_exempt):
+            in_global = self._last_any_ms is not None and now - self._last_any_ms < self.p.global_cooldown_s * 1000
+            if in_global and str(c.type) not in self.p.global_exempt:
                 return None
             last = self._last_type.get(key)
             if last is not None and now - last < self.p.same_type_cooldown_s * 1000:
@@ -182,6 +186,9 @@ class MomentDetector:
         if fx.shot is not None:
             self._shot_wp_before[fx.shot.team_id] = (fx.shot.seq, wp_before)
         goalish = fx.goal is not None or (fx.shot is not None and fx.shot.outcome == "goal")
+        is_cause = str(ev.type) in self.p.wp_swing_cause_types
+        if is_cause and not goalish:
+            self._wp_hist.append((self.t.clock_ms, ev.seq, wp_before))
 
         candidates: list[_Candidate | None] = [
             self._goal(fx, wp_before, wp_after),
@@ -191,7 +198,7 @@ class MomentDetector:
             self._elite_pass(ev, fx),
             self._shot_speed(fx),
         ]
-        if fx.period_ended is None and not fx.match_ended and not goalish:
+        if is_cause and fx.period_ended is None and not fx.match_ended and not goalish:
             candidates.append(self._wp_swing(ev, wp_after))
         candidates += [
             self._momentum_run(fx),
@@ -214,7 +221,6 @@ class MomentDetector:
         # WP history: reset after anything that legitimately moved WP, so a goal/red isn't re-reported as a swing.
         if goalish or fx.red_card_player_id is not None or any(m.type in (MT.BIG_CHANCE, MT.WP_SWING) for m in moments):
             self._wp_hist.clear()
-        self._wp_hist.append((self.t.clock_ms, max(self.t.last_seq, 0), wp_after))
         return moments
 
     def on_frame(self, frame: TrackingFrame, fx: FrameEffects, wp: WinProbability) -> list[Moment]:
@@ -515,7 +521,7 @@ class MomentDetector:
             for side, idx in (("home", 2), ("away", 3)):
                 low = min(self._pressure_hist, key=lambda h: h[idx])
                 rise = (ph if side == "home" else pa) - low[idx]
-                if rise >= self.p.pressure_rise:
+                if rise >= self.p.pressure_rise and (ph if side == "home" else pa) >= self.p.pressure_surge_min_after:
                     cand = (side, rise, low[1], (low[2], low[3]), "surge")
                     break
         if cand is None:

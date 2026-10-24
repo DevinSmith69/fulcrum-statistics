@@ -347,7 +347,8 @@ class MatchTracker:
             -100.0,
             100.0,
         )
-        fx.phase_before = self.phase.update(self._instant_phase(), self.clock_ms)
+        if self.clock_ms >= self.params.metrics.phase_min_elapsed_s * 1000:
+            fx.phase_before = self.phase.update(self._instant_phase(), self.clock_ms)
         return fx
 
     def _track_possession(self, ev: MatchEvent, fx: EventEffects) -> None:
@@ -637,6 +638,8 @@ class MatchTracker:
         if frame.match_id != self.match_id or frame.frame_id <= self.last_frame_id:
             return FrameEffects(duplicate=True)
         self.last_frame_id = frame.frame_id
+        if frame.period == self.period and not self.finished:
+            self._advance(frame.clock_ms)  # frame-driven moments carry the frame's sim time
         fx = FrameEffects()
         mp = self.params.metrics
         milestone_m = self.params.moments.milestone_distance_km * 1000
