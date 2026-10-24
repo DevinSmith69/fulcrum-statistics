@@ -1,10 +1,12 @@
 import { useId, useMemo, useRef, useState } from "react";
+import { coachCopy, isCoachable } from "../lib/coach";
 import { buildFactIndex, traceCount } from "../lib/factTrail";
 import { minuteLabel, teamInk } from "../lib/format";
 import { momentLabel, t } from "../lib/i18n";
 import { isReplayable } from "../lib/replay";
 import type { MatchFeed } from "../lib/useMatchFeed";
 import type { CheckStatus, Insight, Moment } from "../types";
+import { CoachPanel } from "./CoachPanel";
 import { FactText, FactTrailPanel } from "./FactTrail";
 import { MiniReplay } from "./MiniReplay";
 import { useReplayStage } from "./PitchReplay";
@@ -35,6 +37,9 @@ function Item({ m, insight, feed, lang, dense, newest, anchor, highlighted }: { 
   const index = useMemo(() => buildFactIndex(m.facts, { clockMs: m.clock_ms, preferKeys: keyFacts }), [m.facts, m.clock_ms, keyFacts]);
   const traced = useMemo(() => (v ? traceCount([v.headline, v.body], index, copyLang) : { traced: 0, total: 0 }), [v, index, copyLang]);
   const [trailOpen, setTrailOpen] = useState(false);
+  const [coachOpen, setCoachOpen] = useState(false);
+  const coachId = useId();
+  const coachable = !!insight?.insight_id && !!feed.matchId && isCoachable(m);
   const [replayOpen, setReplayOpen] = useState(false);
   const replayBtn = useRef<HTMLButtonElement>(null);
   const stage = useReplayStage();
@@ -84,6 +89,19 @@ function Item({ m, insight, feed, lang, dense, newest, anchor, highlighted }: { 
                 </span>
               )}
             </button>
+            {coachable && (
+              <button
+                type="button"
+                aria-expanded={coachOpen}
+                aria-controls={coachId}
+                onClick={() => setCoachOpen((o) => !o)}
+                title="How it was conceded, from the defending side: engine-computed evidence, explained and fact-checked"
+                className={`flex items-center gap-1 rounded-sm hover:text-ink-100 ${coachOpen ? "text-ink-100" : ""}`}
+              >
+                <span aria-hidden className={`inline-block transition-transform ${coachOpen ? "rotate-90" : ""}`}>›</span>
+                {coachCopy(lang, "button")}
+              </button>
+            )}
             {insight?.latency_ms != null && !dense && <span>Explained in {(insight.latency_ms / 1000).toFixed(1)} s</span>}
             {isReplayable(m) && (
               <button
@@ -107,6 +125,9 @@ function Item({ m, insight, feed, lang, dense, newest, anchor, highlighted }: { 
             )}
           </div>
           {trailOpen && insight && <FactTrailPanel id={trailId} moment={m} insight={insight} traced={traced} />}
+          {coachOpen && coachable && insight && feed.matchId && (
+            <CoachPanel id={coachId} matchId={feed.matchId} moment={m} insight={insight} lang={lang} badge={(s) => <CheckBadge status={s} />} />
+          )}
           {replayOpen && (
             <MiniReplay
               moment={m}

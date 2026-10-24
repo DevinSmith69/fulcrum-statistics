@@ -31,8 +31,9 @@ from fulcrum.contracts import (
     WinProbability,
 )
 
+from .concession import ConcessionTracker
 from .params import MomentParams
-from .state import EventEffects, FrameEffects, MatchTracker
+from .state import EventEffects, FrameEffects, MatchTracker, ShotRecord
 
 MT = MomentType
 
@@ -96,6 +97,9 @@ class MomentDetector:
         self._ht_done = False
         self._ft_done = False
         self._run_spell: dict[str, bool] = {}
+        # Concession analysis (MODEL_SPEC §4.1): coach_ facts computed at each shot, kept per team for the goal.
+        self.concession = ConcessionTracker(tracker)
+        self._coach_by_shot: dict[str, tuple[int, list[Fact]]] = {}
 
     # ------------------------------------------------------------------ fact helpers
 
@@ -167,6 +171,13 @@ class MomentDetector:
             Fact(key="whatif_goal_draw_pct", label="Draw probability if it had gone in", value=pct(cf.draw), unit="%"),
         ]
 
+    def _coach_facts(self, shot: ShotRecord | None) -> list[Fact]:
+        """The `coach_` facts computed when `shot` was taken (MODEL_SPEC §4.1); [] if there are none."""
+        if shot is None:
+            return []
+        seq, facts = self._coach_by_shot.get(shot.team_id, (-1, []))
+        return list(facts) if seq == shot.seq else []
+
     def _team_fact(self, team_id: str | None) -> Fact:
         return Fact(key="team", label="Team", value=self.t.team_name(team_id))
 
@@ -222,8 +233,10 @@ class MomentDetector:
         """Evaluate every rule for one applied event, in priority order."""
         if fx.duplicate:
             return []
+        self.concession.on_event(ev, fx)
         if fx.shot is not None:
             self._shot_wp_before[fx.shot.team_id] = (fx.shot.seq, wp_before)
+            self._coach_by_shot[fx.shot.team_id] = (fx.shot.seq, self.concession.facts_for_shot(ev, fx.shot))
         goalish = fx.goal is not None or (fx.shot is not None and fx.shot.outcome == "goal")
         is_cause = str(ev.type) in self.p.wp_swing_cause_types
         if is_cause and not goalish:
@@ -266,6 +279,7 @@ class MomentDetector:
         """Tracking-driven rules: sprint speed records and distance milestones."""
         if fx.duplicate:
             return []
+        self.concession.on_frame(frame)
         candidates: list[_Candidate | None] = []
         best = max(fx.top_speeds, key=lambda x: x[1], default=None)
         if best is not None:
@@ -341,6 +355,7 @@ class MomentDetector:
                 Fact(key="scorer_goals_in_match", label="Scorer's goals this match", value=t.players[g.scorer_id].goals)
             )
         facts += self._wp_facts(before, wp_after)
+        facts += self._coach_facts(shot)
         # Swing across all three outcomes: a late equaliser barely moves the scorer's win chance but turns the
         # draw from unlikely to near-certain, and it is one of the biggest moments of a match.
         sig = self.p.goal_base + min(self.p.goal_wp_cap, outcome_swing(before, wp_after))
@@ -428,6 +443,7 @@ class MomentDetector:
         if s.assister_id:
             facts.append(self._player_fact("assist", "Chance created by", s.assister_id))
         facts += self._whatif_goal_facts(s.team_id, wp_after)
+        facts += self._coach_facts(s)
         before = self._shot_wp_before.get(s.team_id, (s.seq, None))[1]
         return _Candidate(
             MT.BIG_CHANCE,

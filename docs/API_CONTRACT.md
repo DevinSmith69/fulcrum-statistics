@@ -49,6 +49,7 @@ one kind of process in it, so in `hybrid` the engine and agents apps stand by in
 | GET | `/api/matches/{id}/overlay-cues` | `persona`, `language`, `since_clock_ms` | `OverlayCue[]` — **the machine-readable feed for a broadcast graphics partner** |
 | GET | `/api/matches/{id}/recap` | `persona`, `language` | `Recap` (404 until full time; generated lazily per persona/lang, cached) |
 | POST | `/api/matches/{id}/translate` | `{"insight_id", "language"}` | `InsightVariant[]` (on-demand translation, cached) |
+| GET | `/api/matches/{id}/insights/{insight_id}/coach` | `language` (default `en`) | `CoachView` `{match_id, insight_id, moment_id, moment_type, defending_team_id, language, check_status, points: [{text, fact_keys}], takeaway, facts, latency_ms}` — **Coach's view** of a goal or big chance (see below) |
 | GET | `/api/speech` | – | `{"enabled": bool, "auth": "key" \| "entra" \| null, "voices": {lang: voice}}` — is neural voice configured? |
 | POST | `/api/speech` | `{"text"` (1–400 chars)`, "language"}` | `audio/mpeg`: the line in that language's Azure AI Speech neural voice (cached per voice + text). **503** when Azure Speech is not configured (the overlay then uses the browser's `speechSynthesis`); 502 if the Speech service fails |
 | GET | `/api/eval/latest` | – | `{"live": report \| null, "foundry": summary \| null}` — read-only, the newest offline evaluation reports in `data/eval/` (`FULCRUM_EVAL_DIR` overrides). `live` = `scripts/eval_live.py` (`status_counts`, `status_rates_pct`, `latency_ms.p50/p95/mean`, `tokens_total`, `llm`, `recap`, …); `foundry` = `scripts/eval_foundry.py` (`evaluators.{groundedness,relevance,coherence,fluency}.{mean,min,n,pass_rate_pct}` on the 1–5 scale, `by_check_status`, `lowest[]` with judge `reasons`, `report_url` to the Foundry portal, `judge_deployment`). Both carry `file` and `generated_at`; per-item detail is omitted |
@@ -109,6 +110,18 @@ A broadcast graphics team does not put AI copy on air unseen. Per match, a produ
 - Errors: 404 unknown match / held item / proposal · 409 putting a refused proposal on air · 422 bad body or
   failed edit · **503** for a graphic request when no agents service runs in the API process (in-process and
   hybrid topologies host it; split does not).
+**Coach's view** (`GET /api/matches/{id}/insights/{insight_id}/coach?language=es`): how a goal (or big chance) was
+conceded, for the defending team. The evidence is the moment's engine-computed `coach_` facts (MODEL_SPEC §4.1:
+how the move started, a misplaced pass with its expected completion, passes and seconds to the shot, distance
+to the nearest defender, defenders goal-side, chance quality, keeper facts); the Coach agent writes 2–3
+`points` (each listing the `coach_` keys it states in `fact_keys`) and one conditional `takeaway`, in `language`
+(en/es/fr/pt/de; anything else → en). Every number in a point must come from the facts that point cites; names,
+betting terms, lengths and blame language ("should have", "mistake", …) are checked; one repair. Cached per
+(insight, language). `check_status="fallback"` (`points` empty, `takeaway` null, `language` `en`) means no
+checked copy is available — no agents in this process, an LLM failure, or two failed checks: clients list
+`facts` instead (label + value), and a later request retries. `CoachView` is an API response, not a bus
+message, so it is defined in `fulcrum.agents.schemas` (not in `fulcrum.contracts`/`schemas/`). Errors: 404 unknown
+match or insight, or the insight's moment is not a goal / big chance with `coach_` facts.
 
 ### Match controls (demo director)
 

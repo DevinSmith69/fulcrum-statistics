@@ -16,6 +16,7 @@ enforces this, so the system degrades gracefully, never confidently wrong.
 | **Match Reporter** | LLM (stronger model) | full-time facts + top-8 insights | `Recap` per persona | full time (lazy per persona/language) |
 | **Studio Analyst** | LLM (fast model), Foundry prompt agent | viewer question + context pack (live team/player stats, moments so far with facts, rosters) | `AskAnswer` | on demand ("Ask the studio"), cached |
 | **Graphics Producer** | LLM (fast model), Foundry prompt agent | producer's plain-language graphic request + context pack (the Studio Analyst's, plus named players' live stats and earlier win probability) | `GraphicProposal` (an `OverlayCue` with `origin="producer"`) | on demand (Producer console), previewed before air |
+| **Coach** | LLM (fast model), Foundry prompt agent | a goal / big chance's `coach_` facts (MODEL_SPEC §4.1) + context facts + rosters + language | `CoachView` (2–3 points with `fact_keys`, a takeaway) | on demand ("Coach's view"), cached per (insight, language) |
 
 Multi-agent story for judges: distinct roles, a **shared typed state** (`MomentContext`), explicit handoffs, a
 **repair loop** (Fact-Checker → Analyst/Editor with issues), and **graceful fallback** (templates). That is
@@ -158,6 +159,26 @@ clubs, or a team or player of another match named in the request → refused wit
 **Editorial gate.** Producer edits of held insights (Producer console) go through `factcheck.check_insight_copy`
 against the moment's own sheet (`producer.insight_sheet`: facts, score, minute, other teams' names), exactly
 like agent copy; a passing edit is marked `check_notes: ["…", "edited by producer"]` and its cues are rebuilt.
+### Coach ("Coach's view") — system (fixed, published as a Foundry prompt agent)
+```
+You are the Coach in a live football studio. A goal was conceded, or a big chance was allowed. Write a short
+"Coach's view" for the DEFENDING team: how the chance came about, using only the coach_ facts.
+2 or 3 points in the order the move happened, one sentence each, each listing the coach_ keys it states in
+fact_keys; every number from the facts it lists. One constructive, conditional takeaway. Describe, never blame:
+no "should have", no "error/mistake/howler/fault", the keeper judged only by the shot facts. Numbers only from
+FACTS, names only from ROSTER, in LANGUAGE. No odds or betting. Return JSON.
+```
+(Full text: `agents/prompts.py` `COACH`.) The principle is the product's: the engine computes the evidence
+(how the move started, a misplaced pass *with its own difficulty and expected completion*, passes and seconds to
+the shot, nearest-defender distance, defenders goal-side, chance quality, keeper facts — MODEL_SPEC §4.1), the
+Coach only explains it. User prompt: `LANGUAGE` · `MOMENT` · `FACTS` (context facts — minute, score, teams,
+scorer/shooter — plus the `coach_` facts only) · `ROSTER`. Checks (`agents/coach.py`, deterministic): each
+point cites at least one `coach_` key (context keys such as `scorer` may be added) and its numbers must come
+from the facts it cites (or minute/score), the takeaway's from the coach facts; unknown keys; 2–3 points; a
+point that names the goalkeeper and quotes the nearest-defender distance is rejected (seen live: the model
+pinned that distance on the keeper); ≤ 220 chars and complete sentences; real clubs, foreign
+names, betting terms (§5); blame language in English and the copy's language. One repair; then None, and the
+API serves the deterministic fallback (the `coach_` facts listed, no LLM). Cached per (insight, language).
 
 ## 5. Fact-Checker (deterministic — `agents/factcheck.py`)
 Runs on the Explanation and every variant (and every translation). Fail if any of these holds:

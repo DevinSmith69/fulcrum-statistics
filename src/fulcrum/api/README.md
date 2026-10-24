@@ -60,6 +60,10 @@ without `fulcrum.agents` moments still flow but there are no insights.
   `AgentService.graphic` with the read model's `MatchState` and win-probability history (503 without agents;
   `FULCRUM_GRAPHIC_RATE`, default `10/30`). `FULCRUM_PRODUCER_KEY` set → `X-Producer-Key` header required (401).
   `personalise.cue_matches` serves `origin="producer"` cues to every persona. Tests: `tests/api/test_producer.py`.
+- `GET …/insights/{insight_id}/coach?language=` (Coach's view, `CoachView`) calls `AgentService.coach` when the
+  agents run in this process; otherwise, or when it fails, it serves the deterministic fallback built from the
+  read model's moment (`fulcrum.agents.coach.fallback_view`: the `coach_` facts, no LLM). 404 unless the insight's
+  moment is a goal / big chance with `coach_` facts. Tests: `tests/api/test_coach.py`.
 
 - Match controls (demo director, API_CONTRACT §2 "Match controls"): `GET/POST …/control` drive the
   `fulcrum.sim.control.MatchControl` that `Pipeline` creates per in-process match (speed, pause / resume, next

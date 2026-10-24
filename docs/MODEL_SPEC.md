@@ -190,3 +190,68 @@ Target **20 – 35 moments per match**; if over, raise thresholds in params, don
 **Always include derived deltas** agents will want to say (e.g. `wp_home_delta = 22`, `pressure_home_delta`),
 because agents are forbidden from computing numbers themselves. Every moment also carries `minute`, `score`
 (e.g. `"2-1"`), `home_team`, `away_team`.
+
+### 4.1 Concession analysis — `coach_` facts (added 2026-10-24)
+The evidence behind the **Coach's view** ("how did we concede that?"), computed by `engine/concession.py` when
+the shot is applied and attached to every **goal** and **big_chance** moment, written from the **defending**
+team's side (the moment's `team` is the attacking side). Existing facts and moment thresholds are unchanged.
+Parameters live in `params.CoachParams`. A fact that cannot be computed reliably is **omitted**, never guessed.
+
+**The move.** `ConcessionTracker` follows possessions as `MatchTracker` defines them (a new possession starts on
+an event of the other team that gains the ball, §2). The move starts at the start of the attacking team's
+possession, or at the latest set piece (kick-off, goal kick, throw-in, corner, free kick) that team took inside
+it — "the goal came from a corner" is the coach's unit, not a 3-minute possession. How it started
+(`coach_move_origin`), in priority order:
+
+| origin | rule |
+|---|---|
+| set piece (`free kick`, `corner`, `throw-in`, `goal kick`, `kick-off`) | the move starts with that restart; a free kick also names the defending player whose foul (the event right before it, after the last on-ball action) gave it away |
+| `misplaced pass` | the defending team's last on-ball action before the regain was a failed pass; the facts add that pass's difficulty (0–10) and expected completion (%) from the pass event (§1.3) |
+| `tackle` | regain by a tackle, or the defending team's last action was a failed dribble (then the dribbler is the player who lost the ball) |
+| `interception` / `clearance` | regain event of that type (without a failed pass before it) |
+| `loose ball after a clearance` / `goalkeeper save` / `loose ball after a blocked shot` | the defending team's last on-ball action was a clearance / a saved shot / a blocked shot |
+| `loose-ball recovery` | a `ball_recovery` regain otherwise |
+| — (no origin facts) | anything else, e.g. a bare `possession_change` |
+
+The player "who won the ball" is only named when the regain event is an interception, tackle, ball recovery or
+clearance (never e.g. the first pass of a possession).
+
+**Pressure on the shooter.** `coach_nearest_defender_m` is the shot event's `nearest_opponent_m` — the
+simulator's own pressure measurement (§1.2), absent on headers from crosses/corners, in which case the fact is
+omitted. It is *not* taken from tracking frames: the two nearest players of each team chase the ball (§1.8), so
+the frame distance is ~0 m on most shots and would be misleading. `coach_defenders_goal_side` comes from the
+tracking frame: the latest frame at or before the shot, at most 1.5 s old, converted into the shooting team's
+frame (home attacks towards x = 105 in odd periods); it is used only if its ball is within 3 m of the shot
+location (proving it shows the shot), and counts the defending team's outfield players (goalkeepers excluded)
+strictly closer to their goal line than the ball. No frame → no fact.
+
+**Chance quality and the keeper.** Bands on the shot's xG: `< 0.10` → `low-quality chance`, `0.10–0.30` →
+`half-chance`, `≥ 0.30` (the big-chance threshold) → `clear chance`. Keeper facts only when the shot was on
+target; the only keeper label is `low-probability finish` for an on-target shot with xG `< 0.10` from
+`> 18 m`. There is no "should have saved" fact: nothing in the data supports one.
+
+| key | label (abridged) | example | when |
+|---|---|---|---|
+| `coach_defending_team` | Defending team | `"Marsh Dock United"` | always |
+| `coach_move_origin` | How the attacking move started | `"misplaced pass"` | origin known |
+| `coach_ball_won_by` | `<attacking team>` player who won the ball | `"Lindqvist"` | regain event |
+| `coach_ball_lost_by` | `<defending team>` player who lost the ball | `"Gillow"` | misplaced pass / failed dribble |
+| `coach_misplaced_pass_difficulty` | Difficulty of the misplaced pass (0-10) | `6.9` | misplaced pass |
+| `coach_misplaced_pass_expected_completion_pct` | Expected completion of the misplaced pass (%) | `31` | misplaced pass |
+| `coach_free_kick_foul_by` | `<defending team>` player whose foul gave away the free kick | `"Bellweather"` | free kick after a foul |
+| `coach_move_start_minute` | Minute the attacking move started | `"65'"` | always (with a move) |
+| `coach_move_start_zone` | Where the move started, seen from `<defending team>`: `own third` (x < 35), `middle third`, `final third` (x ≥ 70) | `"middle third"` | start has x |
+| `coach_move_passes` | Completed passes from the start of the move to the shot | `4` | with a move |
+| `coach_move_seconds` | Seconds from the start of the move to the shot (s) | `46` | with a move |
+| `coach_nearest_defender_m` | Distance from the shooter to the nearest `<defending team>` player (m) | `6.1` | measured |
+| `coach_defenders_goal_side` | `<defending team>` outfield players goal-side of the ball at the shot | `2` | tracking frame |
+| `coach_chance_xg` | Expected goals of the chance conceded | `0.11` | always |
+| `coach_shot_distance_m` | Shot distance (m) | `21.3` | always |
+| `coach_chance_quality` | Chance quality band | `"half-chance"` | always |
+| `coach_goalkeeper` | `<defending team>` goalkeeper | `"Quennell"` | on target, one keeper on the pitch |
+| `coach_shot_on_target` | Shot on target | `"yes"` | on target |
+| `coach_shot_speed_kmh` | Shot speed (km/h) | `96` | on target |
+| `coach_keeper_shot_profile` | Shot profile for the goalkeeper | `"low-probability finish"` | rule above |
+
+Examples are seed 11's 66' goal (`data/matches/sample_seed11.jsonl`). Formatting follows §4 (percent integers,
+xG two decimals, metres one decimal, speeds integers, minutes as `"67'"`), so the fact-checker can match them.
