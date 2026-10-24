@@ -15,6 +15,8 @@
     "simAutostart": { "value": "${FULCRUM_SIM_AUTOSTART=true}" },
     "simSpeed": { "value": "${FULCRUM_SIM_SPEED=10}" },
     "extraAllowedOrigins": { "value": "${FULCRUM_EXTRA_ORIGINS=}" },
+    "enableSpeech": { "value": "${FULCRUM_ENABLE_SPEECH=false}" },
+    "speechSku": { "value": "${FULCRUM_SPEECH_SKU=F0}" },
     "apiExists": { "value": "${SERVICE_API_RESOURCE_EXISTS=false}" },
     "simExists": { "value": "${SERVICE_SIM_RESOURCE_EXISTS=false}" },
     "engineExists": { "value": "${SERVICE_ENGINE_RESOURCE_EXISTS=false}" },

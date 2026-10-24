@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { BroadcastAudioButtons } from "../components/AudioControls";
 import { CueInspector } from "../components/CueInspector";
 import { OverlayLayer } from "../components/OverlayLayer";
 import { Pitch } from "../components/Pitch";
 import { KitStripe } from "../components/TeamMark";
 import { matchClock } from "../lib/format";
+import type { AudioPrefs, Commentary } from "../lib/useCommentary";
 import type { MatchFeed } from "../lib/useMatchFeed";
 import type { ViewerPrefs } from "../types";
 
@@ -30,8 +32,16 @@ function ScoreBug({ feed }: { feed: MatchFeed }) {
   );
 }
 
-/** Broadcast mode: pitch and overlays only, full screen, with a toggleable cue inspector (key I). */
-export function BroadcastView({ feed, prefs }: { feed: MatchFeed; prefs: ViewerPrefs }) {
+interface Props {
+  feed: MatchFeed;
+  prefs: ViewerPrefs;
+  audio: AudioPrefs;
+  onAudioChange: (p: Partial<AudioPrefs>) => void;
+  commentary: Commentary;
+}
+
+/** Broadcast mode: pitch and overlays only, full screen, with a toggleable cue inspector (key I) and voice (V). */
+export function BroadcastView({ feed, prefs, audio, onAudioChange, commentary }: Props) {
   const [inspector, setInspector] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -63,6 +73,7 @@ export function BroadcastView({ feed, prefs }: { feed: MatchFeed; prefs: ViewerP
           <a href="#/" className="rounded-md bg-ink-900/90 px-3 py-1.5 text-sm text-ink-100 ring-1 ring-ink-700 hover:text-ink-50">
             Exit <kbd className="ml-1 text-ink-500">Esc</kbd>
           </a>
+          <BroadcastAudioButtons audio={audio} onChange={onAudioChange} commentary={commentary} />
           <button onClick={toggleFullscreen} className="rounded-md bg-ink-900/90 px-3 py-1.5 text-sm text-ink-100 ring-1 ring-ink-700 hover:text-ink-50">
             Full screen <kbd className="ml-1 text-ink-500">F</kbd>
           </button>

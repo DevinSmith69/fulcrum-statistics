@@ -37,6 +37,13 @@ without `fulcrum.agents` moments still flow but there are no insights.
   by `seq` / `moment_id` / `insight_id` / `cue_id` — a `hello` and the live stream may overlap by an item.
 - A viewer with no variant for their persona gets the casual one; missing languages are translated on demand
   (English until the agents answer).
+- Voice (`speech.py`): `POST /api/speech {text, language}` proxies the Azure AI Speech text-to-speech REST API
+  and returns MP3; **503** when `AZURE_SPEECH_*` is not set (the overlay then uses the browser voice). Voices:
+  en-GB Ryan, es-ES Alvaro, fr-FR Henri, pt-BR Antonio, de-DE Conrad (`AZURE_SPEECH_VOICE_<LANG>` overrides).
+  Auth: key (`AZURE_SPEECH_KEY` + `AZURE_SPEECH_REGION`) or keyless Entra (`AZURE_SPEECH_ENDPOINT` = custom
+  domain + `AZURE_SPEECH_RESOURCE_ID`; token from `DefaultAzureCredential`, sent as
+  `Authorization: Bearer aad#<resource id>#<token>`). Audio is cached in memory per (voice, text), bounded at
+  256 lines / 16 MB. `GET /api/speech` says whether it is enabled; `/api/health` has `speech: bool`.
 
 - Out of process (Azure, `FULCRUM_INPROCESS` off): with `FULCRUM_SIM_URL` set, `POST /api/matches` forwards the
   config to the sim service (`POST {FULCRUM_SIM_URL}/matches`). If the sim is unreachable or refuses, the API

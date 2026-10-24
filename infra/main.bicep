@@ -49,6 +49,11 @@ param staticWebAppLocation string = 'eastus2'
 @description('Extra CORS origins for the API, comma-separated (e.g. http://localhost:5173 for local web dev).')
 param extraAllowedOrigins string = ''
 
+@description('Create an Azure AI Speech resource (keyless, managed identity) for neural voice commentary. Off by default: without it the overlay speaks with the browser voice.')
+param enableSpeech bool = false
+@allowed(['F0', 'S0'])
+param speechSku string = 'F0'
+
 // Set by azd after the first deploy so re-provisioning keeps the deployed images.
 param apiExists bool = false
 param simExists bool = false
@@ -65,6 +70,7 @@ var names = {
   keyVault: 'kv-fulcrum-${suffix}'
   environment: 'cae-fulcrum-${suffix}'
   staticWebApp: 'swa-fulcrum-${suffix}'
+  speech: 'speech-fulcrum-${suffix}'
   api: 'ca-fulcrum-api'
   sim: 'ca-fulcrum-sim'
   engine: 'ca-fulcrum-engine'
@@ -171,7 +177,20 @@ module foundry 'modules/foundry-role.bicep' = {
   }
 }
 
-// ---- Static Web App (web/) ----------------------------------------------------------------------------------
+// ---- Azure AI Speech (optional, enableSpeech): neural voice for POST /api/speech -----------------------------
+// TODO(azure): not deployed yet. Keyless — the api reaches it with the user-assigned identity (AZURE_CLIENT_ID).
+module speech 'modules/speech.bicep' = if (enableSpeech) {
+  name: 'speech'
+  params: {
+    name: names.speech
+    location: location
+    tags: tags
+    sku: speechSku
+    principalId: identity.properties.principalId
+  }
+}
+
+// ---- Static Web App (web/)----------------------------------------------------------------------------------
 resource web 'Microsoft.Web/staticSites@2023-12-01' = {
   name: names.staticWebApp
   location: staticWebAppLocation
@@ -226,7 +245,14 @@ var apiEnv = concat(
   [
     { name: 'FULCRUM_SERVICE', value: 'api' }
     { name: 'FULCRUM_ALLOWED_ORIGINS', value: allowedOrigins }
-  ]
+  ],
+  enableSpeech
+    ? [
+        { name: 'AZURE_SPEECH_ENDPOINT', value: speech!.outputs.endpoint }
+        { name: 'AZURE_SPEECH_RESOURCE_ID', value: speech!.outputs.id }
+        { name: 'AZURE_SPEECH_REGION', value: speech!.outputs.region }
+      ]
+    : []
 )
 var backendReplicas = inProcess ? 0 : 1
 
