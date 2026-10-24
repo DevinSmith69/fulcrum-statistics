@@ -336,7 +336,32 @@ def check_graphic(out: GraphicOutput, pack: StudioPack) -> list[Issue]:
             )
         if out.team_id is None:
             issues.append(Issue("template", "team_id", "a wp_swing needs the team_id whose win probability it shows"))
+    if out.template == "pressure_bar":
+        issues += _pressure_direction(headline, facts, pack)
     return issues
+
+
+def _pressure_direction(headline: str, facts: dict[str, Fact], pack: StudioPack) -> list[Issue]:
+    """A pressure bar's headline must credit the side the bar shows ahead (live run: "MDU pressing harder" over a
+    73-30 bar for HLC). Numbers pass the fact check; direction needs its own deterministic rule."""
+    home, away = facts.get("home_pressure_index"), facts.get("away_pressure_index")
+    if home is None or away is None or isinstance(home.value, str) or isinstance(away.value, str):
+        return []
+    gap = float(home.value) - float(away.value)
+    if abs(gap) < 5:
+        return []
+    leader, trailer = (pack.home, pack.away) if gap > 0 else (pack.away, pack.home)
+    text = headline.casefold()
+    if trailer.name.casefold() in text and leader.name.casefold() not in text:
+        return [
+            Issue(
+                "direction",
+                "headline",
+                f"the headline credits {trailer.name}, but {leader.name} lead the pressure index "
+                f"({fmt_value(max(home.value, away.value))} vs {fmt_value(min(home.value, away.value))})",
+            )
+        ]
+    return []
 
 
 # --------------------------------------------------------------------------- #

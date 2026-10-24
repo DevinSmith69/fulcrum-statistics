@@ -278,3 +278,28 @@ async def test_service_graphic_and_update_insight():
 
     insight, _ = goal_insight()
     assert svc.update_insight(insight) is False  # never published by this service
+
+
+def test_pressure_bar_headline_must_credit_the_side_that_leads():
+    """Live run: "Marsh Dock United pressing harder" over a 73-30 bar for Harlow Cross passed every number check."""
+    from fulcrum.agents.producer import check_graphic
+
+    st = state()
+    st = st.model_copy(
+        update={
+            "home": st.home.model_copy(update={"pressure_index": 73.0}),
+            "away": st.away.model_copy(update={"pressure_index": 30.0}),
+        }
+    )
+    home_t, away_t = team(HOME), team(AWAY)
+    base = build_pack(MATCH_ID, home_t, away_t, state=st, history=history(), score="1-0")
+    p = graphics_pack(base, "pressure bar now", state=st, winprob=winprob())
+    leader, trailer = home_t, away_t
+    stats = [
+        {"fact_key": "home_pressure_index", "label": "Pressure"},
+        {"fact_key": "away_pressure_index", "label": "Pressure"},
+    ]
+    wrong = GraphicOutput(template="pressure_bar", headline=f"{trailer.name} pressing harder", stats=stats)
+    right = GraphicOutput(template="pressure_bar", headline=f"{leader.name} pressing harder", stats=stats)
+    assert [i.code for i in check_graphic(wrong, p)] == ["direction"]
+    assert check_graphic(right, p) == []
