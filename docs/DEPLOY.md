@@ -103,7 +103,10 @@ azd env set FULCRUM_INPROCESS true && azd provision
 ```
 
 The api app then runs with `FULCRUM_BUS=memory FULCRUM_INPROCESS=1`, which puts sim, engine and agents inside
-the API process, the same as `make dev`. sim, engine and agents scale to 0 replicas. Event Hubs stays
+the API process, the same as `make dev`. **This is how the hackathon demo is deployed (24 Oct):** the on-demand agent
+features (translation, Player lens, per-persona recaps, Ask the studio) call the `AgentService` in the API's
+process, so in the split topology they would fall back to English / 503. In this mode the api app gets 1 vCPU /
+2 GiB (it carries the other three apps' work). sim, engine and agents scale to 0 replicas. Event Hubs stays
 provisioned, and the architecture diagram can call it the production topology. Undo with
 `azd env set FULCRUM_INPROCESS false && azd provision`.
 

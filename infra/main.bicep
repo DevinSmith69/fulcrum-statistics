@@ -288,8 +288,9 @@ module api 'modules/containerapp.bicep' = {
     keyVaultSecrets: kvSecrets
     ingress: 'external'
     targetPort: 8000
-    cpu: '0.5'
-    memory: '1Gi'
+    // In-process the api also runs sim + engine + agents, so it gets the CPU the other three apps would have had.
+    cpu: inProcess ? '1.0' : '0.5'
+    memory: inProcess ? '2Gi' : '1Gi'
     // One replica: the API keeps per-match read models and WebSocket fan-out in memory.
     minReplicas: 1
     maxReplicas: 1
