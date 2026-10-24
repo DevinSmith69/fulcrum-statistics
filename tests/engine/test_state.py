@@ -1,6 +1,7 @@
 """MatchState invariants over the whole hand-made match, plus the engine service on the memory bus."""
 
 import asyncio
+import math
 
 import pytest
 
@@ -15,6 +16,7 @@ from fulcrum.contracts import (
     Moment,
 )
 from fulcrum.engine.match import MatchEngine
+from fulcrum.engine.metrics import player_rating
 from fulcrum.engine.service import EngineService
 from fulcrum.engine.state import minute_label
 from fulcrum.engine.teams import load_teams
@@ -143,3 +145,11 @@ async def test_engine_pump_survives_unparseable_message(fixture_items):
             break
     await service.stop()
     assert service.engines["fixture-nba-rvr"].tracker.last_seq == 0
+
+
+def test_player_rating_is_soft_capped():
+    assert player_rating(0) == 6.0
+    assert 6.9 < player_rating(1.0) < 7.0  # small deltas stay close to the MODEL_SPEC sum
+    assert player_rating(4.27) < 9.3  # sample_seed11's no-goal winger used to read 10.0
+    assert player_rating(20) <= 10 and player_rating(-20) >= 3
+    assert player_rating(-1.5) == pytest.approx(6 - 3 * math.tanh(0.5))

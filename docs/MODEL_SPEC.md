@@ -111,6 +111,7 @@ Rolling windows use **sim time** (clock_ms), not wall clock.
 - **Player rating** (3–10, start 6.0): goal +1.0 · assist +0.6 · key pass +0.2 · xG ×1.0 · shot on target +0.1 ·
   tackle won/interception +0.1 · completed pass +0.004·(1 + difficulty) · failed pass −0.03 ·
   dribble won +0.1 · yellow −0.3 · red −1.5 · own error leading to shot −0.3.
+  Rating = 6 + 4·tanh(Σ/4) for Σ ≥ 0, 6 + 3·tanh(Σ/3) below (soft cap; a plain clamp let a no-goal winger hit 10.0).
 - **Speed**: max shot speed per team/match; player top speed & distance from tracking frames.
 
 ## 3. Live win probability (`engine/winprob.py`)

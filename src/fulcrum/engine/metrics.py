@@ -170,8 +170,14 @@ def clamp(x: float, lo: float, hi: float) -> float:
 
 
 def player_rating(delta: float, params: RatingParams = DEFAULT_PARAMS.ratings) -> float:
-    """Rating from accumulated deltas (start 6.0, clamped to 3–10)."""
-    return clamp(params.base + delta, params.floor, params.ceiling)
+    """Rating from accumulated deltas: start 6.0, soft-capped towards 3 and 10.
+
+    A plain clamp let a busy winger with no goals hit 10.0. tanh keeps small deltas almost linear
+    (+1 → ~7.0) but makes the extremes asymptotic (+3.6 → ~8.9, +4.3 → ~9.2), so 10.0 means a historic match.
+    """
+    up, down = params.ceiling - params.base, params.base - params.floor
+    span = up if delta >= 0 else down
+    return clamp(params.base + span * math.tanh(delta / span), params.floor, params.ceiling)
 
 
 def completed_pass_rating(difficulty: float, params: RatingParams = DEFAULT_PARAMS.ratings) -> float:
