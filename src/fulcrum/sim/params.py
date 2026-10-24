@@ -43,8 +43,8 @@ class SimParams:
     # --- §1.2 pressure --------------------------------------------------------------------- spec
     pressure_gamma_k: float = 2.0
     pressure_gamma_theta: float = 3.0
-    pressure_def_shift_per_point: float = 0.08  # ext: metres closer per defence point above pressure_def_ref
-    pressure_def_ref: int = 80  # ext
+    pressure_def_shift_per_point: float = 0.04  # ext/tuned: metres closer per defence point above ref
+    pressure_def_ref: int = 84  # ext
     pressure_min_m: float = 0.3  # ext
     pressure_threshold_m: float = 3.0
 
@@ -99,7 +99,7 @@ class SimParams:
     carry_max_s: float = 4.0
     dribble_rating_coef: float = 0.05
     dribble_base: float = 0.3
-    dribble_strength_coef: float = 1.5  # §1.7: strength feeds dribble success
+    dribble_strength_coef: float = 0.5  # tuned: §1.7 says strength feeds dribble success, gives no coefficient
     dribble_min_m: float = 3.0  # ext
     dribble_max_m: float = 8.0  # ext
     dribble_min_s: float = 1.5  # ext
@@ -183,7 +183,7 @@ class SimParams:
 
     # --- §1.7 team strength --------------------------------------------------------------- spec
     strength_pass_logit: float = 1.5
-    strength_shot_rel: float = 0.6  # tuned (spec 0.30): NBA v HLC needed a clearer edge
+    strength_shot_rel: float = 0.30
     home_pass_logit: float = 0.15
 
     # --- §1.8 tracking -------------------------------------------------------------------- spec+tuned
