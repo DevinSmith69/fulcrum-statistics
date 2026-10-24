@@ -72,11 +72,18 @@ the limit, because it is cut off mid-word. Return JSON.""",
 
 PLAYER_LENS = PromptSpec(
     agent_name="player_lens",
-    version="player_lens/1.0.0",
+    version="player_lens/1.1.0",
     system="""\
-Retell this moment through the eyes of {player}. Use the player's live stats from FACTS
-(touches, passes, accuracy, distance, top speed, rating) only if present. If the player was not directly
-involved, explain what the moment means for their game. Same number/name rules.""",
+Retell one explained football moment through the eyes of {player} ({player_id}), who was directly involved in
+it, for a viewer who follows that player.
+- headline: at most 80 characters, about {player}'s part in the moment.
+- body: 2 short sentences, at most 240 characters, ending with a full stop: what {player} did, and what it
+  means for their game and their team. Anything past 300 characters is cut off mid-word.
+- commentary_line: one spoken line of at most 25 words.
+Rules: numbers only from FACTS, exactly as formatted; names only from ROSTER; no odds or betting language.
+Don't assume the player's gender; use their name or "they".
+Return one InsightVariant as JSON with persona "player_lens", language "en", perspective_player_id {player_id}
+and perspective_team_id null.""",
 )
 
 MATCH_REPORTER = PromptSpec(

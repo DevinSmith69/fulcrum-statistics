@@ -101,3 +101,49 @@ async def test_agent_failure_falls_back_and_is_not_cached():
     assert (await tr.variants(INSIGHT, INSIGHT.variants[:1], "pt"))[0].headline == "casual-en"
     agents.fail = False
     assert (await tr.variants(INSIGHT, INSIGHT.variants[:1], "pt"))[0].headline == "casual-pt"
+
+
+class LensAgents:
+    """Only NBA-10 is in the moment; counts calls."""
+
+    def __init__(self, fail=False):
+        self.calls, self.fail = [], fail
+
+    async def player_lens(self, insight_id, player_id, language):
+        self.calls.append((insight_id, player_id, language))
+        if self.fail:
+            raise RuntimeError("boom")
+        if player_id != "NBA-10":
+            return []
+        v = _variant(Persona.PLAYER_LENS, lang=language)
+        return [v.model_copy(update={"perspective_player_id": player_id, "headline": f"lens-{language}"})]
+
+
+def _lens_prefs(player, language="en"):
+    from fulcrum.contracts import ViewerPrefs
+
+    return ViewerPrefs(persona=Persona.PLAYER_LENS, language=language, followed_player_id=player)
+
+
+async def test_player_lens_viewer_gets_the_lensed_variant_and_misses_are_cached():
+    from fulcrum.api.personalise import personalise_insight
+
+    agents = LensAgents()
+    tr = Translator(agents)
+    out = await personalise_insight(INSIGHT, _lens_prefs("NBA-10", "es"), tr)
+    assert [v.headline for v in out.variants] == ["lens-es"]
+    # not involved: casual variant, and the miss is cached (one agent call however often it is asked)
+    for _ in range(3):
+        out = await personalise_insight(INSIGHT, _lens_prefs("RVR-04"), tr)
+        assert [v.headline for v in out.variants] == ["casual-en"]
+    assert [c[1] for c in agents.calls] == ["NBA-10", "RVR-04"]
+
+
+async def test_player_lens_falls_back_to_casual_when_agents_fail_or_cache_only():
+    from fulcrum.api.personalise import personalise_insight
+
+    tr = Translator(LensAgents(fail=True))
+    out = await personalise_insight(INSIGHT, _lens_prefs("NBA-10"), tr)
+    assert [v.headline for v in out.variants] == ["casual-en"]
+    out = await personalise_insight(INSIGHT, _lens_prefs("NBA-10"), Translator(LensAgents()), translate=False)
+    assert [v.headline for v in out.variants] == ["casual-en"]  # cache-only snapshot never calls the LLM

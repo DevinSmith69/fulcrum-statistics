@@ -220,6 +220,29 @@ def translator_prompt(
     return _with_issues(sections, issues)
 
 
+def player_lens_prompt(
+    moment: Moment,
+    explanation: Explanation,
+    home: Team,
+    away: Team,
+    score: str | None,
+    player_id: str,
+    issues: Sequence[str] = (),
+) -> str:
+    """User prompt for the Player Lens: the moment, its explanation and the facts, plus who to follow."""
+    player = next((p for p in [*home.players, *away.players] if p.player_id == player_id), None)
+    who = f"{player.player_id} {player.short_name} ({player.name})" if player else player_id
+    sections = [
+        _moment_header(moment),
+        "EXPLANATION\n" + explanation.model_dump_json(indent=2),
+        "FACTS\n" + format_facts_table(moment.facts),
+        "ROSTER\n" + format_roster(home, away),
+        f"SCORE\n{home.name} {score or '-'} {away.name}",
+        f"FOLLOWED PLAYER\n{who}",
+    ]
+    return _with_issues(sections, issues)
+
+
 def recap_prompt(
     *,
     persona: Persona | str,

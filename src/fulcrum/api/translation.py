@@ -4,6 +4,7 @@ The agents expose them on `fulcrum.agents.AgentService` (see docs/HANDOFFS.md, W
     await svc.translate(insight_id, language)          -> list[InsightVariant]   ([] if unknown / failed)
     await svc.translate_cues(insight_id, language)     -> list[OverlayCue]
     await svc.recap(match_id, persona, language)       -> Recap | None
+    await svc.player_lens(insight_id, player_id, lang) -> list[InsightVariant]   ([] if not involved / failed)
 Without an agents service — or when a call fails or returns nothing — the English original is served
 unchanged (the agreed stub), so the overlay keeps working. Successful results are cached per id + language.
 """
@@ -22,6 +23,7 @@ class AgentHooks(Protocol):
     async def translate(self, insight_id: str, language: str) -> list[InsightVariant]: ...
     async def translate_cues(self, insight_id: str, language: str) -> list[OverlayCue]: ...
     async def recap(self, match_id: str, persona: Persona | str, language: str) -> Recap | None: ...
+    async def player_lens(self, insight_id: str, player_id: str, language: str) -> list[InsightVariant]: ...
 
 
 def _slot(x: InsightVariant | OverlayCue) -> tuple[Any, ...]:
@@ -37,6 +39,7 @@ class Translator:
         self.agents = agents
         self._variants: dict[tuple[str, str], list[InsightVariant]] = {}
         self._cues: dict[tuple[str, str], list[OverlayCue]] = {}
+        self._lens: dict[tuple[str, str, str], InsightVariant | None] = {}
 
     async def _hook(self, name: str, *args: Any) -> Any:
         fn = getattr(self.agents, name, None)
@@ -67,6 +70,24 @@ class Translator:
             self._variants[key] = list(got)
         by_slot = {_slot(v): v for v in self._variants[key]}
         return [by_slot.get(_slot(v), v) for v in variants]
+
+    async def player_lens(
+        self, insight: Insight, player_id: str, language: str, *, fetch: bool = True
+    ) -> InsightVariant | None:
+        """The moment retold through `player_id` in `language`, or None (player not involved / agents failed).
+
+        Both outcomes are cached, so the common case — the followed player isn't in this moment — costs one
+        agent lookup per insight, not one per viewer update. `fetch=False` only uses the cache.
+        """
+        key = (insight.insight_id, player_id, language)
+        if key not in self._lens:
+            if not fetch or self.agents is None:
+                return None
+            got = await self._hook("player_lens", insight.insight_id, player_id, language)
+            if got is None:  # the hook raised: don't cache, a later request may succeed
+                return None
+            self._lens[key] = next((v for v in got if v.perspective_player_id == player_id), None)
+        return self._lens[key]
 
     async def cue(self, cue: OverlayCue, language: str) -> OverlayCue:
         """`cue` in `language` (the agents translate all cues of an insight at once)."""

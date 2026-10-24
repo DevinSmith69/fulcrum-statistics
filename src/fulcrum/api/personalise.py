@@ -69,7 +69,13 @@ async def personalise_insight(
     """A copy of `insight` carrying exactly one variant for this viewer (translated if needed).
 
     `translate=False`: use cached translations only, else English (no LLM call).
+    A player_lens viewer gets the moment retold through the followed player when they were involved in it
+    (Player Lens agent); otherwise the usual pick (casual).
     """
+    if prefs.persona == Persona.PLAYER_LENS and prefs.followed_player_id:
+        lensed = await translator.player_lens(insight, prefs.followed_player_id, prefs.language, fetch=translate)
+        if lensed is not None:
+            return insight.model_copy(update={"variants": [lensed]})
     chosen = pick_variants(insight.variants, prefs)
     if not chosen:
         return insight.model_copy(update={"variants": []})

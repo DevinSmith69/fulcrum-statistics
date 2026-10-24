@@ -88,6 +88,7 @@ the template copy was published instead, as designed. `data/eval/sample_seed11.j
 | `cues.py` | Insight → OverlayCue[] (API_CONTRACT §4) |
 | `orchestrator.py` | steps, `EDGES`, `ExplainMomentWorkflow`, `MomentProcessor` |
 | `translate.py` | on-demand translation, cached per (insight, language); fact-checked; falls back to English |
+| `player_lens.py` | on-demand Player Lens: the moment retold through the followed player, only when they are in `moment.player_ids`; fact-checked, one repair, cached per (insight, player); other languages via the Translator; `None` → the viewer gets the casual variant. Exposed as `AgentService.player_lens(insight_id, player_id, language)` and used by the API for `player_lens` viewers |
 | `recap.py` | full-time Match Reporter, cached per (match, persona, language); template fallback |
 | `service.py` | `AgentService`: `moments` + `match-events` in, `InsightsEnvelope` out on `insights` |
 

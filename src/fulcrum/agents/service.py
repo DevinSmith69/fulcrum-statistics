@@ -39,10 +39,11 @@ from fulcrum.llm import LLMClient
 
 from .context import MatchContextStore, foreign_names, load_teams
 from .orchestrator import ExplainMomentWorkflow, MomentProcessor, OrchestratorConfig
+from .player_lens import PlayerLens
 from .prompts import FACT_REVIEWER, MOMENT_ANALYST, PERSONA_EDITOR, PromptSpec
 from .recap import RecapService
 from .schemas import EditorOutput, MomentContext, ReviewOutput
-from .translate import Translator
+from .translate import Translator, normalise_language
 
 log = logging.getLogger("fulcrum.agents")
 
@@ -83,6 +84,7 @@ class AgentService:
         self.processor = MomentProcessor(self.workflow, self._publish)
         self.translator = Translator(llm, self.config)
         self.recaps = RecapService(llm, self.config)
+        self.player_lenses = PlayerLens(llm, self.config)
         self._seen: set[str] = set()
         self._insights: dict[str, tuple[Moment, Insight, str]] = {}  # id -> (moment, insight, score)
         self._pending: dict[str, list[Moment]] = {}
@@ -234,6 +236,30 @@ class AgentService:
             foreign_names=foreign_names(home, away, self.store.league),
             score=score,
         )
+
+    async def player_lens(self, insight_id: str, player_id: str, language: str = "en") -> list[InsightVariant]:
+        """The moment retold through `player_id`, in `language` (on demand, cached).
+
+        Empty when the id is unknown, the player was not directly involved, or the LLM failed: the caller then
+        serves the casual variant. Non-English goes through the Translator (keyed `<insight_id>~<player_id>`).
+        """
+        found = self._insights.get(insight_id)
+        teams = self._teams(found[0].match_id) if found else None
+        if found is None or teams is None:
+            return []
+        moment, insight, score = found
+        home, away = teams
+        names = foreign_names(home, away, self.store.league)
+        variant = await self.player_lenses.variant(
+            insight, moment, home, away, player_id, foreign_names=names, score=score
+        )
+        if variant is None:
+            return []
+        lang = normalise_language(language)
+        if lang == "en" or lang.startswith("en-"):
+            return [variant]
+        lensed = insight.model_copy(update={"insight_id": f"{insight.insight_id}~{player_id}", "variants": [variant]})
+        return await self.translator.translate(lensed, moment, home, away, lang, foreign_names=names, score=score)
 
     async def translate_cues(self, insight_id: str, language: str) -> list[OverlayCue]:
         """Overlay cues of a published insight in `language`. Empty if unknown id."""
