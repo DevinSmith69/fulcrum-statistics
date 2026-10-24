@@ -156,7 +156,7 @@ def check_coach(
 ) -> list[Issue]:
     """Deterministic checks on the Coach's output (see the module docstring)."""
     facts, ctx = coach_facts(moment), context_facts(moment)
-    keys = {f.key for f in facts}
+    keys = {f.key for f in [*ctx, *facts]}
     full = FactSheet.build([*ctx, *facts], score=score, clock_ms=moment.clock_ms, foreign_names=foreign_names)
     issues: list[Issue] = []
     if not MIN_POINTS <= len(out.points) <= MAX_POINTS:
@@ -167,13 +167,13 @@ def check_coach(
         if not text:
             issues.append(Issue("empty", f"{where}.text", "the point is empty"))
             continue
-        if not point.fact_keys:
+        if not any(k.startswith(COACH_PREFIX) for k in point.fact_keys):
             issues.append(
                 Issue("unknown_fact_key", f"{where}.fact_keys", "list the coach_ fact keys this point states")
             )
         for key in point.fact_keys:
             if key not in keys:
-                issues.append(Issue("unknown_fact_key", f"{where}.fact_keys", f"'{key}' is not a coach_ FACT key"))
+                issues.append(Issue("unknown_fact_key", f"{where}.fact_keys", f"'{key}' is not a FACT key"))
         cited = [f for f in facts if f.key in point.fact_keys]
         own = FactSheet.build([*ctx, *cited], score=score, clock_ms=moment.clock_ms)
         for token in numbers_in(text, language):

@@ -146,10 +146,15 @@ async def test_unknown_or_missing_fact_keys_fail_the_check():
     ctx, _ = goal_with_coach_facts()
     out = CoachOutput.model_validate(with_point(2, fact_keys=["xg"]))
     issues = [str(i) for i in check_coach(out, ctx.moment, score="1-0", language="en")]
-    assert "points[2].fact_keys: 'xg' is not a coach_ FACT key" in issues
+    assert "points[2].fact_keys: 'xg' is not a FACT key" in issues  # only context + coach_ facts are offered
     out = CoachOutput.model_validate(with_point(2, fact_keys=[]))
     issues = [str(i) for i in check_coach(out, ctx.moment, score="1-0", language="en")]
     assert any("list the coach_ fact keys" in i for i in issues)
+    out = CoachOutput.model_validate(with_point(2, fact_keys=["scorer"]))  # a context key alone is not enough
+    issues = [str(i) for i in check_coach(out, ctx.moment, score="1-0", language="en")]
+    assert any("list the coach_ fact keys" in i for i in issues)
+    out = CoachOutput.model_validate(with_point(2, fact_keys=["scorer", "coach_nearest_defender_m"]))
+    assert check_coach(out, ctx.moment, score="1-0", language="en") == []
 
 
 async def test_point_count_names_and_length_are_checked():

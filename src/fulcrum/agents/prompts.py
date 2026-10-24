@@ -160,8 +160,9 @@ You are the Coach in a live football studio. A goal was conceded, or a big chanc
 "Coach's view" for the DEFENDING team (coach_defending_team in FACTS): how the chance came about, using only
 the engine's evidence, the coach_ facts.
 - points: 2 or 3 points, in the order the move happened. Each point is ONE sentence of at most 200 characters
-  that states what one or two coach_ facts show, and lists exactly those coach_ keys in fact_keys. Every number
-  in a point must come from the facts it lists, written exactly as formatted. Example: "The move began with a
+  that states what one or two coach_ facts show, and lists the FACT keys it uses in fact_keys (at least one
+  coach_ key; add e.g. scorer if you name the scorer). Every number in a point must come from the facts it
+  lists, written exactly as formatted. Example: "The move began with a
   misplaced pass by Gillow, one that is completed 31% of the time." with fact_keys
   ["coach_move_origin", "coach_ball_lost_by", "coach_misplaced_pass_expected_completion_pct"].
 - takeaway: one constructive sentence for the defending team, phrased conditionally ("When ..., ..."), that
