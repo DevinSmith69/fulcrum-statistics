@@ -31,7 +31,7 @@ asyncio tasks on the shared `MemoryBus` (`api/app.py` lifespan). In Azure each r
 ## 2. REST (FastAPI, `fulcrum.api.app:app`, prefix `/api`)
 | Method | Path | Body / Query | Returns |
 |---|---|---|---|
-| GET | `/api/health` | – | `{"status":"ok","bus":"memory","llm":"fake","in_process":true,"sim":"simulator","agents":true,"agents_state":"running","agents_error":null}`; `agents` is true only once the agents service is running (it starts with the first match); `agents_state` is `off` \| `unavailable` \| `not_started` \| `starting` \| `running` \| `failed` (reason in `agents_error`) |
+| GET | `/api/health` | – | `{"status":"ok","bus":"memory","llm":"fake","in_process":true,"sim":"simulator","agents":true,"agents_state":"running","agents_error":null,"speech":false}`; `agents` is true only once the agents service is running (it starts with the first match); `agents_state` is `off` \| `unavailable` \| `not_started` \| `starting` \| `running` \| `failed` (reason in `agents_error`) |
 | GET | `/api/teams` | – | `Team[]` (from data/teams.json) |
 | POST | `/api/matches` | `MatchConfig` (match_id optional) | `{"match_id": str}` — starts a simulated match |
 | GET | `/api/matches` | – | `[{match_id, home_team_id, away_team_id, status, clock_ms, score}]` |
@@ -43,6 +43,8 @@ asyncio tasks on the shared `MemoryBus` (`api/app.py` lifespan). In Azure each r
 | GET | `/api/matches/{id}/overlay-cues` | `persona`, `language`, `since_clock_ms` | `OverlayCue[]` — **the machine-readable feed for a broadcast graphics partner** |
 | GET | `/api/matches/{id}/recap` | `persona`, `language` | `Recap` (404 until full time; generated lazily per persona/lang, cached) |
 | POST | `/api/matches/{id}/translate` | `{"insight_id", "language"}` | `InsightVariant[]` (on-demand translation, cached) |
+| GET | `/api/speech` | – | `{"enabled": bool, "auth": "key" \| "entra" \| null, "voices": {lang: voice}}` — is neural voice configured? |
+| POST | `/api/speech` | `{"text"` (1–400 chars)`, "language"}` | `audio/mpeg`: the line in that language's Azure AI Speech neural voice (cached per voice + text). **503** when Azure Speech is not configured (the overlay then uses the browser's `speechSynthesis`); 502 if the Speech service fails |
 
 The API keeps per-match read models in memory (dict of match_id → ring buffers). Persistence is a stretch
 goal (Cosmos DB) — do not build it before Sunday evening.

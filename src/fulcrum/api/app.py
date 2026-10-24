@@ -20,8 +20,8 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ValidationError
+from fastapi.responses import JSONResponse, Response
+from pydantic import BaseModel, Field, ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from fulcrum.bus import Bus, get_bus
@@ -47,6 +47,7 @@ from . import personalise as ps
 from .hub import Connection, Hub
 from .pipeline import Pipeline
 from .readmodel import MatchReadModel, Registry
+from .speech import MAX_TEXT_CHARS, SpeechError, SpeechSynth, voice_for
 from .translation import Translator
 
 log = logging.getLogger("fulcrum.api")
@@ -56,6 +57,11 @@ DEFAULT_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 class TranslateRequest(BaseModel):
     insight_id: str
     language: str
+
+
+class SpeechRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=MAX_TEXT_CHARS)
+    language: str = "en"
 
 
 def _env_flag(name: str, default: bool) -> bool:
@@ -91,11 +97,13 @@ def create_app(
     in_process: bool | None = None,
     run_sim: bool | None = None,
     run_agents: bool | None = None,
+    speech: SpeechSynth | None = None,
 ) -> FastAPI:
     """Build the app.
 
     `in_process` defaults to FULCRUM_BUS=memory; `run_sim` / `run_agents` to FULCRUM_RUN_SIM / FULCRUM_RUN_AGENTS
-    (default on). Tests switch them off and publish onto the bus themselves.
+    (default on). Tests switch them off and publish onto the bus themselves. `speech` defaults to
+    `SpeechSynth.from_env()` (None = Azure Speech not configured, `POST /api/speech` answers 503).
     """
 
     @asynccontextmanager
@@ -119,6 +127,7 @@ def create_app(
             pipeline = Pipeline(the_bus, registry, engine, translator, run_sim=sim, run_agents=agents)
         app.state.bus, app.state.registry, app.state.hub = the_bus, registry, hub
         app.state.translator, app.state.pipeline = translator, pipeline
+        app.state.speech = speech if speech is not None else SpeechSynth.from_env()
         if pipeline is not None:
             pipeline.prestart()  # agents warm up now, not on the first match
         try:
@@ -127,6 +136,8 @@ def create_app(
             if pipeline is not None:
                 await pipeline.stop()
             await hub.stop()
+            if app.state.speech is not None:
+                await app.state.speech.close()
 
     app = FastAPI(title="Fulcrum API", version="0.1.0", lifespan=lifespan)
     origins = [o.strip() for o in os.getenv("FULCRUM_ALLOWED_ORIGINS", DEFAULT_ORIGINS).split(",") if o.strip()]
@@ -134,7 +145,14 @@ def create_app(
 
     @app.exception_handler(StarletteHTTPException)
     async def _http_problem(_: Request, exc: StarletteHTTPException) -> JSONResponse:
-        titles = {404: "Not Found", 409: "Conflict", 422: "Unprocessable Entity", 400: "Bad Request"}
+        titles = {
+            400: "Bad Request",
+            404: "Not Found",
+            409: "Conflict",
+            422: "Unprocessable Entity",
+            502: "Bad Gateway",
+            503: "Service Unavailable",
+        }
         return problem(exc.status_code, titles.get(exc.status_code, "Error"), exc.detail)
 
     @app.exception_handler(RequestValidationError)
@@ -185,6 +203,7 @@ def _router() -> APIRouter:
             "agents": None if pipeline is None else pipeline.agents_state == "running",
             "agents_state": None if pipeline is None else pipeline.agents_state,
             "agents_error": None if pipeline is None else pipeline.agents_error,
+            "speech": request.app.state.speech is not None,
         }
 
     @r.get("/teams", response_model=list[Team])
@@ -295,6 +314,25 @@ def _router() -> APIRouter:
             return native
         english = [v for v in insight.variants if v.language == "en"] or insight.variants
         return await request.app.state.translator.variants(insight, english, body.language)
+
+    @r.get("/speech")
+    async def speech_status(request: Request) -> dict[str, Any]:
+        """Whether neural voice is available, so the overlay can pick its speech engine without a failed POST."""
+        synth: SpeechSynth | None = request.app.state.speech
+        voices = {lang: voice_for(lang)[1] for lang in ("en", "es", "fr", "pt", "de")}
+        return {"enabled": synth is not None, "auth": synth.auth_mode if synth else None, "voices": voices}
+
+    @r.post("/speech", response_class=Response)
+    async def speech(request: Request, body: SpeechRequest) -> Response:
+        """One commentary line as MP3 (Azure AI Speech neural voice); 503 when not configured."""
+        synth: SpeechSynth | None = request.app.state.speech
+        if synth is None:
+            raise HTTPException(503, "Azure Speech is not configured; use the browser's speech synthesis")
+        try:
+            audio = await synth.synthesize(body.text, body.language)
+        except SpeechError as exc:
+            raise HTTPException(502, str(exc)) from exc
+        return Response(audio, media_type="audio/mpeg", headers={"Cache-Control": "private, max-age=3600"})
 
     return r
 

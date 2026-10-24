@@ -58,13 +58,16 @@ deploy from.
 | `FULCRUM_SIM_AUTOSTART` | `simAutostart` | `true` | sim app starts one match on boot |
 | `FULCRUM_SIM_SPEED` | `simSpeed` | `10` | sim-time multiplier for the boot match |
 | `FULCRUM_EXTRA_ORIGINS` | `extraAllowedOrigins` | empty | extra CORS origins, e.g. `http://localhost:5173` |
+| `FULCRUM_ENABLE_SPEECH` | `enableSpeech` | `false` | create an Azure AI Speech resource for neural voice commentary, see §5a |
+| `FULCRUM_SPEECH_SKU` | `speechSku` | `F0` | `F0` (free, one per subscription) or `S0` |
 | – | `staticWebAppLocation` | `eastus2` | SWA is not offered in Sweden Central, and West Europe refused new SWAs in what-if |
 
 Environment variables the containers get (all four): `FULCRUM_SERVICE`, `FULCRUM_BUS=eventhubs`,
 `EVENTHUBS_NAMESPACE`, `EVENTHUBS_CONNECTION_STRING` (Key Vault reference), `FULCRUM_LLM`,
 `FOUNDRY_PROJECT_ENDPOINT`, `FOUNDRY_MODEL_DEPLOYMENT=fast`, `FOUNDRY_MODEL_DEPLOYMENT_RECAP=strong`,
 `APPLICATIONINSIGHTS_CONNECTION_STRING`, `AZURE_CLIENT_ID` (the MI, for `DefaultAzureCredential`) and
-`FULCRUM_TEAMS_PATH`. The api also gets `FULCRUM_ALLOWED_ORIGINS` (the SWA origin) and `FULCRUM_SIM_URL=http://ca-fulcrum-sim`.
+`FULCRUM_TEAMS_PATH`. The api also gets `FULCRUM_ALLOWED_ORIGINS` (the SWA origin) and `FULCRUM_SIM_URL=http://ca-fulcrum-sim`
+(plus `AZURE_SPEECH_ENDPOINT` / `_RESOURCE_ID` / `_REGION` when `enableSpeech` is on, §5a).
 The web build gets `VITE_API_URL=$API_URL` through the `prepackage` hook in `azure.yaml`.
 
 ## 3. What maps to what
@@ -127,6 +130,37 @@ Without Docker, the same processes run from the venv: `FULCRUM_SERVICE=engine uv
 
 Weekend total, including the deploy and a few test matches: **about £10–15**. Judging may run for days, so after
 recording the video consider the single-container fallback (§4), which cuts Container Apps cost by about 3/4.
+
+## 5a. Voice commentary (optional Azure AI Speech)
+
+The overlay's **Voice** and **Audio description** toggles work without Azure: `POST /api/speech` answers 503 and
+the browser's `speechSynthesis` speaks. To use Azure AI Speech neural voices instead (en-GB Ryan, es-ES Alvaro,
+fr-FR Henri, pt-BR Antonio, de-DE Conrad):
+
+**Keyless, via Bicep (recommended).** TODO(azure): not provisioned yet.
+
+```bash
+azd env set FULCRUM_ENABLE_SPEECH true      # optional: azd env set FULCRUM_SPEECH_SKU S0
+azd provision && azd deploy api
+```
+
+This creates `speech-fulcrum-<suffix>` (kind `SpeechServices`, F0, custom domain
+`https://speech-fulcrum-<suffix>.cognitiveservices.azure.com`, local/key auth **disabled**), grants the apps'
+user-assigned identity **Cognitive Services Speech User** on it, and gives the api container
+`AZURE_SPEECH_ENDPOINT`, `AZURE_SPEECH_RESOURCE_ID` and `AZURE_SPEECH_REGION`. The api gets an Entra token for
+`https://cognitiveservices.azure.com/.default` from `DefaultAzureCredential` (`AZURE_CLIENT_ID` = the identity) and
+calls `<custom domain>/tts/cognitiveservices/v1` with `Authorization: Bearer aad#<resource id>#<token>`.
+Check with `curl $API_URL/api/speech` → `"enabled": true, "auth": "entra"`. A 502 from `POST /api/speech` right
+after provisioning is usually the role assignment still propagating (wait a few minutes).
+
+Notes: F0 allows one free Speech resource per subscription (use `S0` if one exists already; neural TTS is billed
+per character, and a 90-minute match produces only a few thousand characters). Audio is cached in memory per
+(voice, text).
+
+**Key, for local development.** In `.env` (never commit it): `AZURE_SPEECH_REGION=<region>` and
+`AZURE_SPEECH_KEY=<key>`. Keyless locally works too: `AZURE_SPEECH_ENDPOINT` + `AZURE_SPEECH_RESOURCE_ID` with
+`az login` as a user who has Cognitive Services Speech User on the resource. Override a voice with
+`AZURE_SPEECH_VOICE_<LANG>` (for example `AZURE_SPEECH_VOICE_EN=en-GB-SoniaNeural`).
 
 ## 6. Teardown
 
