@@ -22,6 +22,9 @@ Design reference: `docs/AI_PROMPT_DESIGN.md`. Wire formats: `docs/API_CONTRACT.m
 | `repaired` | attempt 1 failed (fact-check issues or an LLM error), attempt 2 verified |
 | `fallback` | templates used; `Insight.check_notes` says why (also logged as a warning) |
 
+- **Backlog fast-track:** if 2+ moments are waiting behind the current one for a match (a demo skip or a high sim
+  speed), a minor moment (significance < 0.5) gets template copy at once (`FALLBACK`, note says why) so goals, red
+  cards and big chances queued behind it aren't delayed by LLM runs. Order is kept (`MomentProcessor`).
 - **Timeouts:** 8 s per LLM call (6 s timed out on ~4% of moments with 2–3 matches running at once), 15 s per run (`OrchestratorConfig`). A timeout skips the repair and goes
   straight to fallback, because the latency budget is already spent.
 - **Ordering:** `MomentProcessor` runs one worker per match, so moments are explained in order, and different

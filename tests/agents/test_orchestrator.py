@@ -444,3 +444,28 @@ async def test_editor_fanout_cancels_the_other_calls_when_one_fails():
     llm.structured = slow_or_fail
     await wf(llm, editor_fanout=True, max_attempts=1).run(make_context())
     assert finished == []  # the three siblings were cancelled, not left running
+
+
+async def test_processor_fast_tracks_minor_moments_when_backed_up():
+    """A skip floods the queue: minor moments get template copy at once; the goal keeps the LLM path; order kept."""
+    llm = ScriptedLLM(GOOD)
+    done: list[tuple[str, str]] = []
+
+    async def on_result(ctx):
+        done.append((ctx.moment.moment_id, str(ctx.status)))
+
+    proc = MomentProcessor(wf(llm), on_result)
+    store = make_store()
+    minor = [make_moment(MomentType.GOAL).model_copy(update={"significance": 0.3}) for _ in range(2)]
+    goal = make_moment(MomentType.GOAL)
+    last = make_moment(MomentType.GOAL).model_copy(update={"significance": 0.3})
+    for m in (*minor, goal, last):
+        proc.submit(store.build_context(m))
+    await asyncio.wait_for(proc.drain(), 5)
+    await proc.close()
+    assert [mid for mid, _ in done] == [m.moment_id for m in (*minor, goal, last)]
+    statuses = [s for _, s in done]
+    assert statuses[:2] == ["fallback", "fallback"]  # backed up: templates, no LLM
+    assert statuses[2] == "passed"  # the goal still gets the agents
+    assert statuses[3] == "passed"  # queue drained by then: back to the LLM path
+    assert llm.agents_called().count("moment_analyst") == 2

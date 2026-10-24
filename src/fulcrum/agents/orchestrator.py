@@ -467,12 +467,26 @@ class ExplainMomentWorkflow:
             raise RuntimeError(f"workflow ended without an insight (trace {ctx.trace})")
         return ctx
 
+    async def fast_track(self, ctx: MomentContext, reason: str) -> MomentContext:
+        """Template copy straight away (no LLM): for minor moments when the match's queue is backed up."""
+        ctx._cache.setdefault("started", time.monotonic())
+        ctx.error = f"LLM skipped to keep up ({reason})"
+        for name in ("template_fallback", "cue_producer"):
+            await self.steps[name].run(ctx)
+            ctx.trace.append(name)
+        return ctx
+
 
 # --------------------------------------------------------------------------- #
 # Ordered worker per match
 # --------------------------------------------------------------------------- #
 
 ResultHandler = Callable[[MomentContext], Awaitable[None]]
+
+# When moments pile up for one match (a skip / high sim speed), minor ones get template copy at once so a big
+# moment queued behind them isn't delayed by several LLM runs. Order is kept; nothing is dropped.
+FAST_TRACK_BACKLOG = 2  # moments still waiting behind the current one
+FAST_TRACK_BELOW = 0.5  # significance; goals, red cards and big chances stay on the LLM path
 
 
 class MomentProcessor:
@@ -496,7 +510,11 @@ class MomentProcessor:
         while True:
             ctx = await queue.get()
             try:
-                await self.workflow.run(ctx)
+                backlog = queue.qsize()
+                if backlog >= FAST_TRACK_BACKLOG and ctx.moment.significance < FAST_TRACK_BELOW:
+                    await self.workflow.fast_track(ctx, f"{backlog} moments waiting")
+                else:
+                    await self.workflow.run(ctx)
                 await self.on_result(ctx)
             except Exception:
                 log.exception("failed to process moment %s", ctx.moment.moment_id)
