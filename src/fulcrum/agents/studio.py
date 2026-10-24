@@ -248,6 +248,16 @@ def _player_facts(state: MatchState, home: Team, away: Team) -> list[Fact]:
     return facts
 
 
+def _phase_text(phase: str, home: Team, away: Team) -> str:
+    """Readable phase, as the engine writes it in moment facts: the model quotes values verbatim."""
+    return {
+        "control_home": f"{home.name} in control",
+        "control_away": f"{away.name} in control",
+        "chaos": "chaotic",
+        "balanced": "balanced",
+    }.get(phase, phase.replace("_", " "))
+
+
 def state_facts(state: MatchState | None, home: Team, away: Team, score: str) -> list[Fact]:
     """The match-level facts of the pack: score, minute, team stats, win probability, indices, top players."""
     facts = [_f("score", f"Score ({home.name} - {away.name})", score)]
@@ -259,7 +269,7 @@ def state_facts(state: MatchState | None, home: Team, away: Team, score: str) ->
         _f("wp_home", f"{home.name} win probability", _num(wp.home * 100, 0), "%"),
         _f("wp_draw", "Draw probability", _num(wp.draw * 100, 0), "%"),
         _f("wp_away", f"{away.name} win probability", _num(wp.away * 100, 0), "%"),
-        _f("phase", "Match phase", str(state.phase)),
+        _f("phase", "Match phase", _phase_text(str(state.phase), home, away)),
         _f("momentum", f"Momentum (-100 {away.name} on top, +100 {home.name} on top)", _num(state.momentum, 0)),
         _f("tempo_ppm", "Tempo, passes per minute (last 5 min)", _num(state.tempo_ppm, 1), "passes/min"),
         _f("chaos_index", "Chaos index (0-100)", _num(state.chaos_index, 0)),

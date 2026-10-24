@@ -336,7 +336,10 @@ def _router() -> APIRouter:
         if prefs is None:
             return list(rm.insights.values())
         tr = request.app.state.translator
-        return [await ps.personalise_insight(i, prefs, tr) for i in rm.insights.values()]
+        # Snapshot first: new insights keep arriving while we await translations (iterating the live dict raised
+        # "OrderedDict mutated during iteration" mid-match). Translations run concurrently.
+        items = list(rm.insights.values())
+        return list(await asyncio.gather(*(ps.personalise_insight(i, prefs, tr) for i in items)))
 
     @r.get("/matches/{match_id}/overlay-cues", response_model=list[OverlayCue])
     async def get_cues(

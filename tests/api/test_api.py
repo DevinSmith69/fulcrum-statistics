@@ -483,3 +483,24 @@ def test_health_reports_running_agents(monkeypatch):
         assert c.post("/api/matches", json={**CONFIG, "match_id": "with-agents"}).status_code == 201
         h = c.get("/api/health").json()
         assert h["agents"] is True and h["agents_state"] == "running" and h["agents_error"] is None
+
+
+def test_personalised_insights_survive_new_insights_arriving_mid_request(client, monkeypatch):
+    """Regression (Azure, 24 Oct): a new insight landing while translations were awaited raised a 500."""
+    from fulcrum.api import personalise as ps
+
+    create_match(client)
+    for k in range(3):
+        publish(client, TOPIC_INSIGHTS, InsightsEnvelope.wrap(make_insight(f"m-{k}", 60_000 * k)))
+    wait_for(lambda: len(client.get(f"/api/matches/{MID}/insights").json()) == 3)
+    rm = client.app.state.registry.get(MID)
+    original = ps.personalise_insight
+
+    async def slow_and_mutating(insight, prefs, translator, **kw):
+        extra = make_insight(f"late-{insight.moment_id}", 999_000)
+        rm.insights[extra.insight_id] = extra  # what the hub does when an insight arrives mid-request
+        return await original(insight, prefs, translator, **kw)
+
+    monkeypatch.setattr(ps, "personalise_insight", slow_and_mutating)
+    r = client.get(f"/api/matches/{MID}/insights", params={"persona": "casual", "language": "es"})
+    assert r.status_code == 200 and len(r.json()) == 3
