@@ -9,8 +9,9 @@ Format: `- [ ] (WSx → WSy) what you need, why, which contract/fixture you code
   first two teams it sees, in order). Coded against `MatchTracker._learn_teams` (`engine/state.py`).
 - [ ] (WS1 → WS2 check) Once `data/matches/sample_seed7.jsonl` / `sample_seed11.jsonl` are committed,
   `tests/engine/test_moments.py::test_target_moment_count_on_sim_samples` turns on (20–35 moments, every goal
-  reported). With the WS1 sim as of `79a607b`, seed 7 (NBA v RVR, 4-2) gives 35 moments, right at the edge.
-  If the sim's calibration changes, re-run `scripts/print_moments.py` and tune `engine/params.py`.
+  reported). Checked against WS1's final samples (`95ae048`): sample_seed7 → 26 moments (2 goals),
+  sample_seed11 → 30 moments (4 goals). If the sim's calibration changes, re-run `scripts/print_moments.py`
+  and tune `engine/params.py`.
 - [ ] (WS2 → WS3) `AgentService.translate / translate_cues / recap` only know about insights produced by the
   same process. That covers single-process dev mode. In Azure (separate Container Apps) the API's on-demand
   translation therefore serves English. Please add a stateless hook, e.g.
