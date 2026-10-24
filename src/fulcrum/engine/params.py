@@ -43,9 +43,9 @@ class MetricParams:
     min_rate_window_s: float = 120.0
 
     # Phase classification + hysteresis.
-    phase_chaos_threshold: float = 60.0
+    phase_chaos_threshold: float = 65.0  # spec start 60; tuned on WS1 sims (see HANDOFFS)
     phase_control_diff: float = 20.0
-    phase_persist_s: float = 60.0
+    phase_persist_s: float = 120.0  # spec start 60
     # No phase classification until the 5-minute window has filled (avoids "control" after two passes).
     phase_min_elapsed_s: float = 300.0
 
@@ -106,12 +106,18 @@ class WinProbParams:
 class MomentParams:
     """MODEL_SPEC §4 — detection thresholds and cooldowns."""
 
-    global_cooldown_s: float = 45.0
+    global_cooldown_s: float = 60.0  # spec minimum 45
     same_type_cooldown_s: float = 180.0
     # Exempt from every cooldown (and still reset the global cooldown clock when they fire).
     fully_exempt: tuple[str, ...] = ("goal", "red_card", "half_time", "full_time")
     # Exempt from the 45 s global cooldown only (same-type cooldown still applies).
     global_exempt: tuple[str, ...] = ("big_chance",)
+    # Per-type overrides of `same_type_cooldown_s` for the chattier rules.
+    type_cooldowns_s: tuple[tuple[str, float], ...] = (
+        ("phase_change", 420.0),
+        ("momentum_run", 360.0),
+        ("pressure_shift", 420.0),
+    )
 
     goal_base: float = 0.6
     goal_wp_cap: float = 0.4
@@ -127,14 +133,15 @@ class MomentParams:
     # shot xG; everything else is clock drift or the 15' xG window rolling over — not a story.
     wp_swing_cause_types: tuple[str, ...] = ("shot",)
 
-    pressure_flip_diff: float = 25.0
-    pressure_rise: float = 30.0
+    pressure_flip_diff: float = 30.0  # spec start 25
+    pressure_rise: float = 50.0  # spec start 30: one decent shot from a quiet spell adds ~30
     pressure_rise_window_s: float = 180.0
-    pressure_surge_min_after: float = 50.0  # a surge must end at a genuinely high index
+    pressure_surge_min_after: float = 75.0  # a surge must end at a genuinely high index
     pressure_sig_min: float = 0.4
     pressure_sig_max: float = 0.6
 
     phase_change_sig: float = 0.35
+    phase_change_report_balanced: bool = False  # settling back to "balanced" is rarely a story
 
     tempo_change_pct: float = 0.35
     tempo_hold_s: float = 120.0
@@ -145,6 +152,8 @@ class MomentParams:
 
     shot_speed_record_kmh: float = 110.0
     sprint_record_kmh: float = 33.0
+    sprint_record_min_elapsed_s: float = 300.0  # opening-frame tracking speeds are noisy
+    sprint_record_min_gain_kmh: float = 0.5  # must beat the previous match high by this much
     speed_record_sig: float = 0.3
 
     elite_pass_difficulty: float = 7.5
@@ -154,6 +163,8 @@ class MomentParams:
 
     milestone_passes: int = 50
     milestone_distance_km: float = 10.0
+    # Most outfielders cover 10 km (sim calibration 9.5–12 km/90): only the first player to get there is news.
+    milestone_distance_first_only: bool = True
     milestone_ht_accuracy: float = 95.0
     milestone_ht_min_passes: int = 30
     milestone_sig_passes: float = 0.2
@@ -162,9 +173,9 @@ class MomentParams:
     milestone_sig_brace: float = 0.4
     milestone_sig_hat_trick: float = 0.5
 
-    momentum_shots: int = 3
+    momentum_shots: int = 4  # spec start 3
     momentum_window_s: float = 300.0
-    momentum_final_third_possessions: int = 4
+    momentum_final_third_possessions: int = 5  # spec start 4
     momentum_run_sig: float = 0.4
 
     half_time_sig: float = 0.5

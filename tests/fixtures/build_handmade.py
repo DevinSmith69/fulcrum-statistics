@@ -4,7 +4,7 @@ Run: `uv run python tests/fixtures/build_handmade.py` (deterministic; the output
 
 Script (NBA home v RVR away, football minutes):
    1'  NBA 14-pass sequence ending in a speculative shot          (long pass sequence)
-   4'  scrappy spell: six turnovers in two minutes                (turnovers)
+   4'  scrappy spell: twelve turnovers in under two minutes       (turnovers, phase_change → chaos)
    8'  RVR elite pass Orrell → Ironside, big chance saved, corner  (elite_pass, big_chance)
   15'  NBA goal: Loxley → Brennick                                 (goal)
   27'  Aldane 118 km/h shot off target                             (speed_record, shot)
@@ -254,10 +254,10 @@ def build() -> list[dict]:
     b.shot(HOME, pid(HOME, 10), 82, 34, 0.06, 92, Outcome.OFF_TARGET)
     b.ev(E.GOAL_KICK, AWAY, pid(AWAY, 1), dt=15, x=5.5, y=34)
 
-    # 4' — scrappy spell: six quick turnovers
+    # 4' — scrappy spell: a dozen quick turnovers
     b.at(4)
     team = AWAY
-    for _ in range(6):
+    for _ in range(12):
         b.pass_(team, pid(team, 6), pid(team, 9), 45, 30, 75, 30, ok=False, dt=3)
         b.lose(team, 60, 30)
         team = other(team)

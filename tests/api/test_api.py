@@ -161,7 +161,7 @@ def test_full_match_through_rest(client):
     assert client.get(f"/api/matches/{MID}/state").status_code == 404  # not started yet
     items = publish_fixture(client)
     wait_for(lambda: client.get("/api/matches").json()[0]["status"] == "finished")
-    wait_for(lambda: len(client.get(f"/api/matches/{MID}/moments").json()) >= 20)
+    wait_for(lambda: len(client.get(f"/api/matches/{MID}/moments").json()) >= 12)
 
     state = client.get(f"/api/matches/{MID}/state").json()
     assert (state["score_home"], state["score_away"]) == (1, 1)
@@ -316,4 +316,4 @@ def test_dev_mode_post_starts_pipeline_with_replay_fallback(monkeypatch):
         wait_for(lambda: c.get("/api/matches/dev-1/state").json()["clock_ms"] > 90 * 60_000)
         state = c.get("/api/matches/dev-1/state").json()
         assert (state["match_id"], state["score_home"], state["score_away"]) == ("dev-1", 1, 1)
-        assert len(c.get("/api/matches/dev-1/moments").json()) >= 20
+        assert len(c.get("/api/matches/dev-1/moments").json()) >= 12

@@ -145,7 +145,8 @@ class MomentDetector:
             if in_global and str(c.type) not in self.p.global_exempt:
                 return None
             last = self._last_type.get(key)
-            if last is not None and now - last < self.p.same_type_cooldown_s * 1000:
+            cooldown_s = dict(self.p.type_cooldowns_s).get(str(c.type), self.p.same_type_cooldown_s)
+            if last is not None and now - last < cooldown_s * 1000:
                 return None
         self._last_any_ms = now
         self._last_type[key] = now
@@ -234,12 +235,17 @@ class MomentDetector:
             prev = self._max_sprint_kmh
             if speed > prev:
                 self._max_sprint_kmh = speed
-                if speed >= self.p.sprint_record_kmh:
+                settled = self.t.clock_ms >= self.p.sprint_record_min_elapsed_s * 1000
+                gain_ok = speed - prev >= self.p.sprint_record_min_gain_kmh
+                if settled and gain_ok and speed >= self.p.sprint_record_kmh:
                     candidates.append(self._speed_candidate(pid, speed, prev, "sprint"))
         for pid, km in fx.distance_crossings:
             if (pid, "distance") in self._milestones:
                 continue
+            first = not any(kind == "distance" for _, kind in self._milestones)
             self._milestones.add((pid, "distance"))
+            if self.p.milestone_distance_first_only and not first:
+                continue
             candidates.append(
                 self._milestone_candidate(
                     pid,
@@ -557,6 +563,8 @@ class MomentDetector:
             return None
         t = self.t
         after = t.phase.phase
+        if after == MatchPhase.BALANCED and not self.p.phase_change_report_balanced:
+            return None
         team_id = {MatchPhase.CONTROL_HOME: t.home_id, MatchPhase.CONTROL_AWAY: t.away_id}.get(after)
         facts = [
             Fact(key="phase_before", label="Match phase before", value=str(fx.phase_before)),

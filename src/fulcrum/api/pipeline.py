@@ -114,7 +114,7 @@ class Pipeline:
         self._agents_started = True
         fn = find_entrypoint(AGENT_ENTRYPOINTS)
         if fn is None:
-            log.warning("fulcrum.agents service not available yet — moments will have no insights")
+            log.warning("fulcrum.agents service not available yet - moments will have no insights")
             return
         register = getattr(self.bus, "register", None)
         if register is not None:
@@ -146,7 +146,7 @@ class Pipeline:
         path = replay_file()
         if path is None:
             raise RuntimeError("no simulator and no recorded match to replay")
-        log.warning("fulcrum.sim not available — replaying %s as match %s", path, config.match_id)
+        log.warning("fulcrum.sim not available - replaying %s as match %s", path, config.match_id)
         await replay(path, self.bus, config.match_id, config.speed)
 
     async def stop(self) -> None:
