@@ -33,6 +33,7 @@ azd up                                           # provision + build 4 images in
 
 ```bash
 curl "$(azd env get-value API_URL)/api/health"   # {"status":"ok","bus":"eventhubs","llm":"foundry","in_process":false,...}
+                                                  # (in the demo's in-process mode, §4: "bus":"memory","in_process":true)
 open "$(azd env get-value WEB_URL)"              # the overlay; the sim auto-starts NBA v RVR at 10x on boot
 ```
 

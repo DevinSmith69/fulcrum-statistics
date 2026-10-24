@@ -7,7 +7,7 @@ enforces this, so the system degrades gracefully, never confidently wrong.
 ## 1. Roles
 | Agent | Kind | Input | Output (contract) | When |
 |---|---|---|---|---|
-| **Moment Analyst** | LLM (fast model) + tools | `Moment` + match context | `Explanation` | every moment |
+| **Moment Analyst** | LLM (fast model); context inline (§3) | `Moment` + match context | `Explanation` | every moment |
 | **Persona Editor** | LLM (fast model) | `Explanation` + facts + team names | 4 × `InsightVariant` (analyst, casual, club_fan home, club_fan away) | every moment |
 | **Fact-Checker** | deterministic validator, plus an LLM reviewer for significance ≥ 0.6 | Explanation + variants + facts + rosters | pass / issues | every moment |
 | **Cue Producer** | deterministic | `Insight` + moment | `OverlayCue[]` | every moment |
@@ -51,6 +51,9 @@ the pydantic schema. Use temperature 0.4 for the Editor and 0.2 for everything e
 which is pennies. Recap uses the stronger deployment.
 
 ## 3. Tools for the Moment Analyst
+*Status: not built.* The facts, roster, recent sequence and score are passed inline in the user prompt
+(`agents/context.py`) instead of through tools.
+
 Read-only functions over the engine's read model. Pass them to the agent as framework tools, and expose the same
 functions in-process for tests.
 - `get_fact_pack(moment_id)` → the facts (the agent also receives them inline; the tool is for re-reads)
