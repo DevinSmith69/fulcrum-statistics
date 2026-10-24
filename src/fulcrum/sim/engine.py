@@ -835,6 +835,7 @@ class MatchSimulator:
             xg = pitch.xg(sx, sy, header=header, bonus=bonus, p=p)
             if situation == "set_piece":
                 xg = pitch.clamp(xg * p.free_kick_xg_factor, p.xg_min, p.xg_max)
+        xg = round(xg, 3)  # big_chance is judged on the published value
         if (
             situation == "open_play"
             and self.t - self.poss_start_t <= p.counter_max_s
@@ -896,7 +897,7 @@ class MatchSimulator:
                 distance_m=round(distance, 1),
                 angle_rad=round(angle, 3),
                 body_part=body,
-                xg=round(xg, 3),
+                xg=xg,
                 shot_speed_kmh=round(speed, 1),
                 on_target=outcome in (Outcome.GOAL, Outcome.SAVED),
                 big_chance=xg >= p.big_chance_xg,
