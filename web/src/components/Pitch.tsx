@@ -8,17 +8,22 @@ const SIGNAL = "#3de0ff";
 interface Props {
   model: PitchModel;
   followedPlayerId?: string | null;
+  /** Extra players to ring (e.g. the players involved in a replayed moment). */
+  highlightIds?: readonly string[];
   className?: string;
+  label?: string;
 }
 
 /**
  * Top-down 2D pitch. Reads the PitchModel every animation frame and eases dots and ball towards their
  * targets, so the picture stays smooth even though events arrive in bursts.
  */
-export function Pitch({ model, followedPlayerId, className = "" }: Props) {
+export function Pitch({ model, followedPlayerId, highlightIds, className = "", label = "Live pitch view" }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const followRef = useRef(followedPlayerId);
   followRef.current = followedPlayerId;
+  const highlightRef = useRef(highlightIds);
+  highlightRef.current = highlightIds;
 
   useEffect(() => {
     const canvas = canvasRef.current!;
@@ -105,7 +110,7 @@ export function Pitch({ model, followedPlayerId, className = "" }: Props) {
         p.y += (d.y - p.y) * ease;
         pos.set(d.id, p);
         const team = d.side === "home" ? model.home : model.away;
-        const followed = followRef.current === d.id;
+        const followed = followRef.current === d.id || !!highlightRef.current?.includes(d.id);
         ctx.beginPath();
         ctx.arc(X(p.x), Y(p.y), r, 0, Math.PI * 2);
         ctx.fillStyle = team?.primary_colour ?? "#888";
@@ -166,7 +171,7 @@ export function Pitch({ model, followedPlayerId, className = "" }: Props) {
     };
   }, [model]);
 
-  return <canvas ref={canvasRef} className={`absolute inset-0 block h-full w-full ${className}`} aria-label="Live pitch view" role="img" />;
+  return <canvas ref={canvasRef} className={`absolute inset-0 block h-full w-full ${className}`} aria-label={label} role="img" />;
 }
 
 function hexA(hex: string, a: number) {

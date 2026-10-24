@@ -64,6 +64,14 @@ The API base comes from `VITE_API_URL` (default `http://localhost:8000`); the We
   equal priority queues, a cue shows once the match clock reaches `show_at_clock_ms`.
 - `src/components/cues/CueTemplates.tsx` — the six templates: `lower_third`, `wp_swing`, `stat_card`,
   `player_tag`, `pressure_bar`, `recap_card`.
+- `src/lib/factTrail.ts` — **fact trail**: finds numbers in insight copy with the same rules as
+  `agents/factcheck.py` (decimal commas, `71 %`, `67'`, thousands groups, the moment's minute) and links each to
+  its fact. Insight cards highlight traced numbers (hover/focus shows label · value · key) and a "Fact trail"
+  disclosure lists the explanation's `key_fact_keys` with the check status.
+- `src/lib/replay.ts` + `src/components/MiniReplay.tsx` — **mini replay** on each insight card: picks the run
+  of play behind the moment (`seq_start`…`seq_end`, widened to the whole possession, never past a kick-off) from
+  `/events` (cached per match) and replays it on a mini pitch with the normal `Pitch` renderer and its own
+  `PitchModel`, ringing the moment's `player_ids`. Plays twice, then closes; `Esc` closes early.
 - `mock/` — `match.mjs` (seeded match generator: possession chains, live stats, the MODEL_SPEC §3
   outcome-probability model, moment rules and fact packs), `text.mjs` (persona × language copy built only
   from fact-pack numbers, cue mapping, recaps), `server.mjs` (REST + WS).
@@ -72,7 +80,7 @@ The API base comes from `VITE_API_URL` (default `http://localhost:8000`); the We
 
 ```bash
 npm run build       # tsc + vite build (must be clean)
-npm test            # node:test — cue scheduling, coordinates, clock, line-ups, colours
+npm test            # node:test — cue scheduling, coordinates, clock, line-ups, colours, fact trail, replay window
 node mock/inspect.mjs 7   # print the mock match's stats and moment timeline
 ```
 
