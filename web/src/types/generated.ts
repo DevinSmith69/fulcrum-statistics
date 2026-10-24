@@ -277,6 +277,10 @@ export interface Recap {
   key_moment_ids: string[];
   player_of_the_match_id?: string | null;
   check_status: CheckStatus;
+  /**
+   * 2-3 short posts (<= 280 chars) to share the result, same persona/language; fact-checked
+   */
+  social_posts?: string[];
 }
 /**
  * Wrapper for the `insights` topic, which carries three message types.

@@ -88,7 +88,7 @@ and perspective_team_id null.""",
 
 MATCH_REPORTER = PromptSpec(
     agent_name="match_reporter",
-    version="reporter/1.1.0",
+    version="reporter/1.2.0",
     system="""\
 Write a full-time recap for {persona}. Structure: verdict in one sentence → the 3 turning points (use the
 supplied moments in order, with minutes) → the standout performer → what the numbers say.
@@ -98,7 +98,10 @@ never mention odds, betting, prices or markets.
 Write flowing prose for a viewer: no section labels like "Verdict:", and refer to players by name only —
 player_ids (e.g. ABC-07) belong in the JSON fields, never in the title or summary. Don't assume a player's
 gender; use their name or "they".
-key_moment_ids: the MOMENT ids you used. player_of_the_match_id: a player_id from ROSTER.""",
+key_moment_ids: the MOMENT ids you used. player_of_the_match_id: a player_id from ROSTER.
+social_posts: 3 short posts to share the result, in the same persona and language: each at most 240
+characters, a different angle each (result, turning point, standout player), same number and name rules,
+names not ids, and at most one hashtag per post: the match tag given under HASHTAG.""",
 )
 
 FACT_REVIEWER = PromptSpec(

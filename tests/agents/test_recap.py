@@ -97,6 +97,11 @@ async def test_recap_fallback_after_llm_failures_passes_factcheck():
     assert sheet.check_text(recap.title, "t") == [] and sheet.check_text(recap.summary, "s") == []
     assert "The turning points: 23'" in recap.summary
     assert len(recap.key_moment_ids) == 3
+    assert recap.social_posts == [
+        "Full time: Northbridge Athletic 2-1 Riverside Rovers. #NBARVR",
+        "Standout performer: Brennick. #NBARVR",
+    ]
+    assert all(sheet.check_text(p.replace("#NBARVR", ""), "p") == [] for p in recap.social_posts)
 
 
 def test_fallback_recap_with_no_history():
@@ -129,3 +134,31 @@ async def test_recap_cut_off_mid_sentence_is_repaired():
     recap = await RecapService(llm).recap(**args())
     assert recap.check_status == CheckStatus.REPAIRED
     assert "recap.summary: ends mid-sentence" in llm.calls[1]["user"]
+
+
+POSTS = [
+    "Northbridge Athletic edge it 2-1 and Brennick is the hero. #NBARVR",
+    "The 67' moment: Brennick's finish lifted Northbridge to 71% and they never looked back. #NBARVR",
+    "Brennick rated 8.6 on the day.",
+]
+
+
+async def test_recap_carries_checked_social_posts():
+    llm = ScriptedLLM({"match_reporter": {**GOOD, "social_posts": POSTS}})
+    recap = await RecapService(llm).recap(**args())
+    assert recap.check_status == CheckStatus.PASSED and recap.social_posts == POSTS
+    assert "HASHTAG\n#NBARVR" in llm.calls[0]["user"]
+
+
+async def test_social_posts_with_invented_numbers_or_stray_hashtags_are_repaired():
+    bad = {**GOOD, "social_posts": ["Brennick hit 0.52 xG! #NBARVR", "What a day #football", NBA_ID_POST]}
+    llm = ScriptedLLM({"match_reporter": [bad, {**GOOD, "social_posts": POSTS}]})
+    recap = await RecapService(llm).recap(**args())
+    assert recap.check_status == CheckStatus.REPAIRED and recap.social_posts == POSTS
+    repair = llm.calls[1]["user"]
+    assert "recap.social_posts[0]: number '0.52' is not in FACTS" in repair
+    assert "recap.social_posts[1]: only #NBARVR is allowed, not #football" in repair
+    assert "recap.social_posts[2]: use names, not ids: NBA-10" in repair
+
+
+NBA_ID_POST = "Brennick (NBA-10) was everywhere. #NBARVR"

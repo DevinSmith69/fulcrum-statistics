@@ -57,6 +57,7 @@ class RecapOutput(BaseModel):
     summary: str = Field(max_length=1200)
     key_moment_ids: list[str] = Field(default_factory=list)
     player_of_the_match_id: str | None = None
+    social_posts: list[str] = Field(default_factory=list)
 
 
 class MomentContext(BaseModel):

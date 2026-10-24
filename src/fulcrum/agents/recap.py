@@ -10,6 +10,7 @@ Fact-checked, repaired once, then a deterministic fallback built from already-ch
 from __future__ import annotations
 
 import logging
+import re
 import time
 from collections.abc import Sequence
 from dataclasses import replace
@@ -17,7 +18,7 @@ from dataclasses import replace
 from fulcrum.contracts import CheckStatus, Insight, Moment, MomentType, Persona, Recap, Team
 from fulcrum.llm import LLMClient
 
-from .context import fact_map, moment_minute, recap_prompt
+from .context import fact_map, match_hashtag, moment_minute, recap_prompt
 from .factcheck import FactSheet, Issue, cut_off
 from .orchestrator import LLMTimeout, OrchestratorConfig, call_llm
 from .prompts import MATCH_REPORTER
@@ -30,6 +31,8 @@ TOP_MOMENTS = 8
 TURNING_POINTS = 3
 MAX_TITLE = 80
 MAX_SUMMARY = 1200
+MAX_POST = 280
+MAX_POSTS = 3
 NON_STORY_TYPES = {MomentType.HALF_TIME.value, MomentType.FULL_TIME.value}
 
 
@@ -54,9 +57,15 @@ def recap_sheet(
 
 
 def check_recap(
-    out: RecapOutput, sheet: FactSheet, *, moment_ids: set[str], player_ids: set[str], language: str
+    out: RecapOutput,
+    sheet: FactSheet,
+    *,
+    moment_ids: set[str],
+    player_ids: set[str],
+    language: str,
+    hashtag: str | None = None,
 ) -> list[Issue]:
-    """Rules 1, 3, 4, 5 on title and summary, plus valid moment and player ids."""
+    """Rules 1, 3, 4, 5 on title, summary and share posts, plus valid moment and player ids."""
     issues = sheet.check_text(out.title, "recap.title", language=language)
     issues += sheet.check_text(out.summary, "recap.summary", language=language)
     if len(out.title) > MAX_TITLE:
@@ -64,7 +73,17 @@ def check_recap(
     if len(out.summary) > MAX_SUMMARY:
         issues.append(Issue("too_long", "recap.summary", f"{len(out.summary)} chars, max {MAX_SUMMARY}"))
     issues += cut_off(out.summary, "recap.summary")
-    for field_name, text in (("recap.title", out.title), ("recap.summary", out.summary)):
+    if len(out.social_posts) > MAX_POSTS:
+        issues.append(Issue("too_long", "recap.social_posts", f"{len(out.social_posts)} posts, max {MAX_POSTS}"))
+    posts = [(f"recap.social_posts[{n}]", p) for n, p in enumerate(out.social_posts)]
+    for where, post in posts:
+        issues += sheet.check_text(post.replace(hashtag, "") if hashtag else post, where, language=language)
+        if len(post) > MAX_POST:
+            issues.append(Issue("too_long", where, f"{len(post)} chars, max {MAX_POST}"))
+        stray = [t for t in re.findall(r"#\w+", post) if t != hashtag]
+        if stray:
+            issues.append(Issue("hashtag", where, f"only {hashtag} is allowed, not {', '.join(stray)}"))
+    for field_name, text in (("recap.title", out.title), ("recap.summary", out.summary), *posts):
         leaked = sorted({pid for pid in player_ids if pid in text})
         if leaked:
             issues.append(Issue("player_id_in_text", field_name, f"use names, not ids: {', '.join(leaked)}"))
@@ -114,6 +133,10 @@ def fallback_recap(
     summary = " ".join(parts)
     if len(summary) > MAX_SUMMARY:
         summary = parts[0]
+    tag = match_hashtag(home, away)
+    posts = [f"Full time: {home.name} {score} {away.name}. {tag}"]
+    if potm is not None:
+        posts.append(f"Standout performer: {name}. {tag}")
     return Recap(
         match_id=match_id,
         persona=persona,
@@ -123,6 +146,7 @@ def fallback_recap(
         key_moment_ids=[m.moment_id for m, _ in turning],
         player_of_the_match_id=potm,
         check_status=CheckStatus.FALLBACK,
+        social_posts=[p for p in posts if len(p) <= MAX_POST],
     )
 
 
@@ -192,7 +216,14 @@ class RecapService:
                 log.warning("recap %s failed (attempt %d): %s", key, attempt, e)
                 issues, status = [], CheckStatus.REPAIRED
                 continue
-            problems = check_recap(out, sheet, moment_ids=moment_ids, player_ids=player_ids, language=lang)
+            problems = check_recap(
+                out,
+                sheet,
+                moment_ids=moment_ids,
+                player_ids=player_ids,
+                language=lang,
+                hashtag=match_hashtag(home, away),
+            )
             if not problems:
                 recap = Recap(
                     match_id=full_time.match_id,
@@ -203,6 +234,7 @@ class RecapService:
                     key_moment_ids=out.key_moment_ids,
                     player_of_the_match_id=out.player_of_the_match_id,
                     check_status=status,
+                    social_posts=out.social_posts,
                 )
                 self._cache[key] = recap
                 return recap

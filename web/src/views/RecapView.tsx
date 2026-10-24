@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { CheckBadge } from "../components/InsightFeed";
 import { KitStripe } from "../components/TeamMark";
 import { WinProbChart } from "../components/WinProbChart";
@@ -191,8 +192,46 @@ export function RecapView({ feed, prefs }: { feed: MatchFeed; prefs: ViewerPrefs
               </table>
             </div>
           )}
+          {(recap.social_posts?.length ?? 0) > 0 && <SharePosts posts={recap.social_posts ?? []} />}
         </aside>
       </div>
     </main>
+  );
+}
+
+/** Ready-to-post share copy from the reporter (fact-checked like the recap), one copy button each. */
+function SharePosts({ posts }: { posts: string[] }) {
+  const [copied, setCopied] = useState<number | null>(null);
+  const copy = async (text: string, n: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(n);
+      window.setTimeout(() => setCopied((c) => (c === n ? null : c)), 1500);
+    } catch {
+      /* clipboard blocked: the text is still selectable */
+    }
+  };
+  return (
+    <div className="panel p-6">
+      <h2 className="text-sm text-ink-300">Share the result</h2>
+      <p className="mt-1 text-xs text-ink-400">Written by the reporter agent, fact-checked like everything else.</p>
+      <ul className="mt-4 flex flex-col gap-3">
+        {posts.map((post, n) => (
+          <li key={n} className="rounded-md bg-ink-850 p-3 ring-1 ring-ink-700">
+            <p className="text-sm leading-snug text-ink-100 select-all">{post}</p>
+            <div className="mt-2 flex items-center justify-between text-[11px] text-ink-500">
+              <span>{post.length} / 280</span>
+              <button
+                type="button"
+                onClick={() => copy(post, n)}
+                className="rounded-sm px-2 py-0.5 font-semibold text-signal ring-1 ring-signal/50 hover:bg-signal/10"
+              >
+                {copied === n ? "Copied" : "Copy"}
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

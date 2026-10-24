@@ -498,6 +498,10 @@ class Recap(_Base):
     key_moment_ids: list[str]
     player_of_the_match_id: str | None = None
     check_status: CheckStatus
+    social_posts: list[str] = Field(
+        default_factory=list,
+        description="2-3 short posts (<= 280 chars) to share the result, same persona/language; fact-checked",
+    )
 
 
 class InsightsEnvelope(_Base):

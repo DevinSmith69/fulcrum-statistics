@@ -267,8 +267,14 @@ def recap_prompt(
         "MOMENTS (chronological, with their facts)\n" + ("\n".join(lines) or "(none)"),
         "ROSTER\n" + format_roster(home, away),
         f"SCORE\n{home.name} {score} {away.name}",
+        f"HASHTAG\n{match_hashtag(home, away)}",
     ]
     return _with_issues(sections, issues)
+
+
+def match_hashtag(home: Team, away: Team) -> str:
+    """The one hashtag share posts may use, e.g. `#NBARVR` (fictional team ids, no real-world tags)."""
+    return f"#{home.team_id}{away.team_id}"
 
 
 # --------------------------------------------------------------------------- #
