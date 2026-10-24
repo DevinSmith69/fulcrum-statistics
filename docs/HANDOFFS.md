@@ -134,7 +134,7 @@ Fixtures: `data/matches/sample_seed7.jsonl` (NBA v RVR, match_id `nba-rvr-s7`) a
   per cue spec (e.g. goal = 4 × lower_third + 4 × wp_swing), plus `player_tag` cues (persona `player_lens`,
   `perspective_player_id` = the player) for each id in `moment.player_ids`. A player-lens viewer filters
   on `perspective_player_id`. The agents do not produce player_lens *variants* yet (Player Lens is on the cut list).
-- [ ] (WS3 → WS5) The agents also consume `match-events` with consumer group `agents` (recent sequence +
+- [x] (WS3 → WS5) **Done 2026-10-24: `agents` group created on evh-fulcrum-ds534.** The agents also consume `match-events` with consumer group `agents` (recent sequence +
   score for prompts). Please create that consumer group on the Event Hub, or set `FULCRUM_AGENTS_EVENTS=0`.
   The agents then rely on the `score` fact and send no recent sequence.
 - [ ] (WS3a → WS3b) Port `orchestrator.py` to an Agent Framework Workflow: the steps become executors,
@@ -177,7 +177,7 @@ Fixtures: `data/matches/sample_seed7.jsonl` (NBA v RVR, match_id `nba-rvr-s7`) a
 
 ## WS4 (web) — 2026-10-24
 
-- [ ] (WS4 → WS2) Add `period_start_clock_ms: {"1": 0, "2": <clock at H2 kick-off>}` to the WS `hello` payload.
+- [x] (WS4 → WS2) **Done 2026-10-24 (main).** Add `period_start_clock_ms: {"1": 0, "2": <clock at H2 kick-off>}` to the WS `hello` payload.
   The scoreboard clock and minute labels need it to show 46:00 (not 47:00) after first-half stoppage. The web app
   falls back to `period_start` events and then to 45:00, so this is cosmetic, not blocking. The mock sends it.
   Coded against: API_CONTRACT §3 `hello` + `web/mock/server.mjs`.

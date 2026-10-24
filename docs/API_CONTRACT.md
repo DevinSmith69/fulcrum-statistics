@@ -11,7 +11,7 @@ The pydantic models win over this document if they ever disagree — then fix th
 ```
 | Topic (Event Hub) | Model | Key | Producer | Consumers (consumer group) | Partitions |
 |---|---|---|---|---|---|
-| `match-events` | MatchEvent | match_id | sim | engine (`engine`), api (`api-feed`) | 2 |
+| `match-events` | MatchEvent | match_id | sim | engine (`engine`), agents (`agents`), api (`api-feed`) | 2 |
 | `tracking-frames` | TrackingFrame | match_id | sim | engine (`engine`) | 2 |
 | `match-state` | MatchState | match_id | engine | api (`api`) | 2 |
 | `moments` | Moment | match_id | engine | agents (`agents`), api (`api`) | 2 |
@@ -57,7 +57,7 @@ Client → server (`ClientMessage`):
 Server → client (`ServerMessage`), `payload` is the JSON of the named model:
 | type | payload | when |
 |---|---|---|
-| `hello` | `{"match_id", "home": Team, "away": Team, "state": MatchState, "winprob": WinProbPoint[], "moments": Moment[], "insights": Insight[]}` | on subscribe (catch-up snapshot) |
+| `hello` | `{"match_id", "home": Team, "away": Team, "state": MatchState, "winprob": WinProbPoint[], "moments": Moment[], "insights": Insight[], "status", "period_start_clock_ms": {"1": 0, "2": <clock at H2 kick-off>}}` | on subscribe (catch-up snapshot) |
 | `event` | `MatchEvent` | every event (web may throttle rendering) |
 | `state` | `MatchState` | ≤ 1 Hz |
 | `moment` | `Moment` | when detected (before the insight is ready → UI can show "analysing…") |

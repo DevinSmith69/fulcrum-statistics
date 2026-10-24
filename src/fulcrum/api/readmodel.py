@@ -50,6 +50,7 @@ class MatchReadModel:
     clock_ms: int = 0
     score_home: int = 0
     score_away: int = 0
+    period_starts: dict[str, int] = field(default_factory=dict)  # period ("1"/"2") -> clock_ms at its start
     _moment_ids: set[str] = field(default_factory=set)
     _cue_ids: set[str] = field(default_factory=set)
 
@@ -64,6 +65,8 @@ class MatchReadModel:
         self.clock_ms = max(self.clock_ms, ev.clock_ms)
         self.score_home = max(self.score_home, ev.score_home)
         self.score_away = max(self.score_away, ev.score_away)
+        if ev.type == EventType.PERIOD_START:
+            self.period_starts.setdefault(str(ev.period), ev.clock_ms)
         if ev.type in (EventType.MATCH_START, EventType.PERIOD_START, EventType.KICK_OFF) and self.status in (
             "scheduled",
             "error",

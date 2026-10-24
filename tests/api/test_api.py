@@ -398,3 +398,28 @@ def test_recording_teams_detected_from_tracking(tmp_path):
     frames_only = tmp_path / "frames.jsonl"
     frames_only.write_text("\n".join(row for row in FIXTURE.read_text().splitlines() if '"tracking-frames"' in row))
     assert recording_teams(frames_only) == ("NBA", "RVR")  # from P1 positions
+
+
+def test_hello_carries_period_start_clocks(client):
+    create_match(client)
+    for seq, (period, clock) in enumerate([(1, 0), (2, 2_820_000)]):
+        publish(
+            client, TOPIC_EVENTS, MatchEvent(match_id=MID, seq=seq, period=period, clock_ms=clock, type="period_start")
+        )
+    wait_for(lambda: client.get("/api/matches").json()[0]["status"] == "live")
+    with client.websocket_connect("/ws") as ws:
+        ws.send_json({"type": "subscribe", "match_id": MID})
+        hello = wait_for_hello_periods(ws)
+        assert hello["payload"]["period_start_clock_ms"] == {"1": 0, "2": 2_820_000}
+
+
+def wait_for_hello_periods(ws, attempts: int = 20):
+    """Re-request the snapshot until both period starts have been consumed (the bus pump is async)."""
+    hello = ws.receive_json()
+    for _ in range(attempts):
+        if len(hello["payload"]["period_start_clock_ms"]) == 2:
+            return hello
+        time.sleep(0.05)
+        ws.send_json({"type": "update_prefs", "prefs": {"persona": "casual"}})
+        hello = ws.receive_json()
+    return hello

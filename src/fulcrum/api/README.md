@@ -32,7 +32,7 @@ without `fulcrum.agents` moments still flow but there are no insights.
 - `GET …/state` is 404 until the first state arrives. `GET …/recap` is 404 until full time and until a recap exists.
 - `insights` / `overlay-cues` accept `favourite_team_id` / `followed_player_id` too; with neither `persona`
   nor `language` they return the unfiltered feed (for tools / the cue inspector).
-- WS: every send goes through one ordered sender task. `hello` also carries `status`; `update_prefs` re-sends
+- WS: every send goes through one ordered sender task. `hello` also carries `status` and `period_start_clock_ms`; `update_prefs` re-sends
   `hello` (replace your feed). Errors: `bad_request`, `unknown_match` (socket stays open). Clients should de-dupe
   by `seq` / `moment_id` / `insight_id` / `cue_id` — a `hello` and the live stream may overlap by an item.
 - A viewer with no variant for their persona gets the casual one; missing languages are translated on demand

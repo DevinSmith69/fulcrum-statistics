@@ -94,6 +94,7 @@ class Connection:
                 "moments": [dump(m) for m in rm.moments],
                 "insights": [dump(i) for i in insights],
                 "status": rm.status,
+                "period_start_clock_ms": dict(rm.period_starts),
             },
             rm.match_id,
         )
