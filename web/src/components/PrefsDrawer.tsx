@@ -27,6 +27,8 @@ interface Props {
   home: Team | null;
   away: Team | null;
   title?: string;
+  /** Optional "Audio" section (voice commentary, audio description); browser-local, not sent to the server. */
+  audioSettings?: React.ReactNode;
 }
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
@@ -40,7 +42,7 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
 }
 
 /** Viewer preferences: persona, language, favourite club and a followed player. Changes apply live. */
-export function PrefsDrawer({ open, onClose, prefs, onChange, home, away, title = "Viewer preferences" }: Props) {
+export function PrefsDrawer({ open, onClose, prefs, onChange, home, away, title = "Viewer preferences", audioSettings }: Props) {
   const teams = useTeams();
   const [query, setQuery] = useState("");
   const panelRef = useRef<HTMLDivElement>(null);
@@ -119,6 +121,12 @@ export function PrefsDrawer({ open, onClose, prefs, onChange, home, away, title 
               ))}
             </div>
           </Section>
+
+          {audioSettings && (
+            <Section title="Audio" hint="Spoken in the language above. Stays on this device.">
+              {audioSettings}
+            </Section>
+          )}
 
           <Section title="Favourite club" hint="Used by the Club fan persona">
             <div className="grid grid-cols-2 gap-2">

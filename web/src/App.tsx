@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Header, type Route } from "./components/Header";
+import { AudioSettings, LiveRegion, useAudioShortcuts } from "./components/AudioControls";
 import { PrefsDrawer } from "./components/PrefsDrawer";
+import { useAudioPrefs, useCommentary } from "./lib/useCommentary";
 import { useMatchFeed } from "./lib/useMatchFeed";
 import { usePrefs } from "./lib/usePrefs";
 import { BroadcastView } from "./views/BroadcastView";
@@ -28,6 +30,10 @@ function MainShell({ route }: { route: Exclude<Route, "split"> }) {
   const [prefs, setPrefs] = usePrefs("studio", { persona: "casual", language: "en", followed_player_id: "NBA-10" });
   const feed = useMatchFeed(prefs);
   const [drawer, setDrawer] = useState(false);
+  // Voice commentary + audio description run across studio, broadcast and recap (one feed, one speech queue).
+  const [audio, setAudio] = useAudioPrefs();
+  const commentary = useCommentary(feed, prefs.language ?? "en", audio);
+  useAudioShortcuts(audio, setAudio, commentary.stop);
 
   // When the match ends, offer the recap without forcing a navigation mid-celebration.
   return (
@@ -46,14 +52,23 @@ function MainShell({ route }: { route: Exclude<Route, "split"> }) {
         </div>
       )}
       {route === "studio" && <StudioView feed={feed} prefs={prefs} />}
-      {route === "broadcast" && <BroadcastView feed={feed} prefs={prefs} />}
+      {route === "broadcast" && <BroadcastView feed={feed} prefs={prefs} audio={audio} onAudioChange={setAudio} commentary={commentary} />}
       {route === "recap" && <RecapView feed={feed} prefs={prefs} />}
       {feed.finished && route === "studio" && (
         <a href="#/recap" className="fixed bottom-6 left-1/2 z-30 -translate-x-1/2 rounded-full bg-signal px-5 py-2.5 text-sm font-semibold text-ink-950 shadow-lg">
           Full time — read the recap
         </a>
       )}
-      <PrefsDrawer open={drawer} onClose={() => setDrawer(false)} prefs={prefs} onChange={setPrefs} home={feed.home} away={feed.away} />
+      {route !== "recap" && <LiveRegion commentary={commentary} />}
+      <PrefsDrawer
+        open={drawer}
+        onClose={() => setDrawer(false)}
+        prefs={prefs}
+        onChange={setPrefs}
+        home={feed.home}
+        away={feed.away}
+        audioSettings={<AudioSettings audio={audio} onChange={setAudio} commentary={commentary} />}
+      />
     </div>
   );
 }

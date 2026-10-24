@@ -50,6 +50,7 @@ The API base comes from `VITE_API_URL` (default `http://localhost:8000`); the We
 | prefs drawer | **Viewer preferences** | "Viewing as …" in the header: persona, language, favourite club, searchable roster to follow a player. Sends `update_prefs` live |
 | `#/split` | **Split view** | Two independent WebSocket subscriptions with their own prefs (default Analyst·EN v Casual·ES) |
 | `#/broadcast` | **Broadcast mode** | Pitch + overlays only. `I` toggles the **cue inspector** (raw `OverlayCue` JSON + the REST feed URL), `F` full screen, `Esc` back |
+| prefs drawer → Audio | **Voice & audio description** | `V` voice commentary (speaks each new insight's `commentary_line` in the viewer's language), `D` audio description (localised, deterministic lines for goals, cards, big chances, subs, half/full time and the score, plus the commentary lines), `S` stop. Browser-local (`fulcrum.audio` in localStorage). Broadcast mode has Voice / Stop buttons too |
 | `#/recap` | **Recap** | After full time: the persona's report, key moments, the whole outcome-probability story, player of the match, team stats |
 
 ## How it works
@@ -64,6 +65,12 @@ The API base comes from `VITE_API_URL` (default `http://localhost:8000`); the We
   equal priority queues, a cue shows once the match clock reaches `show_at_clock_ms`.
 - `src/components/cues/CueTemplates.tsx` — the six templates: `lower_third`, `wp_swing`, `stat_card`,
   `player_tag`, `pressure_bar`, `recap_card`.
+- Voice and accessibility: `src/lib/speechQueue.ts` (one line at a time; goals and red cards pre-empt; lines older
+  than 15 s of match time *and* 4 s of wall time are dropped; de-duped; bounded), `src/lib/describe.ts`
+  (audio-description phrasing in en/es/fr/pt/de, no LLM), `src/lib/speech.ts` (Azure neural voice through
+  `POST /api/speech`; after a 503, the browser's `speechSynthesis` with a matching voice), `src/lib/useCommentary.ts`
+  (feed → queue; only live insights are spoken, not the `hello` catch-up). Match Studio and Broadcast carry a
+  visually hidden `aria-live` log (polite; goals and red cards assertive) with the same lines for screen readers.
 - `mock/` — `match.mjs` (seeded match generator: possession chains, live stats, the MODEL_SPEC §3
   outcome-probability model, moment rules and fact packs), `text.mjs` (persona × language copy built only
   from fact-pack numbers, cue mapping, recaps), `server.mjs` (REST + WS).
@@ -72,7 +79,7 @@ The API base comes from `VITE_API_URL` (default `http://localhost:8000`); the We
 
 ```bash
 npm run build       # tsc + vite build (must be clean)
-npm test            # node:test — cue scheduling, coordinates, clock, line-ups, colours
+npm test            # node:test — cue scheduling, coordinates, clock, line-ups, colours, speech queue, audio description
 node mock/inspect.mjs 7   # print the mock match's stats and moment timeline
 ```
 
