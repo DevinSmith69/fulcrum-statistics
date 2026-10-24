@@ -18,8 +18,8 @@ pack, and verified template copy replaces anything that cannot be repaired.
 
 | | |
 |---|---|
-| **Live overlay** | `<WEB_URL>` |
-| **API** (health: `<API_URL>/api/health`, cue feed: `<API_URL>/api/matches/{id}/overlay-cues`) | `<API_URL>` |
+| **Live overlay** | [https://<web-host>](https://<web-host>) |
+| **API** (health: [`/api/health`](https://<api-host>/api/health), cue feed: `/api/matches/{id}/overlay-cues`) | [https://<api-host>](https://<api-host>) |
 | **Demo video** (under 2 min) | `<VIDEO_URL>` |
 
 **At a glance** (measured on one full match, see [Trust and guardrails](#trust-and-guardrails)): 30 moments,
