@@ -53,7 +53,7 @@ function Pane({ storageKey, initial }: { storageKey: string; initial: Partial<Vi
         {prefs.persona === "club_fan" && (
           <select aria-label="Favourite club" className={select} value={prefs.favourite_team_id ?? ""} onChange={(e) => setPrefs({ favourite_team_id: e.target.value || null })}>
             <option value="">Pick a club</option>
-            {(teams.length ? teams : [feed.home, feed.away].filter(Boolean)).map((t) => (
+            {(feed.home && feed.away ? [feed.home, feed.away] : teams).map((t) => (
               <option key={t!.team_id} value={t!.team_id}>
                 {t!.name}
               </option>

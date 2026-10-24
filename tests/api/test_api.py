@@ -467,8 +467,8 @@ def test_health_reports_agents_that_failed_to_start(monkeypatch):
     monkeypatch.delenv("FOUNDRY_PROJECT_ENDPOINT", raising=False)
     app = create_app(MemoryBus(), in_process=True, run_sim=False, run_agents=True)
     with TestClient(app) as c:
-        before = c.get("/api/health").json()
-        assert before["agents"] is False and before["agents_state"] == "not_started"
+        # the agents start with the API (not the first match), so the failure shows up without any match
+        wait_for(lambda: c.get("/api/health").json()["agents_state"] == "failed")
         assert c.post("/api/matches", json={**CONFIG, "match_id": "no-agents"}).status_code == 201
         h = c.get("/api/health").json()
         assert h["agents"] is False and h["agents_state"] == "failed"
@@ -479,6 +479,7 @@ def test_health_reports_running_agents(monkeypatch):
     monkeypatch.setenv("FULCRUM_LLM", "fake")
     app = create_app(MemoryBus(), in_process=True, run_sim=False, run_agents=True)
     with TestClient(app) as c:
+        wait_for(lambda: c.get("/api/health").json()["agents_state"] == "running")  # before any match
         assert c.post("/api/matches", json={**CONFIG, "match_id": "with-agents"}).status_code == 201
         h = c.get("/api/health").json()
         assert h["agents"] is True and h["agents_state"] == "running" and h["agents_error"] is None

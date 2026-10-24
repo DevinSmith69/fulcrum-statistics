@@ -119,6 +119,8 @@ def create_app(
             pipeline = Pipeline(the_bus, registry, engine, translator, run_sim=sim, run_agents=agents)
         app.state.bus, app.state.registry, app.state.hub = the_bus, registry, hub
         app.state.translator, app.state.pipeline = translator, pipeline
+        if pipeline is not None:
+            pipeline.prestart()  # agents warm up now, not on the first match
         try:
             yield
         finally:

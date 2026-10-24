@@ -66,7 +66,8 @@ export function PrefsDrawer({ open, onClose, prefs, onChange, home, away, title 
     [home, away].flatMap((t) => (t ? t.players.map((p) => ({ p, team: t })) : [])).find((r) => r.p.player_id === prefs.followed_player_id);
 
   if (!open) return null;
-  const clubs = teams.length ? teams : [home, away].filter(Boolean) as Team[];
+  // Only the two clubs in this match: a club_fan variant exists for each of them, not for other clubs.
+  const clubs = home && away ? [home, away] : teams;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label={title}>

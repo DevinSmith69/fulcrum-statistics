@@ -154,10 +154,10 @@ class Pipeline:
         self.run_agents = run_agents
         self.tasks: set[asyncio.Task[Any]] = set()
         self.agents: Any = None
-        self._agents_tried = False
+        self._agents_task: asyncio.Task[None] | None = None
         self.sim_available = find_entrypoint(SIM_ENTRYPOINTS) is not None
         self.agents_available = run_agents and find_entrypoint(AGENT_SERVICE) is not None
-        # off | unavailable | not_started (starts with the first match) | starting | running | failed (agents_error)
+        # off | unavailable | not_started (until prestart / the first match) | starting | running | failed
         self.agents_state = "not_started" if self.agents_available else ("unavailable" if run_agents else "off")
         self.agents_error: str | None = None
 
@@ -167,12 +167,23 @@ class Pipeline:
         task.add_done_callback(self.tasks.discard)
         return task
 
+    def prestart(self) -> None:
+        """Start the agents in the background at API start-up, so the first match's first moment doesn't wait
+        for the Foundry warm-up (token, clients, prompt agent publishing). Matches still await it if needed."""
+        if self.run_agents and self._agents_task is None:
+            self._agents_task = asyncio.create_task(self._start_agents(), name="agents-start")
+
     async def ensure_services(self) -> None:
-        """Engine (always ours) and agents (if enabled and importable). Idempotent."""
+        """Engine (always ours) and agents (if enabled and importable). Idempotent; concurrent callers share
+        one agents start-up."""
         self.engine.start()
-        if self._agents_tried or not self.run_agents:
+        if not self.run_agents:
             return
-        self._agents_tried = True
+        self.prestart()
+        assert self._agents_task is not None
+        await asyncio.shield(self._agents_task)
+
+    async def _start_agents(self) -> None:
         cls = find_entrypoint(AGENT_SERVICE)
         if cls is None:
             log.warning("fulcrum.agents service not available yet - moments will have no insights")
@@ -230,6 +241,9 @@ class Pipeline:
         for task in list(self.tasks):
             task.cancel()
         await asyncio.gather(*self.tasks, return_exceptions=True)
+        if self._agents_task is not None and not self._agents_task.done():
+            self._agents_task.cancel()
+            await asyncio.gather(self._agents_task, return_exceptions=True)
         if self.agents is not None:
             try:
                 await self.agents.stop()
