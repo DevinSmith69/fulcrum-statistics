@@ -3,7 +3,8 @@
 The simulator (WS1) and agents (WS3) are imported lazily and every call is guarded, so the API keeps
 working while those packages are still stubs:
 - no simulator → replay a recorded match (FULCRUM_REPLAY_FILE, else data/matches/sample_seed7.jsonl,
-  else the hand-made test fixture), re-keyed to the new match_id and paced by `config.speed`;
+  else the hand-made test fixture), re-keyed to the new match_id and paced by `config.speed`. Setting
+  FULCRUM_REPLAY_FILE forces the replay even when the simulator exists (deterministic demos);
 - no agents → moments still flow, there are just no insights (and translation serves English).
 Agents: one `fulcrum.agents.AgentService(bus, get_llm())`, started on the first match; it also provides the
 translate / recap hooks used by `translation.py`. Entry points probed are listed in docs/HANDOFFS.md.
@@ -163,7 +164,7 @@ class Pipeline:
 
     async def _simulate(self, config: MatchConfig) -> None:
         fn = find_entrypoint(SIM_ENTRYPOINTS)
-        if fn is not None:
+        if fn is not None and not os.getenv("FULCRUM_REPLAY_FILE"):  # an explicit recording wins (demos)
             await call_flexible(fn, config, bus=self.bus)
             return
         path = replay_file()
