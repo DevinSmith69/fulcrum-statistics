@@ -52,6 +52,7 @@ The API base comes from `VITE_API_URL` (default `http://localhost:8000`); the We
 | `#/broadcast` | **Broadcast mode** | Pitch + overlays only. `I` toggles the **cue inspector** (raw `OverlayCue` JSON + the REST feed URL), `F` full screen, `Esc` back |
 | prefs drawer → Audio | **Voice & audio description** | `V` voice commentary (speaks each new insight's `commentary_line` in the viewer's language), `D` audio description (localised, deterministic lines for goals, cards, big chances, subs, half/full time and the score, plus the commentary lines), `S` stop. Browser-local (`fulcrum.audio` in localStorage). Broadcast mode has Voice / Stop buttons too |
 | `#/recap` | **Recap** | After full time: the persona's report, key moments, the whole outcome-probability story, player of the match, team stats |
+| `#/quality` | **Quality** | Guardrails and observability for the current match, from the live feed: passed / repaired / fallback rates, moment → insight latency p50/p95, latency per moment over match time (colour + shape by fact-check status), the repaired and fallback moments with their `check_notes`; plus the latest offline agent run and Foundry evaluator scores (groundedness, relevance, coherence, fluency) from `GET /api/eval/latest` (the mock serves the committed `data/eval/` files) |
 
 ## How it works
 

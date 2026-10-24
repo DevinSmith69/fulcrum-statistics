@@ -45,6 +45,7 @@ asyncio tasks on the shared `MemoryBus` (`api/app.py` lifespan). In Azure each r
 | POST | `/api/matches/{id}/translate` | `{"insight_id", "language"}` | `InsightVariant[]` (on-demand translation, cached) |
 | GET | `/api/speech` | – | `{"enabled": bool, "auth": "key" \| "entra" \| null, "voices": {lang: voice}}` — is neural voice configured? |
 | POST | `/api/speech` | `{"text"` (1–400 chars)`, "language"}` | `audio/mpeg`: the line in that language's Azure AI Speech neural voice (cached per voice + text). **503** when Azure Speech is not configured (the overlay then uses the browser's `speechSynthesis`); 502 if the Speech service fails |
+| GET | `/api/eval/latest` | – | `{"live": report \| null, "foundry": summary \| null}` — read-only, the newest offline evaluation reports in `data/eval/` (`FULCRUM_EVAL_DIR` overrides). `live` = `scripts/eval_live.py` (`status_counts`, `status_rates_pct`, `latency_ms.p50/p95/mean`, `tokens_total`, `llm`, `recap`, …); `foundry` = `scripts/eval_foundry.py` (`evaluators.{groundedness,relevance,coherence,fluency}.{mean,min,n,pass_rate_pct}` on the 1–5 scale, `by_check_status`, `lowest[]` with judge `reasons`, `report_url` to the Foundry portal, `judge_deployment`). Both carry `file` and `generated_at`; per-item detail is omitted |
 
 The API keeps per-match read models in memory (dict of match_id → ring buffers). Persistence is a stretch
 goal (Cosmos DB) — do not build it before Sunday evening.

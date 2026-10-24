@@ -1,0 +1,906 @@
+{
+  "kind": "foundry",
+  "generated_at": "2026-10-24T13:55:13+00:00",
+  "records": "data/eval/sample_seed11.records.jsonl",
+  "eval_name": "fulcrum-insights-sample_seed11",
+  "eval_id": "eval_e7ecffb7defc45ee9057bbd6f40e9d71",
+  "run_id": "evalrun_faec5c2946fa497fbdf26f71ce6fcfb8",
+  "status": "completed",
+  "error": null,
+  "report_url": "https://ai.azure.com/nextgen/r/BDt90lt0TvePDl91lxlIng,rg-fulcrum,,fulcrum-ds534,fulcrum/build/evaluations/eval_e7ecffb7defc45ee9057bbd6f40e9d71/run/evalrun_faec5c2946fa497fbdf26f71ce6fcfb8",
+  "judge_deployment": "fast",
+  "result_counts": {
+    "errored": 0,
+    "failed": 1,
+    "passed": 29,
+    "total": 30
+  },
+  "items": 30,
+  "judge_tokens": 327404,
+  "evaluators": {
+    "groundedness": {
+      "mean": 4.53,
+      "min": 2.0,
+      "n": 30,
+      "pass_rate_pct": 96.7
+    },
+    "relevance": {
+      "mean": 4.6,
+      "min": 3.0,
+      "n": 30,
+      "pass_rate_pct": 100.0
+    },
+    "coherence": {
+      "mean": 4.3,
+      "min": 4.0,
+      "n": 30,
+      "pass_rate_pct": 100.0
+    },
+    "fluency": {
+      "mean": 3.8,
+      "min": 3.0,
+      "n": 30,
+      "pass_rate_pct": 100.0
+    }
+  },
+  "by_check_status": {
+    "passed": {
+      "n": 29,
+      "groundedness": 4.52,
+      "relevance": 4.59,
+      "coherence": 4.28,
+      "fluency": 3.79
+    },
+    "repaired": {
+      "n": 1,
+      "groundedness": 5.0,
+      "relevance": 5.0,
+      "coherence": 5.0,
+      "fluency": 4.0
+    }
+  },
+  "lowest": [
+    {
+      "moment_id": "39998271a6cf4be5ac402051da1c899a",
+      "type": "player_milestone",
+      "minute": "90+5'",
+      "check_status": "passed",
+      "scores": {
+        "groundedness": 2.0,
+        "relevance": 5.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is anchored in the provided facts: Bellweather, Harlow Cross, 90+5', 50 completed passes, and the 2-2 scoreline all come directly from the context. However, it adds interpretive claims such as “keeping the ball under pressure,” “slow Marsh Dock United’s push,” and similar tactical implications, which are not explicitly stated in the context. The user asked to explain why the moment matters using only the numbers in FACTS and to rewrite it for different audiences. The response does provide those rewrites, but it does not strictly stay within the numbers-only constraint and introduces unsupported analysis. So it is mostly correct but not fully grounded to the requested constraints.",
+        "relevance": "The response directly uses the provided facts: Bellweather, 90+5', 50 completed passes, and the 2-2 score. It also rewrites the moment for an analyst, casual fan, and both clubs' fans as requested, with clear, relevant framing.",
+        "coherence": "Let's think step by step: The response directly addresses the query and stays on-topic by explaining the significance of Bellweather reaching 50 completed passes at 90+5' in a 2-2 match. It is organized into clear sections for an analyst, a casual fan, and each club's fans, which makes the structure easy to follow. The ideas are connected logically and the wording flows smoothly overall. Although it is not especially sophisticated, it is coherent and well-structured.",
+        "fluency": "Let's think step by step: The response is clearly written and easy to understand. It uses correct grammar overall, appropriate vocabulary, and coherent sentence structure. There are no major errors that interfere with readability. While the text is somewhat repetitive and sports-commentary-like, it remains fluent and well-formed. It fits the proficient range rather than exceptional, since the wording is solid but not especially sophisticated or varied throughout."
+      }
+    },
+    {
+      "moment_id": "48158d0513aa421d854deb57b080b7f5",
+      "type": "momentum_run",
+      "minute": "31'",
+      "check_status": "passed",
+      "scores": {
+        "groundedness": 4.0,
+        "relevance": 3.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is mostly grounded in the provided facts: it correctly identifies Harlow Cross’s five consecutive final-third possessions at 31', the 0-0 score, and the 0 shots / 0.0 xG in the last 5 minutes. However, it introduces unsupported language like “pinning back,” “camped in the final third,” and especially “camped in Marsh Dock United’s half,” which is stronger than the context strictly proves, since the only confirmed number is five consecutive final-third possessions. It also slightly overstates certainty about pressure and danger. Because the answer is broadly correct but includes some embellished, not fully supported claims and is not perfectly complete, it is partially correct rather than fully grounded.",
+        "relevance": "The response is directly on topic and uses the provided numbers, but it does not fully satisfy the multi-audience rewriting request. It gives one explanation and several rewrites, yet the core phrasing is repetitive and only partially tailored to each audience.",
+        "coherence": "Let's think step by step: The response is coherent and easy to follow. It directly addresses the query by explaining the football moment using the provided facts, and then rewrites it for an analyst, a casual fan, and each club's fans. The sections are clearly labeled, the ideas progress logically from description to interpretation to audience-specific rewrites, and the sentences connect smoothly. It does slightly go beyond the exact facts by using phrases like \"pinning back\" and \"camped,\" but that does not harm coherence, since the overall structure and flow remain strong.",
+        "fluency": "Let's think step by step: The response is clearly understandable and uses correct grammar overall, with only minor awkwardness in phrasing such as repeated sentence openings and slightly unnatural sports-report style wording. Vocabulary is adequate and coherent, and the ideas are presented smoothly across the paragraph. It is not especially sophisticated or eloquent, but it is well within competent-to-proficient fluency."
+      }
+    },
+    {
+      "moment_id": "093d9554d8e144629c7addb3b5576c37",
+      "type": "red_card",
+      "minute": "41'",
+      "check_status": "passed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "coherence": 5.0,
+        "fluency": 3.0
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts. It correctly states that Hartsell of Marsh Dock United received a second yellow/red card at 41', that the score was still 0-0, and that Marsh Dock United were reduced to 10 men. It also correctly uses the win-probability change (36 to 49 for Harlow Cross, a +13 pp swing). The rewritten versions for analyst, casual fan, and both clubs’ fans are all consistent with the context and do not introduce unsupported facts. Minor stylistic phrasing like \"control the next phase\" is interpretive but still consistent with the moment and the numbers, so the response is fully supported overall.",
+        "relevance": "The response directly addresses the red card event using the provided numbers and rewrites it for the analyst, casual fan, and both clubs’ fans. It includes the key significance, minute, score, man advantage, and win-probability swing.",
+        "coherence": "Let's think step by step: The response directly addresses the football moment and explains its significance using the provided facts, including the 41' second yellow red card, the 0-0 score, the shift to 10 men, and the win probability change from 36% to 49% for Harlow Cross. It is well organized into separate rewrites for an analyst, a casual fan, and each club's fans, with clear transitions and consistent logic throughout. The structure is easy to follow and the ideas connect smoothly, so it is highly coherent.",
+        "fluency": "Let's think step by step: the response is clearly understandable and mostly grammatical, with only minor awkward phrasing such as \"The swing in win chance from 36 to 49 for Harlow Cross\" and some repetitive sentence patterns. Vocabulary is adequate and the ideas are conveyed coherently, but the style is plain rather than especially polished or varied. Overall, it fits competent fluency rather than proficient or exceptional fluency."
+      }
+    },
+    {
+      "moment_id": "880b5f32425140c0be0d9ccc89900031",
+      "type": "phase_change",
+      "minute": "44'",
+      "check_status": "passed",
+      "scores": {
+        "groundedness": 4.0,
+        "relevance": 5.0,
+        "coherence": 4.0,
+        "fluency": 3.0
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts: it correctly notes the 44' moment, the phase change from Harlow Cross in control to chaotic, and the 15 turnovers in the last 5 minutes. It also stays consistent with the 0-0 score and the idea that Marsh Dock United can capitalize. However, it introduces unsupported phrasing like \"press higher\" and \"seize momentum\" as tactical interpretation, which is slightly beyond the strict numbers-only instruction. Since the answer is largely correct but includes some extrapolation and does not fully rewrite for each club's fans in a clearly distinct, complete way, it is partially correct rather than perfect.",
+        "relevance": "The response is directly on-topic and uses the provided facts, explaining the phase change and turnovers. It also rewrites for analyst, casual fan, and club fans as requested, though it relies on interpretive wording beyond the numbers.",
+        "coherence": "Let's think step by step: the response is clearly written, organized into labeled variants, and each paragraph follows a logical flow. It directly addresses the football moment and adapts the explanation for an analyst, a casual fan, and both clubs' fans. The sentences are connected and easy to follow, with appropriate use of the provided facts such as the 44' minute, 0-0 score, control-to-chaos change, chaos index, and turnovers. While it is coherent overall, it does not strictly adhere to the instruction to use only the numbers in FACTS, since it introduces descriptive wording beyond numerical data. However, that is a content-constraint issue rather than a coherence problem.",
+        "fluency": "Let's think step by step: The response is understandable and mostly coherent, but it has noticeable grammatical awkwardness and some unnatural phrasing, such as missing articles and slightly clunky sentence construction. Vocabulary is adequate but not particularly varied, and the style is functional rather than polished. Overall, it communicates the idea clearly with only moderate effort required, which fits competent fluency."
+      }
+    },
+    {
+      "moment_id": "c6f2520d2fec41869425dac93f9704d9",
+      "type": "momentum_run",
+      "minute": "49'",
+      "check_status": "passed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "coherence": 4.0,
+        "fluency": 3.0
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts: it correctly uses the 49' minute, the 0-1 score, the 5 consecutive final-third possessions, and the fact that both teams had 0 shots and 0.0 xG in the last 5 minutes. It explains why the moment matters as a sustained pressure spell without end product, which matches the trigger and significance. The rewrites for analyst, casual fan, and both clubs' fans stay consistent with the same numbers and do not introduce unsupported facts. Minor stylistic embellishments like \"pinning back\" and \"turning the screw\" are interpretive, but they are reasonable paraphrases of the momentum run and do not conflict with the context.",
+        "relevance": "The response is highly relevant and largely answers the prompt by explaining the moment using the provided numbers, then rewriting it for the analyst, casual fan, and both clubs’ fans. It stays on-topic and detailed, though some phrasing adds slight interpretation beyond the facts.",
+        "coherence": "Let's think step by step: the response is clearly organized and directly addresses the query by explaining the moment, then rewriting it for an analyst, a casual fan, and both clubs' fans. The ideas are presented in a logical order with clear labels, and each version stays on topic. It is coherent overall, though not especially sophisticated or seamless enough to merit the highest score because some phrasing is repetitive and the club-fan sections are similar.",
+        "fluency": "Let's think step by step: the response is clearly understandable and uses appropriate soccer commentary vocabulary, but it is not especially polished. There are a few awkward constructions and repetitive phrasing, such as \"Harlow Cross are building pressure with 5 consecutive possessions reaching the final third\" and repeated team naming. Grammar is mostly correct, coherence is good, and the meaning is easy to follow, but the style is more functional than elegant. Overall, it fits competent fluency rather than proficient or exceptional fluency."
+      }
+    }
+  ],
+  "per_item": [
+    {
+      "moment_id": "26cd09435025481a92976adfc4f4f61e",
+      "type": "phase_change",
+      "minute": "9'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "coherence": 5.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts. It correctly uses the 9' minute, the phase change from balanced to Harlow Cross in control, the 55 vs 1 control indices, and the 4 turnovers in the last 5 minutes. It also stays consistent with the 0-0 score and rewrites the moment for an analyst, a casual fan, and both clubs' fans as requested. There is no unsupported or incorrect information introduced. The response is complete and directly addresses the query.",
+        "relevance": "The response directly addresses the requested explanation and rewrites, using the provided numbers and covering analyst, casual fan, and both clubs’ fan perspectives. It is relevant, specific, and complete for the prompt.",
+        "coherence": "Let's think step by step: the response is well organized and directly addresses the query by explaining the football moment and then rewriting it for different audiences. The sequence is logical, the labels make each rewrite easy to follow, and the ideas connect clearly. It stays coherent throughout, even if it does not strictly obey the instruction to use only the numbers in FACTS because it includes extra wording beyond the numerical data.",
+        "fluency": "Let's think step by step: the response is clearly written and easy to understand, with mostly correct grammar and coherent sentence structure. Vocabulary is adequate and varied enough for the sports-analytic context, and the ideas flow logically across the sentences. There are only minor awkward phrasings, but nothing that impairs readability. Overall, this fits proficient fluency rather than exceptional fluency because it is clear and well-structured, but not especially polished or eloquent."
+      }
+    },
+    {
+      "moment_id": "c19a8beda3ed4e399ab7a0fb09459136",
+      "type": "big_chance",
+      "minute": "15'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided context. It correctly states that Bellweather missed a big chance at 15', with the shot being off target, worth 0.76 xG, from 11.0 m, at 104 km/h, and that the score remains 0-0. It also uses the team xG total of 1.06 appropriately. The added interpretations about pressure, momentum, and the effect on both teams are reasonable and do not conflict with the context, though they go slightly beyond the raw numbers. Overall, it answers the prompt well and includes separate rewrites for an analyst, casual fan, and both clubs' fans.",
+        "relevance": "The response directly uses the provided numbers and explains why the chance matters, then rewrites it for all requested audiences. It is accurate, complete, and adds useful context about momentum and the scoreline.",
+        "coherence": "Let's think step by step: The response is coherent because it directly addresses the query and organizes the information into the requested perspectives: overall explanation, analyst, casual fan, and both clubs' fans. Each section is logically connected, uses the provided facts in a clear sequence, and maintains a smooth flow. The wording is understandable and the transitions between the different rewrites are straightforward. It is not highly polished enough to be a 5, but it is clearly coherent and easy to follow.",
+        "fluency": "Let's think step by step: The response is written in clear, fluent English with good grammar, coherent structure, and appropriate vocabulary. It uses several well-formed sentences and conveys the match-event information smoothly. There are no major language errors, and the text is easy to understand. While the wording is solid, it is fairly straightforward and not especially sophisticated or stylistically exceptional, so it fits proficient rather than exceptional fluency."
+      }
+    },
+    {
+      "moment_id": "6325f9d8433d4d13be5015e3a1163e94",
+      "type": "pressure_shift",
+      "minute": "21'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 4.0,
+        "relevance": 4.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts. It correctly uses the 21' pressure shift, MDU's pressure index rising from 49 to 86, Harlow Cross dropping from 81 to 56, and the recent 1 shot and 1 box entry. It also stays focused on explaining the moment and rewriting it for different audiences. However, it adds interpretation like 'forcing play higher up the pitch' and 'seized the momentum' that is plausible but not explicitly stated in the context, and the 'club_fan' versions are generic rather than clearly tailored to each club's fans beyond team name and tone. Because it is mostly correct but slightly incomplete/interpretive, it fits best as partially correct.",
+        "relevance": "The response directly addresses the requested moment explanation and rewrites it for an analyst, casual fan, and both clubs’ fans. It uses the provided numbers and stays on topic, though it doesn’t explicitly explain the significance in deeper context beyond the pressure swing.",
+        "coherence": "Let's think step by step: The response is clearly organized and directly answers the query by explaining the football moment and then rewriting it for four audiences. The sentences follow a logical sequence, with the main interpretation first and audience-specific variants afterward. Transitions and wording are consistent, making the response easy to follow. Minor issues exist, such as the repeated phrasing across versions and slightly awkward wording like \"flip the pressure,\" but these do not meaningfully disrupt coherence.",
+        "fluency": "Let's think step by step: The response is clearly written, coherent, and easy to understand. Grammar and punctuation are mostly correct, and the vocabulary is appropriate for an analytical sports update. It uses some varied sentence structures and maintains logical flow throughout. There are no major language issues, though it is not especially sophisticated or stylistically exceptional, so it fits proficient rather than exceptional fluency."
+      }
+    },
+    {
+      "moment_id": "24ca4483b5004dc094c08102dbfff58d",
+      "type": "elite_pass",
+      "minute": "26'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "coherence": 5.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts. It correctly identifies that Hartsell of Marsh Dock United wins possession and completes a pass to Vickery at 26', using the exact numbers from FACTS: 40.0 m pass length, 34.9 m progressive gain, 8.0 difficulty, and the 0-0 score. It also rewrites the moment for an analyst, a casual fan, and both clubs' fans as requested. There is some added interpretive language like \"breaks Harlow Cross\" and \"advanced territory,\" but that is consistent with the numerical context and does not introduce unsupported facts. Overall, it is complete and accurate relative to the context.",
+        "relevance": "The response closely matches the requested task: it explains the moment’s significance using only the provided numbers and rewrites it for an analyst, a casual fan, and both clubs’ fans. It stays on-topic and covers all requested perspectives.",
+        "coherence": "Let's think step by step: the response is clear, logically ordered, and directly addresses the query by explaining the moment's significance and then rewriting it for four audiences. The ideas connect well, the sequence is easy to follow, and each section stays on topic. There are minor issues with repetition and some wording that goes beyond strictly using only the numbers in FACTS, but these affect instruction compliance more than coherence. Overall, it is highly coherent.",
+        "fluency": "Let's think step by step: The response is clearly written, grammatically sound, and easy to follow. It uses appropriate vocabulary and maintains coherence across the sentence, with a logical sequence of events. While it is not especially elaborate or stylistically sophisticated, it reads smoothly and communicates the intended sports update effectively. This fits competent to proficient fluency, and overall it is best rated as proficient."
+      }
+    },
+    {
+      "moment_id": "95bb241d77a14100b470cf2c32383c2a",
+      "type": "pressure_shift",
+      "minute": "29'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts. It correctly identifies the pressure flip at 29', uses the exact pressure index changes (Harlow Cross 50 to 84, Marsh Dock United 87 to 52), and includes the correct supporting numbers of 3 box entries and 0 shots in the last 5 minutes. It also keeps the score at 0-0. The rewrites for analyst, casual fan, and Harlow Cross fans are consistent with the same facts. The only issue is the club_fan entry for Marsh Dock United fans is awkwardly phrased from the opponent's perspective, but it does not introduce factual errors from the context. Overall, the response is complete and accurate based on the numbers in FACTS.",
+        "relevance": "The response directly addresses the pressure flip using the provided numbers and includes rewrites for an analyst, casual fan, and both clubs’ fans. It is complete, on-topic, and tailored to the requested audiences.",
+        "coherence": "Let's think step by step: The response is well organized and directly addresses the query by explaining the pressure flip using only the provided numbers, then rewriting it for different audiences. The sentences flow logically, the comparisons between 50→84 and 87→52 are clear, and the audience-specific sections are easy to follow. It is highly coherent, though not necessarily exceptional in sophistication beyond a strong structured rewrite.",
+        "fluency": "Let's think step by step: The response is clearly written and easy to understand, with correct grammar overall, appropriate vocabulary, and coherent sentence structure. It uses varied phrasing and maintains smooth flow throughout. There are no major language errors that interfere with comprehension. While it is not especially sophisticated or eloquent, it is fluent and professional, fitting the proficient level."
+      }
+    },
+    {
+      "moment_id": "48158d0513aa421d854deb57b080b7f5",
+      "type": "momentum_run",
+      "minute": "31'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 4.0,
+        "relevance": 3.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is mostly grounded in the provided facts: it correctly identifies Harlow Cross’s five consecutive final-third possessions at 31', the 0-0 score, and the 0 shots / 0.0 xG in the last 5 minutes. However, it introduces unsupported language like “pinning back,” “camped in the final third,” and especially “camped in Marsh Dock United’s half,” which is stronger than the context strictly proves, since the only confirmed number is five consecutive final-third possessions. It also slightly overstates certainty about pressure and danger. Because the answer is broadly correct but includes some embellished, not fully supported claims and is not perfectly complete, it is partially correct rather than fully grounded.",
+        "relevance": "The response is directly on topic and uses the provided numbers, but it does not fully satisfy the multi-audience rewriting request. It gives one explanation and several rewrites, yet the core phrasing is repetitive and only partially tailored to each audience.",
+        "coherence": "Let's think step by step: The response is coherent and easy to follow. It directly addresses the query by explaining the football moment using the provided facts, and then rewrites it for an analyst, a casual fan, and each club's fans. The sections are clearly labeled, the ideas progress logically from description to interpretation to audience-specific rewrites, and the sentences connect smoothly. It does slightly go beyond the exact facts by using phrases like \"pinning back\" and \"camped,\" but that does not harm coherence, since the overall structure and flow remain strong.",
+        "fluency": "Let's think step by step: The response is clearly understandable and uses correct grammar overall, with only minor awkwardness in phrasing such as repeated sentence openings and slightly unnatural sports-report style wording. Vocabulary is adequate and coherent, and the ideas are presented smoothly across the paragraph. It is not especially sophisticated or eloquent, but it is well within competent-to-proficient fluency."
+      }
+    },
+    {
+      "moment_id": "bd15effbfbc64d9994af5f825cc9d933",
+      "type": "phase_change",
+      "minute": "34'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts: it identifies the 34' phase change from balanced to Harlow Cross in control, uses the control index 80 to 8, and mentions 6 turnovers in the last 5 minutes. It also rewrites the moment for an analyst, casual fan, and each club's fans as requested. However, it adds some interpretive language like 'clean possession spell,' 'pinning Marsh Dock United back,' and 'momentum,' which is broadly supported but not directly stated in the context. Since the core request is answered accurately and completely with only minor embellishment, it is fully grounded.",
+        "relevance": "The response directly addresses the prompt by explaining the phase change using the provided numbers and rewriting it for the analyst, casual fan, and both clubs’ fans. It stays on-topic and covers all requested audiences clearly.",
+        "coherence": "Let's think step by step: the response is clearly organized and directly addresses the query by explaining the moment, then rewriting it for different audiences. The ideas follow a logical sequence: overall explanation, analyst version, casual fan version, and club-fan versions. Sentence connections are clear and the wording is easy to follow. It is coherent, though not especially sophisticated or detailed enough to merit the highest level.",
+        "fluency": "Let's think step by step: the response is fully understandable, grammatically mostly correct, and uses coherent sentence structures throughout. It has consistent terminology and clear organization across the repeated variants, with only minor awkwardness in phrasing like \"34' possession spell\" or \"take the wheel,\" which does not impede comprehension. The vocabulary is adequate and somewhat varied, but the style is more functional than highly sophisticated. Overall, this fits proficient fluency rather than exceptional fluency."
+      }
+    },
+    {
+      "moment_id": "1a85f357303b48408ad74521db087b06",
+      "type": "speed_record",
+      "minute": "37'",
+      "check_status": "repaired",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "coherence": 5.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is strongly grounded in the provided context. It correctly identifies Jessop’s 114 km/h shot at 37', notes that it is the match-high and exceeds the previous match-high of 104 km/h, and mentions that the shot was saved after a passing move. It also keeps the score at 0-0. The rewrites for analyst, casual fan, Harlow Cross fans, and Marsh Dock United fans are all consistent with the facts. There is one slight issue: phrases like “raises the tempo,” “forcing Harlow Cross to be deeper,” and “on top of this spell” are interpretive, but they are reasonable inferences from the context and do not contradict it. Overall, the response is complete and accurate based only on the supplied facts.",
+        "relevance": "The response stays tightly on topic, uses the provided facts and numbers, and rewrites the moment for all requested audiences. It captures the 114 km/h shot, 37', 0-0 score, and the previous 104 km/h benchmark clearly.",
+        "coherence": "Let's think step by step: The response is well organized and directly addresses the query by explaining the significance of the football moment and then rewriting it for different audiences. The sections are clearly labeled ([analyst], [casual], and each club's fans), and the ideas flow logically from the match event to its impact. There is strong coherence overall, although a few phrases add interpretation beyond the provided facts, which affects factual adherence more than coherence.",
+        "fluency": "Let's think step by step: the response is clear, coherent, and grammatically well-formed. It uses appropriate vocabulary and natural sentence structure, with smooth flow between ideas. There are no major errors that hinder understanding. While it is not especially elaborate or stylistically sophisticated, it is clearly above competent level and reads like polished sports commentary."
+      }
+    },
+    {
+      "moment_id": "093d9554d8e144629c7addb3b5576c37",
+      "type": "red_card",
+      "minute": "41'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "coherence": 5.0,
+        "fluency": 3.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts. It correctly states that Hartsell of Marsh Dock United received a second yellow/red card at 41', that the score was still 0-0, and that Marsh Dock United were reduced to 10 men. It also correctly uses the win-probability change (36 to 49 for Harlow Cross, a +13 pp swing). The rewritten versions for analyst, casual fan, and both clubs’ fans are all consistent with the context and do not introduce unsupported facts. Minor stylistic phrasing like \"control the next phase\" is interpretive but still consistent with the moment and the numbers, so the response is fully supported overall.",
+        "relevance": "The response directly addresses the red card event using the provided numbers and rewrites it for the analyst, casual fan, and both clubs’ fans. It includes the key significance, minute, score, man advantage, and win-probability swing.",
+        "coherence": "Let's think step by step: The response directly addresses the football moment and explains its significance using the provided facts, including the 41' second yellow red card, the 0-0 score, the shift to 10 men, and the win probability change from 36% to 49% for Harlow Cross. It is well organized into separate rewrites for an analyst, a casual fan, and each club's fans, with clear transitions and consistent logic throughout. The structure is easy to follow and the ideas connect smoothly, so it is highly coherent.",
+        "fluency": "Let's think step by step: the response is clearly understandable and mostly grammatical, with only minor awkward phrasing such as \"The swing in win chance from 36 to 49 for Harlow Cross\" and some repetitive sentence patterns. Vocabulary is adequate and the ideas are conveyed coherently, but the style is plain rather than especially polished or varied. Overall, it fits competent fluency rather than proficient or exceptional fluency."
+      }
+    },
+    {
+      "moment_id": "880b5f32425140c0be0d9ccc89900031",
+      "type": "phase_change",
+      "minute": "44'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 4.0,
+        "relevance": 5.0,
+        "coherence": 4.0,
+        "fluency": 3.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts: it correctly notes the 44' moment, the phase change from Harlow Cross in control to chaotic, and the 15 turnovers in the last 5 minutes. It also stays consistent with the 0-0 score and the idea that Marsh Dock United can capitalize. However, it introduces unsupported phrasing like \"press higher\" and \"seize momentum\" as tactical interpretation, which is slightly beyond the strict numbers-only instruction. Since the answer is largely correct but includes some extrapolation and does not fully rewrite for each club's fans in a clearly distinct, complete way, it is partially correct rather than perfect.",
+        "relevance": "The response is directly on-topic and uses the provided facts, explaining the phase change and turnovers. It also rewrites for analyst, casual fan, and club fans as requested, though it relies on interpretive wording beyond the numbers.",
+        "coherence": "Let's think step by step: the response is clearly written, organized into labeled variants, and each paragraph follows a logical flow. It directly addresses the football moment and adapts the explanation for an analyst, a casual fan, and both clubs' fans. The sentences are connected and easy to follow, with appropriate use of the provided facts such as the 44' minute, 0-0 score, control-to-chaos change, chaos index, and turnovers. While it is coherent overall, it does not strictly adhere to the instruction to use only the numbers in FACTS, since it introduces descriptive wording beyond numerical data. However, that is a content-constraint issue rather than a coherence problem.",
+        "fluency": "Let's think step by step: The response is understandable and mostly coherent, but it has noticeable grammatical awkwardness and some unnatural phrasing, such as missing articles and slightly clunky sentence construction. Vocabulary is adequate but not particularly varied, and the style is functional rather than polished. Overall, it communicates the idea clearly with only moderate effort required, which fits competent fluency."
+      }
+    },
+    {
+      "moment_id": "c4977727ab694d918be29e2b75c51c40",
+      "type": "goal",
+      "minute": "45+2'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "coherence": 5.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts. It correctly states that Rookwood scored at 45+2', the score became 0-1, Harlow Cross's home win probability dropped from 51% to 19%, and Marsh Dock United's win probability rose from 14% to 52%. It also uses the shot details in the analyst version: 0.16 xG, 124 km/h, and 18.1 m, all supported by the context. The casual and fan rewrites stay consistent with the facts and do not introduce unsupported information. It is complete and relevant to the query, which asked for an explanation using only the numbers in FACTS and rewrites for different audiences.",
+        "relevance": "The response directly follows the instructions: it explains the moment using only numbers from the facts, then rewrites it for an analyst, a casual fan, and both clubs’ fans. It is on-topic, complete, and tailored well to each audience.",
+        "coherence": "Let's think step by step: the response is clearly written, logically ordered, and directly addresses the query by explaining why the goal matters and then rewriting it for different audiences. The sequence is easy to follow, with distinct sections for analyst, casual fan, and each club's fans. The ideas connect well and the transitions are smooth, so it is highly coherent.",
+        "fluency": "Let's think step by step: the response is clear, coherent, and grammatically well-formed. It uses appropriate vocabulary and varies sentence structure somewhat, while maintaining good readability throughout. There are no major grammatical problems, and the meaning is easy to understand. However, the style is functional rather than especially sophisticated or eloquent, so it fits proficient fluency rather than exceptional fluency."
+      }
+    },
+    {
+      "moment_id": "dfe8c704896647a890a53f1dd0e7d5b8",
+      "type": "player_milestone",
+      "minute": "45+5'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 4.0,
+        "relevance": 5.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the context because it uses the provided numbers: Lindqvist, 96%, 48 passes, 45+5', and the 0-1 score. It explains the moment as a half-time passing milestone for Harlow Cross and rewrites it for different audiences as requested. However, it adds interpretation such as \"in control,\" \"steady their build-up,\" and \"make it harder for Marsh Dock United to press\" that is not directly supported by the context alone. The context only states the milestone and the numbers, so the answer is mostly correct but includes some unsupported analytical framing, making it partially complete rather than fully exact.",
+        "relevance": "The response directly addresses the request by explaining the moment using only provided numbers and rewriting it for all four audiences. It stays on-topic, includes the key facts, and adds some useful contextual framing.",
+        "coherence": "Let's think step by step: The response is clearly organized and directly addresses the query by explaining the significance of the football moment using the provided numbers (96%, 48 passes, 45+5', 0-1). It then rewrites the explanation for an analyst, a casual fan, Harlow Cross fans, and Marsh Dock United fans, with each section separated and easy to follow. The ideas flow logically and stay on topic throughout, with only minor repetition rather than any real coherence problems.",
+        "fluency": "Let's think step by step: the response is clear and coherent, with correct grammar and natural sentence flow. It uses relevant vocabulary and maintains a consistent analytical tone throughout. There are no major errors, and the ideas are easy to follow, though the style is fairly straightforward rather than highly sophisticated. Overall, this fits competent-to-proficient fluency, and I would rate it as proficient. "
+      }
+    },
+    {
+      "moment_id": "efc0ecdc92cf4918818c8328935a4557",
+      "type": "half_time",
+      "minute": "45+5'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 4.0,
+        "relevance": 5.0,
+        "coherence": 5.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is anchored in the provided facts: it correctly states the score is 0-1, Harlow Cross have 62% possession and 1.24 xG, and Marsh Dock United lead at half-time with a 52% win probability. It also rewrites the moment for an analyst, a casual fan, and each club's fans, matching the query’s requested audiences. However, it adds interpretive language beyond the numbers (e.g., \"clearer edge in the match state,\" \"forces Harlow Cross to chase,\" \"sit on the lead,\" \"in control\") that is not explicitly supported by the numerical facts, and some phrasing is a bit repetitive. Overall, it is mostly correct and complete, with minor unsupported embellishment.",
+        "relevance": "The response directly follows the prompt by explaining the moment’s significance using only provided numbers and rewrites it for an analyst, casual fan, and both clubs’ fans. It is on-topic, complete, and well-tailored to the requested audiences.",
+        "coherence": "Let's think step by step: The response is well organized and directly addresses the query by explaining why the football moment matters and then rewriting it for different audiences. The sections are clearly labeled, the ideas follow a logical sequence, and the transitions are smooth. It is easy to follow throughout, with no major coherence issues.",
+        "fluency": "Let's think step by step: the response is clear and coherent overall, with correct grammar and natural phrasing. It uses appropriate vocabulary and varied sentence structures to convey match-state information smoothly. There are no major errors that hinder understanding, though the writing is fairly straightforward rather than especially sophisticated or eloquent. This fits competent to proficient fluency, and I would rate it as proficient due to its readability and control."
+      }
+    },
+    {
+      "moment_id": "c6f2520d2fec41869425dac93f9704d9",
+      "type": "momentum_run",
+      "minute": "49'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "coherence": 4.0,
+        "fluency": 3.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts: it correctly uses the 49' minute, the 0-1 score, the 5 consecutive final-third possessions, and the fact that both teams had 0 shots and 0.0 xG in the last 5 minutes. It explains why the moment matters as a sustained pressure spell without end product, which matches the trigger and significance. The rewrites for analyst, casual fan, and both clubs' fans stay consistent with the same numbers and do not introduce unsupported facts. Minor stylistic embellishments like \"pinning back\" and \"turning the screw\" are interpretive, but they are reasonable paraphrases of the momentum run and do not conflict with the context.",
+        "relevance": "The response is highly relevant and largely answers the prompt by explaining the moment using the provided numbers, then rewriting it for the analyst, casual fan, and both clubs’ fans. It stays on-topic and detailed, though some phrasing adds slight interpretation beyond the facts.",
+        "coherence": "Let's think step by step: the response is clearly organized and directly addresses the query by explaining the moment, then rewriting it for an analyst, a casual fan, and both clubs' fans. The ideas are presented in a logical order with clear labels, and each version stays on topic. It is coherent overall, though not especially sophisticated or seamless enough to merit the highest score because some phrasing is repetitive and the club-fan sections are similar.",
+        "fluency": "Let's think step by step: the response is clearly understandable and uses appropriate soccer commentary vocabulary, but it is not especially polished. There are a few awkward constructions and repetitive phrasing, such as \"Harlow Cross are building pressure with 5 consecutive possessions reaching the final third\" and repeated team naming. Grammar is mostly correct, coherence is good, and the meaning is easy to follow, but the style is more functional than elegant. Overall, it fits competent fluency rather than proficient or exceptional fluency."
+      }
+    },
+    {
+      "moment_id": "0df4a504fa8d462f9a0c86f80f280ac1",
+      "type": "pressure_shift",
+      "minute": "53'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 4.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts. It correctly identifies a pressure flip at 53' for Marsh Dock United, uses the exact pressure index changes (MDU 57 to 80, Harlow Cross 88 to 49), and notes the 1 shot and 0 box entries in the last 5 minutes. It also rewrites the moment for an analyst, casual fan, and both clubs' fans as requested. There is no unsupported information introduced beyond interpretive phrasing like \"seize the initiative,\" which is consistent with the numbers and the described momentum swing. The response is complete and accurate based on the context.",
+        "relevance": "The response directly addresses the requested explanation and rewrites for an analyst, casual fan, and both clubs’ fans. It uses only the provided numbers and stays on-topic, though it largely paraphrases without much extra insight.",
+        "coherence": "Let's think step by step: the response is clearly written, directly addresses the query, and is logically organized into the requested explain-it-and-rewrite formats. The ideas flow smoothly, the numbers from the facts are used consistently, and the different audience rewrites are easy to follow. It is coherent overall, though not especially sophisticated or exceptionally polished enough to merit the highest score.",
+        "fluency": "Let's think step by step: The response is clearly written and easy to understand, with coherent sentence structure and appropriate vocabulary for a sports-analytics style update. Grammar is generally correct, and the ideas flow logically. There is some repetition and it is not especially sophisticated or stylistically varied, but it remains fluent and polished overall. This fits proficient fluency rather than exceptional fluency because it lacks the highest level of elegance and variety."
+      }
+    },
+    {
+      "moment_id": "31ac14d2321c4c3bb9aace7d48b165a8",
+      "type": "goal",
+      "minute": "55'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 4.0,
+        "relevance": 5.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts and directly addresses the query by explaining why the moment matters using the numbers, then rewriting it for an analyst, a casual fan, and both clubs' fans. It correctly uses the 0.12 xG shot from 20.6 m, the win probability change from 59% to 88%, and the draw chance drop from 28% to 10%. However, it introduces one likely unsupported/incorrect detail: it says the goal makes it a 'two-goal cushion' and that Marsh Dock United go '0-2 up' at 55', while the context already shows the score is 0-2 and the moment is a goal at 55' but the provided 'score_after' also remains 0-2, so that phrasing is not fully reliable from the context. The response is mostly correct but includes a minor inconsistency and is slightly incomplete in that it does not explicitly mention the home win probability dropping from 13% to 3%, which is relevant to 'why this matters.'",
+        "relevance": "The response is highly relevant and follows the requested structure, explaining the goal using the provided numbers and rewriting it for an analyst, casual fan, and both club fan perspectives. It directly matches the prompt with no major omissions.",
+        "coherence": "Let's think step by step: the response is well organized and directly addresses the query by explaining the moment's significance and then rewriting it for different audiences. The ideas flow logically, with clear transitions between the main explanation and the labeled rewrites. It stays coherent throughout and is easy to follow. There are only minor issues: it mentions the 55' minute instead of the 59' sequence in the provided recent events, but that does not hurt coherence, only factual alignment. Overall, the structure and readability are strong.",
+        "fluency": "Let's think step by step: the response is clearly written, grammatically sound, and easy to follow. It uses appropriate vocabulary for match commentary and presents information in a coherent, concise way. Sentence structure is varied enough for smooth readability, though it is not especially sophisticated or stylistically elaborate. Overall, this fits competent-to-proficient fluency, and the clarity and control of language are strong."
+      }
+    },
+    {
+      "moment_id": "e41d173b8ffe468685abe6eb77ec8f6c",
+      "type": "phase_change",
+      "minute": "56'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 4.0,
+        "relevance": 5.0,
+        "coherence": 4.0,
+        "fluency": 3.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts overall: it correctly identifies that at 56' the phase shifts from balanced to Marsh Dock United in control, cites the 43 vs 1 control indexes, and mentions the 9 turnovers in the last 5 minutes. It also rewrites the moment for different audiences as requested. However, it introduces information not supported by the FACTS for the 56' moment, such as claiming MDU \"turn it into a goal,\" \"strike again,\" and specifically referencing Oddie finishing the move and making it 0-2. The recent sequence shows the goal happened at 59', but the question asks to explain why the 56' moment matters using only the numbers in FACTS, and the response merges in later events and extra narrative not strictly grounded in the 56' numbers. So it is partially correct but contains unsupported additions.",
+        "relevance": "The response is highly relevant and follows the user's instruction closely by explaining the moment using only the provided numbers, then rewriting it for an analyst, casual fan, and each club’s fans. It is complete and tailored to all requested audiences.",
+        "coherence": "Let's think step by step: The response is well structured and easy to follow. It directly answers the query by explaining the significance of the football moment using the provided numbers, then rewrites it for an analyst, a casual fan, and each club's fans. The sections are clearly labeled and the ideas progress logically from the general explanation to tailored rewrites. There is a minor issue of slightly awkward phrasing in a few places, but overall the response is coherent and organized.",
+        "fluency": "Let's think step by step: The response is clearly understandable and generally fluent, with appropriate vocabulary for a sports commentary context. It maintains coherence across sentences and uses mostly correct grammar. However, there are some awkward phrases and compressed constructions such as “MDU seize control and turn it into a goal” and “With Harlow Cross on 1 control index,” which sound slightly unnatural. Overall, the text is competent and easy to follow, but not polished enough for a higher fluency tier."
+      }
+    },
+    {
+      "moment_id": "ac8dfe0719e9435282f5d5017250258c",
+      "type": "pressure_shift",
+      "minute": "61'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts. It correctly states the minute-related pressure flip, the score at 0-2, the home/away pressure index changes (41→72 for Harlow Cross and 72→40 for Marsh Dock United), and the recent attacking numbers of 1 shot and 1 box entry in the last 5 minutes. It also rewrites the moment for an analyst, casual fan, and each club's fans without adding unsupported factual claims. The only minor issue is some phrasing like \"raising the chance of a momentum turn\" and \"territorial\" is interpretive, but it is a reasonable inference from the given numbers and does not contradict the context. Overall, it is fully correct and complete within the context.",
+        "relevance": "The response directly answers the request, uses only the provided numbers, and rewrites the moment for an analyst, casual fan, and both clubs’ fans. It is complete and tailored, with relevant contextual framing.",
+        "coherence": "Let's think step by step: the response is clearly organized and directly answers the query by explaining the pressure flip using only the provided numbers, then rewriting it for an analyst, a casual fan, and both clubs' fans. The ideas flow logically from the main explanation to the audience-specific versions, and the sentences are easy to follow. It is coherent and well structured, though not especially elaborate enough to merit the very highest score.",
+        "fluency": "Let's think step by step: the response is clearly written and easy to understand, with generally correct grammar and coherent sentence structure. It uses appropriate sports-analysis vocabulary and maintains logical flow throughout. There are some awkward phrases and slight inconsistencies, such as the opening clause and repeated wording, but these do not significantly hinder readability. Overall, it fits competent-to-proficient fluency, best matched to level 4."
+      }
+    },
+    {
+      "moment_id": "072866cc33964d5887a1a56c6ecea291",
+      "type": "goal",
+      "minute": "66'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 4.0,
+        "relevance": 5.0,
+        "coherence": 5.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is largely grounded in the provided facts. It correctly uses the 66' minute, the 1-2 score, Okonkwo-Reid as scorer, and the win probability shifts from 3% to 14% for Harlow Cross and 88% to 55% for Marsh Dock United. However, it adds some interpretive language like “turns a 1-2 deficit into a live contest” and “late push,” which is reasonable but not explicitly stated in the context. More importantly, it does not fully use all relevant numbers from the facts in the explanation (e.g., draw probability change, xG, shot speed, distance, assist, or the fact that the score_after remains 1-2). Since the query asks to explain why the moment matters using only the numbers in FACTS and then rewrite it for an analyst, casual fan, and each club's fans, the response provides all audience rewrites and is mostly accurate, but it is somewhat incomplete relative to the available facts. Therefore, it is partially correct rather than fully complete.",
+        "relevance": "The response directly answers the user’s request by explaining the moment’s significance using the provided numbers and rewriting it for an analyst, casual fan, and both clubs’ fans. It is thorough, on-topic, and context-aware.",
+        "coherence": "Let's think step by step: The response is highly coherent. It directly addresses the query by explaining why the football moment matters using the provided numbers, and then rewrites the same information for an analyst, a casual fan, and each club's fans. The structure is clear, the sections are labeled, and the ideas follow a logical sequence with smooth transitions. The wording stays focused on the event and its significance, so the response is easy to follow and well organized.",
+        "fluency": "Let's think step by step: the response is clear, coherent, and grammatically correct overall. It uses appropriate sports commentary vocabulary and maintains a logical flow across the three related summaries. Sentence structures are varied and readable, with no major errors that hinder understanding. It is strong, but not especially sophisticated or eloquent enough to merit the very highest category."
+      }
+    },
+    {
+      "moment_id": "445815987e8e48fba01044b8269fe75d",
+      "type": "player_milestone",
+      "minute": "68'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 4.0,
+        "relevance": 4.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts: it correctly identifies Eversley, Harlow Cross, the 68' minute, the 10.0 km milestone, and the 1-2 scoreline. It also explains why the moment matters by tying the workload to Harlow Cross's chase and pressure, which is reasonable based on the context. However, it goes beyond the context by claiming that 10.0 km 'usually helps sustain pressure,' 'keep the tempo up,' and that it is 'telling' or 'could be vital'—these are plausible interpretations but not directly supported by the facts. It also attempts the requested rewrites for analyst, casual fan, and both clubs' fans, though the club-fan versions are a bit repetitive and not uniquely tailored. Overall, it is mostly correct and relevant, but contains some unsupported embellishment and is not fully complete or strictly limited to the numbers in FACTS.",
+        "relevance": "The response directly uses the provided facts, explains the milestone’s significance, and rewrites it for analyst, casual fan, and both clubs’ fans. It is well aligned with the prompt, though not especially deep beyond the given numbers.",
+        "coherence": "Let's think step by step: The response is clearly organized and directly addresses the query by explaining the 10.0 km milestone at 68' and then rewriting it for an analyst, a casual fan, and both clubs' fans. The sections are easy to follow, the ideas stay connected, and the flow is smooth. It is coherent overall, though not especially sophisticated beyond clear organization, so it fits the 'Coherent Response' level rather than the highest level.",
+        "fluency": "Let's think step by step: the response is generally clear and coherent, with correct grammar and readable sentence structure. It uses appropriate vocabulary for sports commentary and maintains a logical flow throughout. There are minor awkward phrases and some repetitive phrasing, but these do not hinder understanding. Overall, it fits competent-to-proficient fluency, and I would rate it as proficient due to its smoothness and clarity."
+      }
+    },
+    {
+      "moment_id": "3cf00300b16a4225ab7356988ae9d858",
+      "type": "momentum_run",
+      "minute": "69'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 4.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided context because it uses only the available numbers and match state: 69', Harlow Cross trailing 1-2, 4 shots in the last 5 minutes, 0 opponent shots, and 0.23 xG. It correctly interprets the momentum trigger and explains why the moment matters. The rewrites for analyst, casual fan, and both clubs' fans are also consistent with the context and do not add unsupported facts. One small issue is that it slightly overstates effects like “can force Marsh Dock United deeper” and “equaliser feels close,” which are plausible interpretations rather than direct facts, but they remain reasonable based on the numbers. Overall, it is fully supported with minor extrapolation.",
+        "relevance": "The response directly addresses the requested football moment explanation and rewrites it for an analyst, casual fan, and both clubs' fans. It uses the supplied numbers, though it adds some interpretive phrasing beyond the raw facts.",
+        "coherence": "Let's think step by step: the response is clearly organized and directly answers the query by explaining why the football moment matters and then rewriting it for four audiences. The ideas follow a logical sequence, and each version stays on topic. There is some repetition, but the structure remains easy to follow and coherent throughout.",
+        "fluency": "Let's think step by step: the response is fluent and easy to understand overall, with correct grammar and clear sentence structure. It uses appropriate sports commentary vocabulary and maintains coherence across the passage. There are a few awkward fragments in the opening line, such as the missing article in \"Harlow Cross pin Marsh Dock United back at 69'\", but these do not seriously impede understanding. The wording is functional and clear, but not especially sophisticated or stylistically polished, so it fits proficient rather than exceptional fluency."
+      }
+    },
+    {
+      "moment_id": "749374f261f94d9dbd94e696fb69628e",
+      "type": "phase_change",
+      "minute": "70'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 5.0,
+        "coherence": 4.0,
+        "fluency": 3.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is strongly grounded in the provided context. It correctly uses the key facts: the moment is at 70', Harlow Cross are trailing 1-2, the phase changes from Marsh Dock United in control to Harlow Cross in control, Harlow Cross have a control index of 53 versus 3 for Marsh Dock United, and there were 8 turnovers in the last 5 minutes. It also rewrites the moment for an analyst, a casual fan, Harlow Cross fans, and Marsh Dock United fans as requested. There is no major unsupported information or contradiction with the context. Minor phrasing like 'territory' and 'tempo' is interpretive, but it is consistent with the numbers and does not introduce factual errors.",
+        "relevance": "The response directly addresses the request using only numbers from FACTS and provides rewrites for an analyst, casual fan, and both clubs’ fans. It is comprehensive, clear, and tailored to each audience.",
+        "coherence": "Let's think step by step: the response is clearly organized and directly answers the query by explaining the football moment, then rewriting it for four audiences. The sentences connect logically, and the key facts from the prompt are used consistently: the 70' phase change, the 53 to 3 control index, the 8 turnovers, and the 1-2 scoreline. The sections are easy to follow and the transitions between the general explanation, analyst version, casual fan version, and club-specific versions are smooth. Overall, it is highly coherent, though not quite exceptional because the rewrites are somewhat repetitive rather than especially sophisticated.",
+        "fluency": "Let's think step by step: the response is clearly written and easy to understand, with mostly correct grammar and coherent structure. It uses a somewhat repetitive sports-analysis style and has a few awkward phrases like “the phase flips” and “they’re now dictating the tempo while chasing the game,” but these do not hinder comprehension. The vocabulary is adequate and the sentences are varied enough, though not especially sophisticated or polished. Overall, this fits competent fluency rather than proficient or exceptional fluency."
+      }
+    },
+    {
+      "moment_id": "8fc627976911468c84ad35f96b881e81",
+      "type": "tempo_change",
+      "minute": "76'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 4.0,
+        "coherence": 5.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is well anchored in the provided facts: it uses the 76' minute, the 4.6 passes per minute versus 7.9 match average, the -42% tempo shift, the slower direction, and the 1-2 scoreline. It correctly explains that the slower tempo matters because Marsh Dock United are protecting a lead and reducing chaos/transition risk. The rewrites for analyst, casual fan, and both clubs' fans stay consistent with the numbers and context. There is a minor issue that the response says 'Marsh Dock slow the game down' and 'killing the clock,' which is slightly interpretive, but it is still consistent with the tempo-change context and does not introduce incorrect facts. Overall, it is fully correct and complete based on the context.",
+        "relevance": "The response directly addresses the request using the provided numbers and explains the moment’s significance for different audiences. It is clear, on-topic, and tailored to analyst, casual fan, and club-fan perspectives, though not especially deep.",
+        "coherence": "Let's think step by step: the response is clearly written, logically organized, and directly addresses the query by explaining the significance of the tempo change using the provided numbers. It then rewrites the moment for an analyst, a casual fan, and each club's fans in a consistent sequence. The ideas connect smoothly and the structure is easy to follow, with only minor repetition. Overall, it is highly coherent.",
+        "fluency": "Let's think step by step: the response is clearly understandable and largely grammatically correct, with appropriate vocabulary and coherent sentence flow. It uses a mix of simple and moderately complex constructions, and the ideas are connected logically. There are only minor awkward phrasings (for example, the opening fragment \"Marsh Dock slow the game down\") and some repetitive wording, but these do not significantly reduce readability. Overall, this fits competent to proficient fluency, and I would rate it as proficient due to its smooth, clear communication despite small errors."
+      }
+    },
+    {
+      "moment_id": "53b3b852476843e58e56e50409d3657a",
+      "type": "phase_change",
+      "minute": "84'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 4.0,
+        "relevance": 5.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts: it uses the 84' minute, the phase change from balanced to chaotic, the 1-2 scoreline, the 15 turnovers in the last 5 minutes, and the 68 chaos index. It also rewrites the moment for an analyst, a casual fan, and both clubs' fans as requested. However, it introduces unsupported claims such as Marsh Dock 'seize the tempo,' 'dictating the tempo,' and 'take control,' which are not directly stated by the context and are questionable given the control indices (home 34 vs away 2). These additions make it not fully faithful to the numbers-only constraint, but the core interpretation is largely correct and complete enough overall.",
+        "relevance": "The response directly uses the provided facts and explains the moment’s significance, then rewrites it for an analyst, casual fan, and both clubs’ fans. It is complete, well-targeted, and appropriately tailored to each audience.",
+        "coherence": "Let's think step by step: the response is clearly written, organized into sections, and directly addresses the prompt by explaining the moment and rewriting it for an analyst, a casual fan, and both clubs' fans. The ideas flow logically, with the key facts retained and reformulated appropriately for each audience. There is some repetition, but it does not significantly hurt readability or structure, so the response is coherent and easy to follow.",
+        "fluency": "Let's think step by step: The response is clearly written and easy to follow, with correct grammar overall and coherent structure. It uses varied vocabulary and some complex phrasing, especially in the analyst and fan versions. There are a few awkward or slightly unnatural constructions (for example, the opening fragment and some repetitive wording), but these do not significantly hinder readability. Overall, it fits proficient fluency rather than exceptional fluency because the style is solid but not especially polished or sophisticated throughout."
+      }
+    },
+    {
+      "moment_id": "6e8089a7e7ef4897b7f816e5a7a9c49f",
+      "type": "player_milestone",
+      "minute": "86'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 4.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts: it identifies Tolliver, the 86' minute, the 50 completed passes milestone, Harlow Cross as the team, and the 1-2 scoreline. It also answers the rewrite request for an analyst, a casual fan, and both clubs' fans. However, it adds interpretive language like \"chase the game,\" \"leaning on him to keep possession and build pressure,\" and \"force a late opening,\" which is not explicitly stated in the context, but these are reasonable inferences from the numbers rather than contradictions. The response is mostly complete and accurate, with no clear factual errors from the context.",
+        "relevance": "The response directly addresses the requested explanation and rewrites for analyst, casual fan, and both clubs’ fans. It uses the provided numbers and match context, though it adds some interpretive language beyond the facts.",
+        "coherence": "Let's think step by step: the response is clearly written, on-topic, and organized into a general explanation plus four audience-specific rewrites. The ideas follow a logical sequence: it states the milestone, explains its significance in the match context, then adapts the wording for an analyst, a casual fan, and each club’s fans. Sentences connect smoothly and the purpose of each section is easy to follow. It is not maximally sophisticated, but it is definitely coherent and well structured.",
+        "fluency": "Let's think step by step: the response is clear, coherent, and grammatically strong overall. It uses appropriate vocabulary and natural sentence structure, with only very minor awkwardness in phrasing such as “chase the game,” which does not impede understanding. The text reads smoothly and is easy to follow, but it is not especially sophisticated or stylistically exceptional, so it fits proficient fluency rather than the highest level."
+      }
+    },
+    {
+      "moment_id": "b8702fcf52d143feb2b434bfabe4a24a",
+      "type": "momentum_run",
+      "minute": "87'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 4.0,
+        "coherence": 4.0,
+        "fluency": 3.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is clearly grounded in the provided facts: it uses the 87' minute, 1-2 scoreline, 5 consecutive final-third possessions, 2 shots in the last 5 minutes, 0 opponent shots, and 0.3 xG. It answers why the moment matters by explaining late territorial pressure and possible equalizer threat, and then rewrites it for the analyst, casual fan, and both clubs' fans. However, it adds a small amount of interpretive language such as 'tilting toward sustained home pressure' and 'late equaliser is becoming more likely,' which is reasonable but not explicitly stated in the facts. Since the response is accurate, relevant, and mostly complete, but includes some mild inference beyond the raw numbers, it fits best as fully correct in context.",
+        "relevance": "The response is highly relevant and mostly follows the prompt’s required rewrites using the provided facts. It stays on-topic, addresses multiple audiences, and explains the moment’s significance, though it adds a bit of interpretation beyond strictly using numbers only.",
+        "coherence": "Let's think step by step: The response is clearly on-topic and logically organized. It explains the moment, then rewrites it for an analyst, a casual fan, and both clubs' fans, which matches the query structure. The sentences flow well, with consistent use of the provided facts such as 87', 5 straight final-third possessions, 2 shots, 0 opponent shots, 0.3 xG, and the 1-2 scoreline. There is a slight issue because the prompt says to use only the numbers in FACTS, but the response adds qualitative phrasing like \"camped in the final third\" and \"equaliser is becoming more likely,\" which is interpretive rather than strictly numeric. Even so, the organization and clarity are strong, so it is highly coherent overall.",
+        "fluency": "Let's think step by step: the response is clearly understandable and uses appropriate vocabulary for a sports update, but it has noticeable grammatical awkwardness and fragmented phrasing in the opening line (“Harlow Cross pin Marsh Dock United back late”). The repeated match commentary is coherent overall, with mostly correct sentence structure and smooth readability, though it lacks strong stylistic polish and has some redundancy. This fits competent fluency rather than proficient or exceptional fluency."
+      }
+    },
+    {
+      "moment_id": "ce97833d06444432bc85f961a1c8e9c6",
+      "type": "goal",
+      "minute": "90+1'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 4.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is clearly about the football moment in the context and uses several provided numbers correctly: 90+1' goal, score 2-2, scorer Whitlock, assist Tolliver, home win probability 0% to 8%, draw 8% to 89%, away win probability 91% to 2%. It also rewrites the moment for an analyst, a casual fan, and both clubs' fans as requested. However, it introduces unsupported or slightly incorrect phrasing: it says the goal 'turns a likely loss into a live draw' and 'rescues a point,' which is interpretive but consistent; more importantly, it says 'Whitlock levels it at 90+1' and flips the match state' which is fine, but the response adds extra narrative beyond the numbers. Overall, the answer is grounded and largely complete, with only minor stylistic extrapolation, so it deserves the highest score.",
+        "relevance": "The response directly addresses the requested explanations and rewrites, using the provided numbers and covering analyst, casual fan, and both clubs' fan perspectives. It is mostly complete, though slightly repetitive and not especially nuanced.",
+        "coherence": "Let's think step by step: The response is clearly organized and directly addresses the query by explaining why the football moment matters using the provided numbers, then rewriting it for an analyst, a casual fan, and both clubs' fans. The sections are easy to follow and the ideas connect logically. It is coherent overall, with only minor redundancy and some slightly dramatic phrasing that does not disrupt the flow.",
+        "fluency": "Let's think step by step: The response is clearly written, coherent, and easy to understand. It uses correct grammar overall, varied sentence structures, and appropriate vocabulary for a sports update. There are no major language errors, and the ideas flow smoothly across the different labeled versions of the same event. It is strong and polished, but not especially sophisticated or eloquent enough to warrant the very highest level."
+      }
+    },
+    {
+      "moment_id": "0ed48c390812445895e27ace4e44e100",
+      "type": "tempo_change",
+      "minute": "90+3'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 4.0,
+        "relevance": 4.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is strongly grounded in the provided facts. It correctly states the score is 2-2, the minute is 90+3', the tempo is 4.0 passes per minute versus a 7.7 match average, and the tempo is slower / -48%. It also explains the significance in a way consistent with the context: a slower tempo at this stage can help protect a draw. However, it adds interpretive language like \"drain pressure\" and \"take the sting out\" that is not directly stated in the facts, and the rewritten versions are not fully distinct or tailored beyond slight phrasing changes. So it is correct but somewhat incomplete in fully satisfying the request to rewrite for an analyst, casual fan, and each club's fans.",
+        "relevance": "The response directly addresses the tempo-change moment using only the provided facts, explains its significance, and rewrites it for all requested audiences. It is specific, on-topic, and complete, with only minimal added interpretation.",
+        "coherence": "Let's think step by step: the response is well organized and clearly follows the query’s instruction to explain the moment and then rewrite it for different audiences. Each segment is labeled and the ideas connect logically, with consistent use of the provided facts such as 90+3', 4.0 passes per minute, 7.7 match average, and the 2-2 score. The flow is smooth and easy to follow, so it is highly coherent, though not exceptionally sophisticated enough to merit the very top score.",
+        "fluency": "Let's think step by step: The response is clear and coherent, with correct grammar overall and appropriate vocabulary for sports commentary. It uses varied sentence structures and conveys the situation smoothly, though it is somewhat repetitive and not especially sophisticated. There are no major errors that hinder understanding, so it fits competent to proficient fluency. Overall, I would rate it as proficient but not exceptional."
+      }
+    },
+    {
+      "moment_id": "39998271a6cf4be5ac402051da1c899a",
+      "type": "player_milestone",
+      "minute": "90+5'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 2.0,
+        "relevance": 5.0,
+        "coherence": 4.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": false,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is anchored in the provided facts: Bellweather, Harlow Cross, 90+5', 50 completed passes, and the 2-2 scoreline all come directly from the context. However, it adds interpretive claims such as “keeping the ball under pressure,” “slow Marsh Dock United’s push,” and similar tactical implications, which are not explicitly stated in the context. The user asked to explain why the moment matters using only the numbers in FACTS and to rewrite it for different audiences. The response does provide those rewrites, but it does not strictly stay within the numbers-only constraint and introduces unsupported analysis. So it is mostly correct but not fully grounded to the requested constraints.",
+        "relevance": "The response directly uses the provided facts: Bellweather, 90+5', 50 completed passes, and the 2-2 score. It also rewrites the moment for an analyst, casual fan, and both clubs' fans as requested, with clear, relevant framing.",
+        "coherence": "Let's think step by step: The response directly addresses the query and stays on-topic by explaining the significance of Bellweather reaching 50 completed passes at 90+5' in a 2-2 match. It is organized into clear sections for an analyst, a casual fan, and each club's fans, which makes the structure easy to follow. The ideas are connected logically and the wording flows smoothly overall. Although it is not especially sophisticated, it is coherent and well-structured.",
+        "fluency": "Let's think step by step: The response is clearly written and easy to understand. It uses correct grammar overall, appropriate vocabulary, and coherent sentence structure. There are no major errors that interfere with readability. While the text is somewhat repetitive and sports-commentary-like, it remains fluent and well-formed. It fits the proficient range rather than exceptional, since the wording is solid but not especially sophisticated or varied throughout."
+      }
+    },
+    {
+      "moment_id": "fb3b4d96e6124449b7d334789953390e",
+      "type": "full_time",
+      "minute": "90+8'",
+      "check_status": "passed",
+      "status": "completed",
+      "scores": {
+        "groundedness": 5.0,
+        "relevance": 4.0,
+        "coherence": 5.0,
+        "fluency": 4.0
+      },
+      "passed": {
+        "groundedness": true,
+        "relevance": true,
+        "coherence": true,
+        "fluency": true
+      },
+      "reasons": {
+        "groundedness": "Let's think step by step: The response is grounded in the provided facts. It correctly uses the match ending at 90+8', the 2-2 score, Harlow Cross having 63% possession and 16 shots versus Marsh Dock United's 37% and 9 shots, and the 100% draw probability. It also rewrites the moment for an analyst, casual fan, and both clubs' fans, as requested. There is a small issue in the Harlow Cross fans version saying Marsh Dock United 'stole the point,' which adds interpretive language not directly supported by the numbers, but it does not introduce factual contradiction and the overall answer remains accurate and complete.",
+        "relevance": "The response directly follows the instruction to explain the moment using only facts and rewrites it for the requested audiences. It is on-topic, complete, and tailored, though it adds some interpretive phrasing beyond the numbers.",
+        "coherence": "Let's think step by step: the response is clearly written, logically ordered, and directly addresses the query by explaining the significance of the football moment and then rewriting it for the requested audiences. The sentences connect well, the structure is easy to follow, and each section stays on topic. There is a minor issue in that the prompt asked to use only the numbers in FACTS, but the response includes names and some interpretive language; however, this affects factual constraint compliance more than coherence. Overall, the response is highly coherent.",
+        "fluency": "Let's think step by step: The response is clearly understandable and mostly well-formed, with coherent sentence structure and appropriate vocabulary. It conveys the match summary smoothly and uses varied phrasing. There are minor grammatical awkwardnesses, such as \"Harlow Cross dominate\" instead of \"dominates\" and some slightly unnatural constructions like \"the 2-2 score shows that control never became a winner,\" but these do not impede understanding. Overall, the text reads at a competent-to-proficient level, closer to proficient than basic."
+      }
+    }
+  ]
+}

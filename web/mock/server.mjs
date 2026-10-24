@@ -278,6 +278,19 @@ function send(res, status, body) {
 }
 const problem = (res, status, title, detail) => send(res, status, { type: "about:blank", title, status, detail });
 
+/** GET /api/eval/latest: the committed offline reports in ../../data/eval (the real API picks the newest). */
+function latestEval() {
+  const read = (name) => {
+    try {
+      const { per_item: _p, records: _r, ...rest } = JSON.parse(readFileSync(new URL(`../../data/eval/${name}`, import.meta.url), "utf8"));
+      return { file: name, ...rest };
+    } catch {
+      return null;
+    }
+  };
+  return { live: read("sample_seed11.json"), foundry: read("foundry_sample_seed11.json") };
+}
+
 async function readJson(req) {
   let body = "";
   for await (const chunk of req) body += chunk;
@@ -294,6 +307,7 @@ const server = createServer(async (req, res) => {
 
   if (resource === "health") return send(res, 200, { status: "ok", bus: "mock", llm: "mock" });
   if (resource === "teams") return send(res, 200, TEAMS);
+  if (resource === "eval" && id === "latest") return send(res, 200, latestEval());
   if (resource === "matches" && !id) {
     if (req.method === "POST") {
       const cfg = await readJson(req);

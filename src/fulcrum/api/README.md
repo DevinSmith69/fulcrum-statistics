@@ -44,6 +44,9 @@ without `fulcrum.agents` moments still flow but there are no insights.
   domain + `AZURE_SPEECH_RESOURCE_ID`; token from `DefaultAzureCredential`, sent as
   `Authorization: Bearer aad#<resource id>#<token>`). Audio is cached in memory per (voice, text), bounded at
   256 lines / 16 MB. `GET /api/speech` says whether it is enabled; `/api/health` has `speech: bool`.
+- `GET /api/eval/latest` (`evalreports.py`) reads the newest `scripts/eval_live.py` report and
+  `scripts/eval_foundry.py` summary from `data/eval/` (or `FULCRUM_EVAL_DIR`) on each request; `null` for a kind
+  with no file. Read-only; the web app's `#quality` view shows it.
 
 - Out of process (Azure, `FULCRUM_INPROCESS` off): with `FULCRUM_SIM_URL` set, `POST /api/matches` forwards the
   config to the sim service (`POST {FULCRUM_SIM_URL}/matches`). If the sim is unreachable or refuses, the API

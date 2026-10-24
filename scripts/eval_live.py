@@ -20,10 +20,12 @@ import statistics
 import sys
 import time
 from collections import Counter, defaultdict
+from datetime import UTC, datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
 
+from fulcrum.agents.evaluation import eval_record
 from fulcrum.agents.service import PROMPT_AGENT_ROLES, AgentService
 from fulcrum.bus.base import MemoryBus
 from fulcrum.contracts import MatchConfig, MatchEvent, MomentType, Persona
@@ -100,7 +102,10 @@ async def run(path: Path, limit: int | None) -> dict:
         a[f"via_{call.via}"] += 1
     n = len(contexts) or 1
     return {
-        "recording": str(path),
+        "kind": "live",
+        "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        "recording": path.as_posix(),
+        "match_id": match_id,
         "moments": len(contexts),
         "status_counts": dict(statuses),
         "status_rates_pct": {k: round(100 * v / n, 1) for k, v in statuses.items()},
@@ -119,6 +124,7 @@ async def run(path: Path, limit: int | None) -> dict:
             "summary": recap.summary if recap else None,
         },
         "fallback_notes": {c.moment.moment_id: c.notes for c in contexts if str(c.insight.check_status) == "fallback"},
+        "records": [eval_record(c) for c in contexts if c.insight is not None],
     }
 
 
@@ -127,13 +133,29 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("recording", type=Path, help="JSONL of {topic, data} rows (sim --out format)")
     ap.add_argument("--limit", type=int, default=None, help="explain at most N moments (+ full time)")
     ap.add_argument("--json", type=Path, default=None, help="also write the report here")
+    ap.add_argument(
+        "--records",
+        type=Path,
+        default=None,
+        help="write one evaluation record per moment here (JSONL, input of scripts/eval_foundry.py); "
+        "defaults to <json stem>.records.jsonl next to --json",
+    )
+    ap.add_argument("--env", type=Path, default=None, help=".env file to load (default: search upwards)")
     args = ap.parse_args(argv)
-    load_dotenv()
+    load_dotenv(args.env)
     os.environ["FULCRUM_LLM"] = "foundry"  # the deployed defaults that depend on it (e.g. the Editor fan-out)
     sys.stdout.reconfigure(encoding="utf-8")  # headlines contain arrows; the Windows console defaults to cp1252
     configure_telemetry("eval")
     report = asyncio.run(run(args.recording, args.limit))
+    records = report.pop("records")
     print(json.dumps({k: v for k, v in report.items() if k != "fallback_notes"}, indent=2))
+    records_path = args.records or (args.json.with_suffix(".records.jsonl") if args.json else None)
+    if records_path:
+        records_path.parent.mkdir(parents=True, exist_ok=True)
+        lines = (json.dumps(r, ensure_ascii=False) for r in records)
+        records_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        report["records_path"] = records_path.as_posix()
+        print(f"\n{len(records)} evaluation records -> {records_path}")
     if report["fallback_notes"]:
         print("\nfallback reasons:")
         for mid, notes in report["fallback_notes"].items():
