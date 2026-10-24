@@ -11,7 +11,7 @@ match, both as overlay graphics and as a machine-readable cue feed that a broadc
 numbers but never invents them. A deterministic fact-checker rejects any number that is not in the moment's fact
 pack, and verified template copy replaces anything that cannot be repaired.
 
-![Fulcrum Match Studio: live pitch, overlay cues, win-probability chart and explained moments](docs/img/hero.png)
+![Fulcrum Match Studio: live pitch, overlay cues, win-probability chart and explained moments](docs/img/hero.jpg)
 
 > Built for the Microsoft *Inside the Game* Developer Hackathon, challenge *Synthetic Match Insights Engine*.
 > Every club, player and match in Fulcrum is fictional and synthetic (`data/teams.json`).
@@ -121,7 +121,7 @@ exported to `schemas/`, and the web app's TypeScript types are generated from th
 
 ## Feature tour
 
-![Split view: the same moment for an analyst in English and a casual fan in Spanish](docs/img/split-view.png)
+![Split view: the same moments for an analyst in English and a Marsh Dock United fan in Spanish](docs/img/split-view.jpg)
 
 - **Live win probability and moments.** An independent-Poisson model ([MODEL_SPEC §3](docs/MODEL_SPEC.md))
   blends pre-match strength with decayed live xG, red cards and game state, and is labelled "model, not odds".
@@ -141,7 +141,7 @@ exported to `schemas/`, and the web app's TypeScript types are generated from th
   `OverlayCue` JSON and the REST feed URL. That proves a graphics partner can drive its own renderer from
   `GET /api/matches/{id}/overlay-cues` without our UI.
 
-  ![Broadcast mode with the cue inspector open](docs/img/broadcast.png)
+  ![Broadcast mode with the cue inspector open](docs/img/broadcast.jpg)
 
 - **Fact trail.** Every number in an insight card is traced back to its fact (hover shows label · value · key),
   using the same matching rules as the server's fact-checker. A disclosure lists the facts the explanation relied
@@ -171,14 +171,14 @@ exported to `schemas/`, and the web app's TypeScript types are generated from th
   what the numbers say. It also writes three fact-checked share posts. The page also shows the whole
   win-probability story, player of the match and team stats.
 
-  ![Full-time recap](docs/img/recap.png)
+  ![Full-time recap](docs/img/recap.jpg)
 
 - **Quality view** (`#/quality`). Guardrails and observability for the live match: passed / repaired / fallback
   rates, moment-to-insight latency p50 and p95, latency per moment coloured by check status, the `check_notes` of
   every repaired or fallback moment, and the latest offline agent run with Foundry evaluator scores
   (`GET /api/eval/latest`).
 
-  ![Quality view](docs/img/quality.png)
+  ![Quality view](docs/img/quality.jpg)
 
 ---
 
