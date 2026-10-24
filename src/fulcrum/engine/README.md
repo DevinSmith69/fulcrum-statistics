@@ -58,3 +58,14 @@ Every `big_chance` (and a `wp_swing` caused by the swinging team's own shot) car
 `whatif_goal_draw_pct`, labelled with the team name. Example, hand-made fixture 86': NBA miss a 0.55 xG chance
 at 1-1 — 24% to win now, 93% had it gone in (2-1). Goals get no what-if: "without this goal" is within a few
 points of `wp_scorer_before`. Significance and triggers are unchanged. Tests: `tests/engine/test_whatif.py`.
+
+## Concession analysis — `coach_` facts (MODEL_SPEC §4.1)
+`concession.py` (`ConcessionTracker`, fed every event and frame by `MomentDetector`) adds the evidence for the
+Coach's view to every `goal` and `big_chance`, from the defending side: how the move started (set piece,
+misplaced pass with its difficulty and expected completion, tackle, interception, …), who won / lost the ball,
+where and when it started, completed passes and seconds to the shot, the shooter's nearest-opponent distance
+(from the shot event), defenders goal-side (from the tracking frame at the shot, only if the frame provably
+shows the shot), chance quality band and keeper facts. Facts that can't be computed are omitted. Example, seed
+11 66': `coach_move_origin = "misplaced pass"`, `coach_misplaced_pass_expected_completion_pct = 31`,
+`coach_move_passes = 4`, `coach_move_seconds = 46`, `coach_nearest_defender_m = 6.1`,
+`coach_defenders_goal_side = 2`, `coach_chance_quality = "half-chance"`. Tests: `tests/engine/test_concession.py`.

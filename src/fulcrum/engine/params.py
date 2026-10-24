@@ -184,6 +184,26 @@ class MomentParams:
 
 
 @dataclass(frozen=True)
+class CoachParams:
+    """MODEL_SPEC §4.1 — concession analysis (`coach_` facts on goal and big_chance moments)."""
+
+    # Pitch thirds (MODEL_SPEC §1.1), in the frame of the team the zone is described for.
+    own_third_x: float = 35.0
+    final_third_x: float = FINAL_THIRD_X
+    # Chance quality bands on shot xG: < low → "low-quality chance", < clear → "half-chance", else "clear chance"
+    # (clear = the big_chance threshold, so every big_chance moment is a clear chance).
+    chance_low_xg: float = 0.10
+    chance_clear_xg: float = 0.30
+    # Keeper label: an on-target shot with xG below this from beyond this distance → "low-probability finish".
+    low_probability_finish_xg: float = 0.10
+    low_probability_finish_min_m: float = 18.0
+    # Tracking frame used for "defenders goal-side": the latest frame at or before the shot, at most this old,
+    # whose ball is within this distance of the shot location (proves the frame shows the shot).
+    frame_max_age_ms: int = 1500
+    frame_max_ball_gap_m: float = 3.0
+
+
+@dataclass(frozen=True)
 class EngineParams:
     """Top-level engine parameters."""
 
@@ -191,6 +211,7 @@ class EngineParams:
     ratings: RatingParams = field(default_factory=RatingParams)
     winprob: WinProbParams = field(default_factory=WinProbParams)
     moments: MomentParams = field(default_factory=MomentParams)
+    coach: CoachParams = field(default_factory=CoachParams)
     # Publish MatchState at most once per this much sim time (plus on every moment / period change).
     state_interval_ms: int = 1000
 
