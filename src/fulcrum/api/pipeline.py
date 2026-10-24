@@ -4,8 +4,9 @@ The simulator (WS1) and agents (WS3) are imported lazily and every call is guard
 working while those packages are still stubs:
 - no simulator → replay a recorded match (FULCRUM_REPLAY_FILE, else data/matches/sample_seed7.jsonl,
   else the hand-made test fixture), re-keyed to the new match_id and paced by `config.speed`;
-- no agents → moments still flow, there are just no insights.
-Entry points probed are listed in docs/HANDOFFS.md.
+- no agents → moments still flow, there are just no insights (and translation serves English).
+Agents: one `fulcrum.agents.AgentService(bus, get_llm())`, started on the first match; it also provides the
+translate / recap hooks used by `translation.py`. Entry points probed are listed in docs/HANDOFFS.md.
 """
 
 from __future__ import annotations
@@ -20,11 +21,12 @@ from pathlib import Path
 from typing import Any
 
 from fulcrum.bus import Bus
-from fulcrum.contracts import TOPIC_EVENTS, TOPIC_MOMENTS, TOPIC_TRACKING, MatchConfig, MatchEvent
+from fulcrum.contracts import TOPIC_EVENTS, TOPIC_TRACKING, MatchConfig, MatchEvent
 from fulcrum.engine.replay import read_jsonl
 from fulcrum.engine.service import EngineService
 
 from .readmodel import Registry
+from .translation import Translator
 
 log = logging.getLogger("fulcrum.api.pipeline")
 ROOT = Path(__file__).resolve().parents[3]
@@ -34,11 +36,7 @@ REPLAY_CANDIDATES = [
     ROOT / "tests" / "fixtures" / "handmade_nba_rvr.jsonl",
 ]
 SIM_ENTRYPOINTS = [("fulcrum.sim.runner", "run_match"), ("fulcrum.sim.runner", "run"), ("fulcrum.sim", "run_match")]
-AGENT_ENTRYPOINTS = [
-    ("fulcrum.agents.service", "run"),
-    ("fulcrum.agents.service", "run_agents"),
-    ("fulcrum.agents", "run"),
-]
+AGENT_SERVICE = [("fulcrum.agents.service", "AgentService"), ("fulcrum.agents", "AgentService")]
 MAX_REPLAY_SLEEP_S = 5.0
 
 
@@ -66,6 +64,7 @@ async def call_flexible(fn: Callable[..., Any], *args: Any, bus: Bus) -> Any:
 
 
 def replay_file() -> Path | None:
+    """The recording to replay when no simulator is importable."""
     env = os.getenv("FULCRUM_REPLAY_FILE")
     if env:
         return Path(env)
@@ -90,15 +89,27 @@ async def replay(path: Path, bus: Bus, match_id: str, speed: float) -> None:
 class Pipeline:
     """Starts the in-process services on demand (first `POST /api/matches`)."""
 
-    def __init__(self, bus: Bus, registry: Registry, engine: EngineService, *, run_sim: bool = True) -> None:
+    def __init__(
+        self,
+        bus: Bus,
+        registry: Registry,
+        engine: EngineService,
+        translator: Translator | None = None,
+        *,
+        run_sim: bool = True,
+        run_agents: bool = True,
+    ) -> None:
         self.bus = bus
         self.registry = registry
         self.engine = engine
+        self.translator = translator
         self.run_sim = run_sim
+        self.run_agents = run_agents
         self.tasks: set[asyncio.Task[Any]] = set()
-        self._agents_started = False
+        self.agents: Any = None
+        self._agents_tried = False
         self.sim_available = find_entrypoint(SIM_ENTRYPOINTS) is not None
-        self.agents_available = find_entrypoint(AGENT_ENTRYPOINTS) is not None
+        self.agents_available = run_agents and find_entrypoint(AGENT_SERVICE) is not None
 
     def _spawn(self, coro: Any, name: str) -> asyncio.Task[Any]:
         task = asyncio.create_task(coro, name=name)
@@ -106,20 +117,27 @@ class Pipeline:
         task.add_done_callback(self.tasks.discard)
         return task
 
-    def ensure_services(self) -> None:
-        """Engine (always ours) and agents (if importable). Idempotent."""
+    async def ensure_services(self) -> None:
+        """Engine (always ours) and agents (if enabled and importable). Idempotent."""
         self.engine.start()
-        if self._agents_started:
+        if self._agents_tried or not self.run_agents:
             return
-        self._agents_started = True
-        fn = find_entrypoint(AGENT_ENTRYPOINTS)
-        if fn is None:
+        self._agents_tried = True
+        cls = find_entrypoint(AGENT_SERVICE)
+        if cls is None:
             log.warning("fulcrum.agents service not available yet - moments will have no insights")
             return
-        register = getattr(self.bus, "register", None)
-        if register is not None:
-            register(TOPIC_MOMENTS, "agents")
-        self._spawn(self._guard(call_flexible(fn, bus=self.bus), "agents"), "agents")
+        try:
+            from fulcrum.llm import get_llm
+
+            svc = cls(self.bus, get_llm())
+            await svc.start()  # registers its consumer groups before returning
+        except Exception:
+            log.exception("could not start the agents service - moments will have no insights")
+            return
+        self.agents = svc
+        if self.translator is not None:
+            self.translator.agents = svc
 
     async def _guard(self, coro: Any, what: str, match_id: str | None = None) -> None:
         try:
@@ -131,10 +149,15 @@ class Pipeline:
             if match_id and (rm := self.registry.get(match_id)) is not None:
                 rm.status, rm.error = "error", f"{what}: {exc}"
 
-    def start_match(self, config: MatchConfig) -> None:
-        """Register the match with the engine, ensure services, and start the simulator (or a replay)."""
+    async def start_match(self, config: MatchConfig) -> None:
+        """Register the match with engine + agents, ensure services, and start the simulator (or a replay)."""
         self.engine.register_match(config)
-        self.ensure_services()
+        await self.ensure_services()
+        if self.agents is not None:
+            try:
+                self.agents.register_match(config)
+            except Exception:
+                log.exception("agents.register_match failed for %s", config.match_id)
         if self.run_sim:
             self._spawn(self._guard(self._simulate(config), "sim", config.match_id), f"sim-{config.match_id}")
 
@@ -150,7 +173,13 @@ class Pipeline:
         await replay(path, self.bus, config.match_id, config.speed)
 
     async def stop(self) -> None:
+        """Cancel the sim task(s) and stop agents and engine."""
         for task in list(self.tasks):
             task.cancel()
         await asyncio.gather(*self.tasks, return_exceptions=True)
+        if self.agents is not None:
+            try:
+                await self.agents.stop()
+            except Exception:
+                log.exception("agents.stop failed")
         await self.engine.stop()

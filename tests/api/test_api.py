@@ -1,7 +1,7 @@
 """API gateway tests (API_CONTRACT §2–3) with TestClient on an in-process memory bus.
 
-The simulator is not run (`run_sim=False`); tests publish the hand-made fixture onto the bus themselves,
-so the real engine → hub → REST/WS path is exercised end to end.
+Simulator and agents are not run (`run_sim=False`, `run_agents=False`); tests publish the hand-made fixture
+onto the bus themselves, so the real engine → hub → REST/WS path is exercised end to end.
 """
 
 import time
@@ -37,7 +37,7 @@ CONFIG = {"match_id": MID, "home_team_id": "NBA", "away_team_id": "RVR", "seed":
 @pytest.fixture
 def client():
     bus = MemoryBus()
-    app = create_app(bus, in_process=True, run_sim=False)
+    app = create_app(bus, in_process=True, run_sim=False, run_agents=False)
     with TestClient(app) as c:
         c.bus = bus
         yield c
@@ -306,7 +306,7 @@ def publish_fixture_rest(c: TestClient, start: int) -> None:
 def test_dev_mode_post_starts_pipeline_with_replay_fallback(monkeypatch):
     """No simulator importable yet → POST /api/matches replays a recorded match through the real engine."""
     monkeypatch.setenv("FULCRUM_REPLAY_FILE", str(FIXTURE))
-    app = create_app(MemoryBus(), in_process=True, run_sim=True)
+    app = create_app(MemoryBus(), in_process=True, run_sim=True, run_agents=False)
     with TestClient(app) as c:
         health = c.get("/api/health").json()
         assert health["in_process"] is True

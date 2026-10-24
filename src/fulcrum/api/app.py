@@ -72,8 +72,13 @@ def create_app(
     teams: dict[str, Team] | None = None,
     in_process: bool | None = None,
     run_sim: bool | None = None,
+    run_agents: bool | None = None,
 ) -> FastAPI:
-    """Build the app. `in_process` defaults to FULCRUM_BUS=memory; `run_sim` to FULCRUM_RUN_SIM (default on)."""
+    """Build the app.
+
+    `in_process` defaults to FULCRUM_BUS=memory; `run_sim` / `run_agents` to FULCRUM_RUN_SIM / FULCRUM_RUN_AGENTS
+    (default on). Tests switch them off and publish onto the bus themselves.
+    """
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -90,7 +95,9 @@ def create_app(
         pipeline = None
         if inproc:
             sim = run_sim if run_sim is not None else _env_flag("FULCRUM_RUN_SIM", True)
-            pipeline = Pipeline(the_bus, registry, EngineService(the_bus, teams=registry.teams), run_sim=sim)
+            agents = run_agents if run_agents is not None else _env_flag("FULCRUM_RUN_AGENTS", True)
+            engine = EngineService(the_bus, teams=registry.teams)
+            pipeline = Pipeline(the_bus, registry, engine, translator, run_sim=sim, run_agents=agents)
         app.state.bus, app.state.registry, app.state.hub = the_bus, registry, hub
         app.state.translator, app.state.pipeline = translator, pipeline
         try:
@@ -172,7 +179,7 @@ def _router() -> APIRouter:
         reg.create(config)
         pipeline: Pipeline | None = request.app.state.pipeline
         if pipeline is not None:
-            pipeline.start_match(config)
+            await pipeline.start_match(config)
         # TODO(azure): out-of-process mode — ask the sim Container App to start this match (it listens on
         # its own; for the demo the sim app starts a match on boot and the API picks it up from the bus).
         return {"match_id": config.match_id}
@@ -242,10 +249,10 @@ def _router() -> APIRouter:
         if rm.status != "finished":
             raise HTTPException(404, "recap is available after full time")
         prefs = ps.personalise_query(persona, language, None, None)
-        best = ps.pick_recap(rm.recaps, prefs) if prefs else None
+        best = await request.app.state.hub.best_recap(rm, prefs) if prefs else None
         if best is None:
             raise HTTPException(404, "recap not ready yet")
-        return await request.app.state.translator.recap(best, language)
+        return best
 
     @r.post("/matches/{match_id}/translate", response_model=list[InsightVariant])
     async def translate(request: Request, match_id: str, body: TranslateRequest) -> list[InsightVariant]:

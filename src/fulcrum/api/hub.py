@@ -56,6 +56,7 @@ class Connection:
         self.match_id: str | None = None
         self.queue: asyncio.Queue[tuple[str, Any]] = asyncio.Queue(maxsize=CONNECTION_QUEUE_MAX)
         self._last_player_tag_ms: int | None = None
+        self._recap_sent = False
 
     def push(self, kind: str, item: Any) -> None:
         """Called by the hub. Drops (and logs) if the viewer is hopelessly behind."""
@@ -117,8 +118,12 @@ class Connection:
             if cue is not None:
                 await self.send("cue", dump(cue))
         elif kind == "recap":
-            if rm is not None and (best := ps.pick_recap(rm.recaps, self.prefs)) is not None and best is item:
-                await self.send("recap", dump(await self.hub.translator.recap(item, self.prefs.language)))
+            # Each arriving recap is a nudge: send the best one for this viewer, once.
+            if rm is not None and not self._recap_sent:
+                best = await self.hub.best_recap(rm, self.prefs)
+                if best is not None:
+                    self._recap_sent = True
+                    await self.send("recap", dump(best))
         elif kind == "match_end":
             await self.send("match_end", item)
 
@@ -133,6 +138,7 @@ class Connection:
 
     def reset_prefs_state(self) -> None:
         self._last_player_tag_ms = None
+        self._recap_sent = False
 
 
 class Hub:
@@ -155,6 +161,18 @@ class Hub:
     def unsubscribe(self, conn: Connection) -> None:
         if conn.match_id and conn.match_id in self.subscribers:
             self.subscribers[conn.match_id].discard(conn)
+
+    async def best_recap(self, rm: MatchReadModel, prefs: ViewerPrefs) -> Recap | None:
+        """Exact persona+language recap if cached, else ask the agents (lazy, cached), else the best fallback."""
+        exact = rm.recaps.get((str(prefs.persona), prefs.language))
+        if exact is not None:
+            return exact
+        if rm.recaps:  # the agents only answer after full time; one recap having arrived proves it
+            generated = await self.translator.recap(rm.match_id, prefs.persona, prefs.language)
+            if generated is not None:
+                rm.add_recap(generated)
+                return generated
+        return ps.pick_recap(rm.recaps, prefs)
 
     def _fanout(self, match_id: str, kind: str, item: Any) -> None:
         for conn in list(self.subscribers.get(match_id, ())):
