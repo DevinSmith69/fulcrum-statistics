@@ -65,15 +65,38 @@ Design reference: `docs/AI_PROMPT_DESIGN.md`. Wire formats: `docs/API_CONTRACT.m
 replays a recording through the engine and explains every moment, in order, on Foundry.
 Runs on 2026-10-24 (sample_seed11, HLC 2-2 MDU, 30 moments):
 
-| | First run (one Editor call, local agents) | Current (Editor fan-out, prompt agents) |
-|---|---|---|
-| Passed / repaired / fallback | 93.3 % / 6.7 % / 0 % | 90.0 % / 6.7 % / 3.3 % |
-| Moment → insight latency | p50 4.2 s · p95 6.7 s | p50 3.6 s · p95 6.0 s |
-| Tokens per match | ≈ 115k | ≈ 275k (Editor input ×4; still pennies on the mini model) |
-| Recap (strong) | passed, 26 s | passed, 29 s, names only |
+| | First run (one Editor call, local agents) | Editor fan-out, prompt agents | Latest (same setup, evaluated below) |
+|---|---|---|---|
+| Passed / repaired / fallback | 93.3 % / 6.7 % / 0 % | 90.0 % / 6.7 % / 3.3 % | 96.7 % / 3.3 % / 0 % |
+| Moment → insight latency | p50 4.2 s · p95 6.7 s | p50 3.6 s · p95 6.0 s | p50 3.1 s · p95 5.7 s |
+| Tokens per match | ≈ 115k | ≈ 275k (Editor input ×4; still pennies on the mini model) | ≈ 258k |
+| Recap (strong) | passed, 26 s | passed, 29 s, names only | passed, 28 s |
 
-The one fallback in the current run was the fact-checker rejecting a "10" that is not in the fact pack, twice;
-the template copy was published instead, as designed. `data/eval/sample_seed11.json` holds the current run.
+The one fallback in the second run was the fact-checker rejecting a "10" that is not in the fact pack, twice;
+the template copy was published instead, as designed. `data/eval/sample_seed11.json` holds the latest run, and
+`data/eval/sample_seed11.records.jsonl` one evaluation record per moment (input of the Foundry evaluation).
+
+### Foundry evaluation (`scripts/eval_foundry.py`)
+`uv run python scripts/eval_foundry.py data/eval/sample_seed11.records.jsonl` scores that run's published copy
+with Foundry's built-in quality evaluators through Agent Framework's `FoundryEvals` (`agent_framework.foundry`):
+one `EvalItem` per moment, where the query is the task plus the moment, the context is the moment's MOMENT /
+FACTS / ROSTER / RECENT SEQUENCE / SCORE sections (the only evidence the agents get), and the response is the
+explanation plus all four persona variants. The judge is the `fast` deployment (gpt-5.4-mini). The run is listed
+on the Foundry portal's Evaluations page (`report_url` in the summary), and `data/eval/foundry_sample_seed11.json`
+holds the summary. Run on 2026-10-24 over the 30 moments above (scores 1–5, pass ≥ 3):
+
+| Evaluator | Mean | Min | Pass rate |
+|---|---|---|---|
+| Groundedness (response vs. the moment's facts/context) | 4.53 | 2 | 96.7 % |
+| Relevance | 4.60 | 3 | 100 % |
+| Coherence | 4.30 | 4 | 100 % |
+| Fluency | 3.80 | 3 | 100 % |
+
+29 of 30 moments passed every evaluator; about 330k judge tokens. The one groundedness fail (90+5' player
+milestone, score 2) was the judge objecting to interpretation ("keeping the ball under pressure") rather
+than to a number: every number had already passed the deterministic fact-checker. A repeat run on the same
+records gave 4.57 / 4.70 / 4.37 / 3.83 with two groundedness fails, so read single-moment scores as ±1 noise.
+The dashboard's `#quality` view shows these scores via `GET /api/eval/latest`.
 
 ## Modules
 
@@ -90,6 +113,7 @@ the template copy was published instead, as designed. `data/eval/sample_seed11.j
 | `translate.py` | on-demand translation, cached per (insight, language); fact-checked; falls back to English |
 | `player_lens.py` | on-demand Player Lens: the moment retold through the followed player, only when they are in `moment.player_ids`; fact-checked, one repair, cached per (insight, player); other languages via the Translator; `None` → the viewer gets the casual variant. Exposed as `AgentService.player_lens(insight_id, player_id, language)` and used by the API for `player_lens` viewers |
 | `recap.py` | full-time Match Reporter, cached per (match, persona, language); template fallback |
+| `evaluation.py` | per-moment evaluation records (query / context / response) and the Foundry evaluation summary (`scripts/eval_live.py`, `scripts/eval_foundry.py`) |
 | `service.py` | `AgentService`: `moments` + `match-events` in, `InsightsEnvelope` out on `insights` |
 
 ## Fact-checker rules (`factcheck.py`)

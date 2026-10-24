@@ -44,6 +44,7 @@ from fulcrum.engine.teams import load_teams
 from fulcrum.telemetry import configure_telemetry
 
 from . import personalise as ps
+from .evalreports import latest_reports
 from .hub import Connection, Hub
 from .pipeline import Pipeline
 from .readmodel import MatchReadModel, Registry
@@ -186,6 +187,11 @@ def _router() -> APIRouter:
             "agents_state": None if pipeline is None else pipeline.agents_state,
             "agents_error": None if pipeline is None else pipeline.agents_error,
         }
+
+    @r.get("/eval/latest")
+    async def eval_latest() -> dict[str, Any]:
+        # Offline reports (scripts/eval_live.py, scripts/eval_foundry.py); small files, read per request.
+        return await asyncio.to_thread(latest_reports)
 
     @r.get("/teams", response_model=list[Team])
     async def teams(request: Request) -> list[Team]:

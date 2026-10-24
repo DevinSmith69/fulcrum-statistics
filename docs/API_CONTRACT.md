@@ -43,6 +43,7 @@ asyncio tasks on the shared `MemoryBus` (`api/app.py` lifespan). In Azure each r
 | GET | `/api/matches/{id}/overlay-cues` | `persona`, `language`, `since_clock_ms` | `OverlayCue[]` — **the machine-readable feed for a broadcast graphics partner** |
 | GET | `/api/matches/{id}/recap` | `persona`, `language` | `Recap` (404 until full time; generated lazily per persona/lang, cached) |
 | POST | `/api/matches/{id}/translate` | `{"insight_id", "language"}` | `InsightVariant[]` (on-demand translation, cached) |
+| GET | `/api/eval/latest` | – | `{"live": report \| null, "foundry": summary \| null}` — read-only, the newest offline evaluation reports in `data/eval/` (`FULCRUM_EVAL_DIR` overrides). `live` = `scripts/eval_live.py` (`status_counts`, `status_rates_pct`, `latency_ms.p50/p95/mean`, `tokens_total`, `llm`, `recap`, …); `foundry` = `scripts/eval_foundry.py` (`evaluators.{groundedness,relevance,coherence,fluency}.{mean,min,n,pass_rate_pct}` on the 1–5 scale, `by_check_status`, `lowest[]` with judge `reasons`, `report_url` to the Foundry portal, `judge_deployment`). Both carry `file` and `generated_at`; per-item detail is omitted |
 
 The API keeps per-match read models in memory (dict of match_id → ring buffers). Persistence is a stretch
 goal (Cosmos DB) — do not build it before Sunday evening.

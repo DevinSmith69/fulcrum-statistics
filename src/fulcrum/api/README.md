@@ -37,6 +37,9 @@ without `fulcrum.agents` moments still flow but there are no insights.
   by `seq` / `moment_id` / `insight_id` / `cue_id` — a `hello` and the live stream may overlap by an item.
 - A viewer with no variant for their persona gets the casual one; missing languages are translated on demand
   (English until the agents answer).
+- `GET /api/eval/latest` (`evalreports.py`) reads the newest `scripts/eval_live.py` report and
+  `scripts/eval_foundry.py` summary from `data/eval/` (or `FULCRUM_EVAL_DIR`) on each request; `null` for a kind
+  with no file. Read-only; the web app's `#quality` view shows it.
 
 - Out of process (Azure, `FULCRUM_INPROCESS` off): with `FULCRUM_SIM_URL` set, `POST /api/matches` forwards the
   config to the sim service (`POST {FULCRUM_SIM_URL}/matches`). If the sim is unreachable or refuses, the API
