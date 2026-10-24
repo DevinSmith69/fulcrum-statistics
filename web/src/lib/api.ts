@@ -1,5 +1,6 @@
 import { API_URL, DEFAULT_FIXTURE } from "./config";
 import type { AskAnswer, AskRequest, MatchEvent, MatchSummary, Team, ViewerPrefs } from "../types";
+import { coachPath, type CoachView } from "./coach";
 import { demoFixture, type ControlAction, type ControlState } from "./director";
 import { pickMatch, requestedMatchId } from "./matchPick";
 import type { EvalLatest } from "./quality";
@@ -53,6 +54,10 @@ export const fetchEvalLatest = () => getJson<EvalLatest>("/api/eval/latest");
 /** Ask the studio: the Studio Analyst answers from this match's data only (fact-checked). Throws "<status> …". */
 export const askStudio = (matchId: string, body: AskRequest) =>
   getJson<AskAnswer>(`/api/matches/${encodeURIComponent(matchId)}/ask`, { method: "POST", body: JSON.stringify(body) });
+
+/** Coach's view of a goal / big chance, from the defending side (fact-checked; `fallback` = facts only). */
+export const fetchCoach = (matchId: string, insightId: string, language: string) =>
+  getJson<CoachView>(coachPath(matchId, insightId, language));
 
 /** Demo director: the match's live pacing. Throws "501 …" when the match is simulated out of process. */
 export const fetchControl = (matchId: string) => getJson<ControlState>(`/api/matches/${encodeURIComponent(matchId)}/control`);
