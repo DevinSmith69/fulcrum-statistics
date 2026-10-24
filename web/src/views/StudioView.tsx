@@ -4,7 +4,7 @@ import { EventTicker } from "../components/EventTicker";
 import { InsightFeed, momentAnchorId } from "../components/InsightFeed";
 import { Gauges, MomentumBar } from "../components/Meters";
 import { OverlayLayer } from "../components/OverlayLayer";
-import { Pitch } from "../components/Pitch";
+import { StagedPitch } from "../components/PitchReplay";
 import { Scoreboard } from "../components/Scoreboard";
 import { WinProbChart } from "../components/WinProbChart";
 import type { MatchFeed } from "../lib/useMatchFeed";
@@ -36,8 +36,7 @@ export function StudioView({ feed, prefs }: { feed: MatchFeed; prefs: ViewerPref
       <main className="grid min-h-0 flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_440px]">
         <section className="panel relative flex min-h-[420px] flex-col overflow-hidden" aria-label="Pitch">
           <div className="relative min-h-0 flex-1">
-            <Pitch model={feed.pitch} followedPlayerId={prefs.followed_player_id} />
-            <OverlayLayer feed={feed} />
+            <StagedPitch feed={feed} followedPlayerId={prefs.followed_player_id} overlay={<OverlayLayer feed={feed} />} />
           </div>
           <div className="border-t border-ink-700 bg-ink-950/40">
             <EventTicker feed={feed} />
