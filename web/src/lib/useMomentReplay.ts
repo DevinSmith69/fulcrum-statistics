@@ -29,18 +29,36 @@ export interface ReplayStep {
 /**
  * Plays the run of play behind `moment` on a private PitchModel (the same renderer as the live pitch): line-ups
  * as they were just before the run, then one event per `stepMs`. Plays `passes` times, holds, then `onDone`.
- * Used by the mini replay in an insight card and by the full-size replay on the main pitch.
+ * Used by the mini replay in an insight card, the full-size replay on the main pitch and the highlights reel.
+ * `paused` (highlights reel) holds the run on its current event; it carries on from there when unpaused.
  */
-export function useMomentReplay(moment: Moment, home: Team | null, away: Team | null, passes: number, onDone: () => void) {
+export function useMomentReplay(moment: Moment, home: Team | null, away: Team | null, passes: number, onDone: () => void, paused = false) {
   const model = useMemo(() => new PitchModel(), []);
   const [status, setStatus] = useState<ReplayStatus>("loading");
   const [step, setStep] = useState<ReplayStep>({ i: 0, n: 0, ev: null });
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+  // The next tick, parked while paused.
+  const parked = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (paused || !parked.current) return;
+    const fn = parked.current;
+    parked.current = null;
+    fn();
+  }, [paused]);
 
   useEffect(() => {
     let cancelled = false;
     let timer: number | undefined;
+    const later = (fn: () => void, ms: number) => {
+      timer = window.setTimeout(() => {
+        if (pausedRef.current) parked.current = fn;
+        else fn();
+      }, ms);
+    };
     setStatus("loading");
     matchEvents(moment.match_id)
       .then((all) => {
@@ -62,17 +80,17 @@ export function useMomentReplay(moment: Moment, home: Team | null, away: Team | 
             for (const e of before) model.apply(e, false);
             setStep({ i: 0, n: win.length, ev: null });
             i = 0;
-            timer = window.setTimeout(tick, LEAD_MS);
+            later(tick, LEAD_MS);
             return;
           }
           model.apply(win[i]);
           setStep({ i: i + 1, n: win.length, ev: win[i] });
           i++;
-          if (i < win.length) timer = window.setTimeout(tick, ms);
+          if (i < win.length) later(tick, ms);
           else if (++pass < passes) {
             i = -1;
-            timer = window.setTimeout(tick, HOLD_MS);
-          } else timer = window.setTimeout(() => onDoneRef.current(), HOLD_MS);
+            later(tick, HOLD_MS);
+          } else later(() => onDoneRef.current(), HOLD_MS);
         };
         setStatus("playing");
         tick();
@@ -80,6 +98,7 @@ export function useMomentReplay(moment: Moment, home: Team | null, away: Team | 
       .catch(() => !cancelled && setStatus("error"));
     return () => {
       cancelled = true;
+      parked.current = null;
       window.clearTimeout(timer);
     };
   }, [moment.moment_id, model]);

@@ -54,6 +54,8 @@ export interface Commentary {
   announcements: Announcement[];
   /** Stop the current line and drop everything queued. */
   stop: () => void;
+  /** Hold the live voice (the highlights reel speaks through its own player); new lines are skipped while held. */
+  hold: (on: boolean) => void;
 }
 
 const ANNOUNCE_KEEP = 5;
@@ -77,6 +79,7 @@ export function useCommentary(feed: MatchFeed, lang: string, audio: AudioPrefs):
   const langRef = useRef(lang);
   langRef.current = lang;
   const announceKey = useRef(0);
+  const held = useRef(false);
 
   useEffect(() => {
     player.onBlocked = () => setBlocked(true);
@@ -114,6 +117,7 @@ export function useCommentary(feed: MatchFeed, lang: string, audio: AudioPrefs):
 
   const say = useCallback(
     (id: string, text: string, priority: number, kind: SpeechKind, clockMs: number) => {
+      if (held.current) return;
       const a = audioRef.current;
       const wanted = kind === "description" ? a.description : a.voice || a.description;
       if (!wanted) return;
@@ -135,6 +139,14 @@ export function useCommentary(feed: MatchFeed, lang: string, audio: AudioPrefs):
     q.current = clear(q.current);
     player.stop();
   }, [player]);
+
+  const hold = useCallback(
+    (on: boolean) => {
+      held.current = on;
+      if (on) stop();
+    },
+    [stop],
+  );
 
   // Turning both toggles off silences everything at once.
   const anyOn = audio.voice || audio.description;
@@ -182,5 +194,5 @@ export function useCommentary(feed: MatchFeed, lang: string, audio: AudioPrefs):
     }
   }, [feed.recentEvents, feed.matchId, feed.home, feed.away, announce, say]);
 
-  return { engine, speaking, blocked, announcements, stop };
+  return { engine, speaking, blocked, announcements, stop, hold };
 }

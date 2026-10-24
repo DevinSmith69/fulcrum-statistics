@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Header, type Route } from "./components/Header";
-import { AudioSettings, LiveRegion, useAudioShortcuts } from "./components/AudioControls";
+import { AudioSettings, isTyping, LiveRegion, useAudioShortcuts } from "./components/AudioControls";
 import { DemoPanel } from "./components/DemoPanel";
+import { HighlightsReel } from "./components/HighlightsReel";
 import { ReplayStageProvider } from "./components/PitchReplay";
 import { PrefsDrawer } from "./components/PrefsDrawer";
 import { useAudioPrefs, useCommentary } from "./lib/useCommentary";
@@ -41,6 +42,21 @@ function MainShell({ route }: { route: Exclude<Route, "split"> }) {
   const commentary = useCommentary(feed, prefs.language ?? "en", audio);
   useAudioShortcuts(audio, setAudio, commentary.stop);
 
+  // "Your highlights": one-click reel at full time (H, or the buttons on the full-time banner / recap / broadcast).
+  const [reel, setReel] = useState(false);
+  const canReel = feed.finished && feed.moments.length > 0;
+  const playHighlights = canReel ? () => setReel(true) : undefined;
+  useEffect(() => {
+    if (!canReel || reel) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (isTyping(e.target) || e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+      if (e.key === "h" || e.key === "H") setReel(true);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [canReel, reel]);
+  useEffect(() => setReel(false), [feed.matchId]);
+
   // When the match ends, offer the recap without forcing a navigation mid-celebration.
   return (
     <div className="flex h-full flex-col">
@@ -64,19 +80,30 @@ function MainShell({ route }: { route: Exclude<Route, "split"> }) {
       )}
       {route === "broadcast" && (
         <ReplayStageProvider feed={feed} lang={prefs.language ?? "en"}>
-          <BroadcastView feed={feed} prefs={prefs} audio={audio} onAudioChange={setAudio} commentary={commentary} />
+          <BroadcastView feed={feed} prefs={prefs} audio={audio} onAudioChange={setAudio} commentary={commentary} onPlayHighlights={playHighlights} />
         </ReplayStageProvider>
       )}
       {(route === "studio" || route === "broadcast") && (
         <DemoPanel feed={feed} lang={prefs.language ?? "en"} placement={route === "broadcast" ? "top-center" : "bottom-left"} />
       )}
-      {route === "recap" && <RecapView feed={feed} prefs={prefs} />}
+      {route === "recap" && <RecapView feed={feed} prefs={prefs} onPlayHighlights={playHighlights} />}
       {route === "quality" && <QualityView feed={feed} />}
       {feed.finished && route === "studio" && (
-        <a href="#/recap" className="fixed bottom-6 left-1/2 z-30 -translate-x-1/2 rounded-full bg-signal px-5 py-2.5 text-sm font-semibold text-ink-950 shadow-lg">
-          Full time — read the recap
-        </a>
+        <div className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center overflow-hidden rounded-full shadow-lg ring-1 ring-signal/60">
+          {playHighlights && (
+            <button type="button" onClick={playHighlights} className="flex items-center gap-2 bg-signal px-5 py-2.5 text-sm font-semibold text-ink-950 hover:bg-signal/90">
+              <span aria-hidden>▶</span> Play your highlights <kbd className="text-ink-800">H</kbd>
+            </button>
+          )}
+          <a
+            href="#/recap"
+            className={`px-5 py-2.5 text-sm font-semibold ${playHighlights ? "bg-ink-950/95 text-ink-50 hover:text-signal" : "bg-signal text-ink-950"}`}
+          >
+            Full time — read the recap
+          </a>
+        </div>
       )}
+      {reel && <HighlightsReel feed={feed} prefs={prefs} commentary={commentary} onClose={() => setReel(false)} />}
       {route !== "recap" && <LiveRegion commentary={commentary} />}
       <PrefsDrawer
         open={drawer}

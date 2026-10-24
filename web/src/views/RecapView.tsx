@@ -21,7 +21,7 @@ const ROWS: { label: string; get: (t: TeamLiveStats) => number; fmt?: (v: number
 ];
 
 /** Full-time recap: the persona's match report, key moments, outcome probability story and team stats. */
-export function RecapView({ feed, prefs }: { feed: MatchFeed; prefs: ViewerPrefs }) {
+export function RecapView({ feed, prefs, onPlayHighlights }: { feed: MatchFeed; prefs: ViewerPrefs; onPlayHighlights?: () => void }) {
   const { recap, state, home, away } = feed;
   const c = fixtureColours(home, away);
 
@@ -38,6 +38,11 @@ export function RecapView({ feed, prefs }: { feed: MatchFeed; prefs: ViewerPrefs
                 about half a minute.
               </p>
               <span className="shimmer mx-auto mt-5 block h-2 w-48 rounded-full" />
+              {onPlayHighlights && (
+                <button type="button" onClick={onPlayHighlights} className="mx-auto mt-5 block text-sm font-semibold text-signal underline-offset-4 hover:underline">
+                  Can't wait? Play the top moments now <kbd className="ml-1 text-ink-500">H</kbd>
+                </button>
+              )}
             </>
           ) : (
             <>
@@ -91,6 +96,7 @@ export function RecapView({ feed, prefs }: { feed: MatchFeed; prefs: ViewerPrefs
               </span>
             </div>
             <p className="mt-6 max-w-[70ch] text-xl leading-relaxed text-ink-100">{recap.summary}</p>
+            {onPlayHighlights && <PlayHighlights onClick={onPlayHighlights} />}
           </div>
 
           <div className="panel p-6">
@@ -196,6 +202,27 @@ export function RecapView({ feed, prefs }: { feed: MatchFeed; prefs: ViewerPrefs
         </aside>
       </div>
     </main>
+  );
+}
+
+/** The recap's main call to action: the one-click highlights reel. */
+function PlayHighlights({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group mt-6 inline-flex items-center gap-4 rounded-md bg-signal py-2.5 pl-3 pr-5 text-ink-950 shadow-lg shadow-signal/10 hover:bg-signal/90"
+    >
+      <span aria-hidden className="flex h-10 w-10 items-center justify-center rounded-full bg-ink-950 text-lg text-signal">
+        ▶
+      </span>
+      <span className="text-left">
+        <span className="font-display block text-2xl font-bold leading-none">Play your highlights</span>
+        <span className="mt-1 block text-xs font-semibold text-ink-800">
+          About a minute · replays, voice and your persona's take <kbd className="ml-1">H</kbd>
+        </span>
+      </span>
+    </button>
   );
 }
 
