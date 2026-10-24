@@ -129,6 +129,11 @@ The dashboard's `#quality` view shows these scores via `GET /api/eval/latest`.
 4. **Betting language.** Checked in English and in the copy's own language.
 
 Template fallback copy is itself fact-checked candidate by candidate, so FALLBACK output always passes.
+Big-chance templates (and the wp_swing WHY line) use the engine's `whatif_*` facts when present ("Had it gone
+in, it would be 0-1 and Riverside Rovers' win probability would be 52% instead of 31%."); the Analyst and
+Editor prompts (analyst/1.2.2, editor/1.3.2) allow them only when present, and the user prompt gets a WHAT-IF
+section only for moments that carry `whatif_` facts (with it everywhere, the Editor wrote "had it gone in" on
+phase changes and passes).
 5. **Lengths.** Headline ≤ 90, body ≤ 300, commentary ≤ 160 chars and ≤ 25 words. The editor must return
    exactly analyst, casual, club_fan(home) and club_fan(away).
 
@@ -141,7 +146,7 @@ Template fallback copy is itself fact-checked candidate by candidate, so FALLBAC
 | phase_change, tempo_change* | `pressure_bar` (2) |
 | elite_pass, speed_record | `stat_card` (3, bottom-right) |
 | player_milestone | `stat_card` (2) |
-| big_chance* | `stat_card` (3) |
+| big_chance* | `stat_card` (3): xG, then the what-if win % ("Win chance if scored", MODEL_SPEC §3.1) |
 | red_card* | `lower_third` (4) + `wp_swing` (3) |
 | half_time* / full_time | `recap_card` (4 / 5, bottom-center) |
 | players in `moment.player_ids` | `player_tag` (2, top-left), persona `player_lens` |

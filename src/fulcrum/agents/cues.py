@@ -44,6 +44,8 @@ class CueSpec:
     stat_keys: tuple[str, ...] = ()  # fact keys or team-relative aliases (`wp_team_after`)
     text: str = "variant"  # "variant": headline/body from the variant; "wp": WP label + commentary line
     wp_side: str = "team"  # whose win probability a "wp" cue shows: the moment's team or its opponent
+    # short on-screen labels for facts whose full label is too long for a stat tile (fact key -> label)
+    stat_labels: tuple[tuple[str, str], ...] = ()
 
 
 LT, WP, SC, PB, RC, PT = (
@@ -62,6 +64,7 @@ BL, TR, BR, TL, BC = (
     OverlayAnchor.BOTTOM_CENTER,
 )
 WP_STATS = ("wp_team_before", "wp_team_after", "wp_team_delta")
+WHATIF_STAT_LABEL = "Win chance if scored"
 
 CUE_MAP: dict[MomentType, tuple[CueSpec, ...]] = {
     # contract-specified
@@ -84,7 +87,17 @@ CUE_MAP: dict[MomentType, tuple[CueSpec, ...]] = {
     MomentType.PLAYER_MILESTONE: (CueSpec(SC, 2, 7000, BR, ("value",)),),
     MomentType.FULL_TIME: (CueSpec(RC, 5, 12000, BC, ("xg_home", "xg_away", "possession_home", "possession_away")),),
     # decisions (contract is silent) — recorded in docs/HANDOFFS.md
-    MomentType.BIG_CHANCE: (CueSpec(SC, 3, 7000, BR, ("xg", "distance_m", "team_xg_total")),),
+    # The what-if number (MODEL_SPEC §3.1) goes second so the compact (2-stat) card shows it too.
+    MomentType.BIG_CHANCE: (
+        CueSpec(
+            SC,
+            3,
+            7000,
+            BR,
+            ("xg", "whatif_goal_win_pct", "distance_m", "team_xg_total"),
+            stat_labels=(("whatif_goal_win_pct", WHATIF_STAT_LABEL),),
+        ),
+    ),
     MomentType.RED_CARD: (
         CueSpec(LT, 4, 8000, BL),
         CueSpec(WP, 3, 6000, TR, ("wp_opp_before", "wp_opp_after", "wp_opp_delta"), text="wp", wp_side="opp"),
@@ -109,9 +122,16 @@ def show_at(moment: Moment, latency_ms: int | None) -> int:
 
 
 def select_stats(
-    moment: Moment, home: Team, away: Team, keys: Sequence[str], fallback: Sequence[str]
+    moment: Moment,
+    home: Team,
+    away: Team,
+    keys: Sequence[str],
+    fallback: Sequence[str],
+    labels: dict[str, str] | None = None,
 ) -> list[OverlayStat]:
-    """Up to four stats: the spec's preferred keys (aliases resolved), then the explanation's key facts."""
+    """Up to four stats: the spec's preferred keys (aliases resolved), then the explanation's key facts.
+
+    `labels` overrides the on-screen label of a fact key (the fact's own label is written for the agents)."""
     facts = fact_map(moment.facts)
     sources = build_slots(moment, home, away, score="").sources
     stats: list[OverlayStat] = []
@@ -124,7 +144,8 @@ def select_stats(
         if isinstance(fact.value, str) and key not in keys:
             continue  # only numeric facts from the explanation's key facts
         seen.add(real)
-        stats.append(OverlayStat(label=fact.label, value=fmt_value(fact.value), unit=fact.unit))
+        label = (labels or {}).get(real, fact.label)
+        stats.append(OverlayStat(label=label, value=fmt_value(fact.value), unit=fact.unit))
         if len(stats) == MAX_STATS:
             break
     return stats
@@ -179,7 +200,9 @@ def build_cues(
     opponent = {home.team_id: away.team_id, away.team_id: home.team_id}
     cues: list[OverlayCue] = []
     for spec in specs:
-        stats = select_stats(moment, home, away, spec.stat_keys, insight.explanation.key_fact_keys)
+        stats = select_stats(
+            moment, home, away, spec.stat_keys, insight.explanation.key_fact_keys, dict(spec.stat_labels)
+        )
         for v in variants:
             if v.persona == Persona.PLAYER_LENS:
                 continue

@@ -66,6 +66,12 @@ SPECS: dict[MomentType, tuple[str | None, list[str], str, str, list[Fact]]] = {
             F("outcome", "saved", label="Outcome"),
             F("distance_m", 9.5, "m", "Shot distance"),
             F("team_xg_total", 0.87, "xG", "Team xG so far"),
+            # what-if facts (MODEL_SPEC §3.1), as the engine emits them
+            F("whatif_goal_score", "0-1", label="Score if it had gone in (Northbridge Athletic first)"),
+            F("whatif_win_pct_now", 31, "%", "Riverside Rovers win probability now"),
+            F("whatif_goal_win_pct", 52, "%", "Riverside Rovers win probability if it had gone in"),
+            F("whatif_goal_win_delta", 21, "pp", "Rise in Riverside Rovers win probability if it had gone in"),
+            F("whatif_goal_draw_pct", 26, "%", "Draw probability if it had gone in"),
         ],
     ),
     MomentType.WP_SWING: (

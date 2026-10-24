@@ -139,6 +139,30 @@ Store a `WinProbPoint` per event for the WP chart.
 up to 34 points with nothing happening (blend switching on; a chance dropping out of the window). Every
 step in the chart should now come from a shot, card or goal.
 
+### 3.1 What-if counterfactuals (added 2026-10-24)
+"What if that chance had gone in?" is answered by the same model, not a new one: at the instant of the shot
+(after the shot is applied, so the same minute, recent-xG rates, red cards and remaining time) re-evaluate
+with the shooting team's score + 1.
+```
+P_if = win_probability(…same inputs…, score_team = score_team + 1)      # MatchTracker.win_prob_if_scored(team)
+```
+Only the score changes, so the game-state factor after 60' follows the hypothetical score (a team that would
+have led is treated as leading), exactly as it would have had the goal happened. Facts (shooting team = the
+moment's `team`; percents rounded like every other `%` fact; the delta from the rounded values):
+
+| key | label | example |
+|---|---|---|
+| `whatif_goal_score` | Score if it had gone in (`<home>` first) | `"2-1"` |
+| `whatif_win_pct_now` | `<team>` win probability now | `24` |
+| `whatif_goal_win_pct` | `<team>` win probability if it had gone in | `93` |
+| `whatif_goal_win_delta` | Rise in `<team>` win probability if it had gone in (pp) | `69` |
+| `whatif_goal_draw_pct` | Draw probability if it had gone in | `7` |
+
+Attached to every **big_chance**, and to a **wp_swing** caused by the swinging team's own shot. Not added to
+goals: "without this goal" (score − 1 at the goal) differs from `wp_scorer_before` (WP just before the shot)
+only by the shot's own xG in the recent rate — 0–5 points on the fixtures — so it would be a confusing third
+number rather than new information. Significance and triggers are unchanged.
+
 ## 4. Moment detection (`engine/moments.py`)
 
 Deterministic rules → `Moment` with `significance` (0–1), `trigger` text, `wp_before/after` and a
@@ -148,8 +172,8 @@ Target **20 – 35 moments per match**; if over, raise thresholds in params, don
 | Type | Rule | Significance | Required facts (keys) |
 |---|---|---|---|
 | goal | every goal | 0.6 + min(0.4, largest \|Δ\| across P(home), P(draw), P(away)) | scorer, minute, xg, shot_speed_kmh, distance_m, wp_scorer_before, wp_scorer_after, score_after, assist (if any), pass_difficulty_of_assist |
-| big_chance | shot xG ≥ 0.30 not scored | 0.3 + 0.5·xG | shooter, xg, outcome, distance_m, team_xg_total |
-| wp_swing | \|ΔP(home) or ΔP(away)\| ≥ 0.06 within 90 s, not a goal | min(1, 5·\|Δ\|) | wp_*_before, wp_*_after, cause_event, minute, pressure_index_* |
+| big_chance | shot xG ≥ 0.30 not scored | 0.3 + 0.5·xG | shooter, xg, outcome, distance_m, team_xg_total, whatif_* (§3.1) |
+| wp_swing | \|ΔP(home) or ΔP(away)\| ≥ 0.06 within 90 s, not a goal | min(1, 5·\|Δ\|) | wp_*_before, wp_*_after, cause_event, minute, pressure_index_*; whatif_* (§3.1) when the swing is the shooting team's |
 | pressure_shift | sign flip of (P_home − P_away) with \|diff\| ≥ 25, or +30 in 3 min | 0.4–0.6 | pressure_index_*_before/after, shots_last_5, box_entries_last_5 |
 | phase_change | phase transition (persisted) | 0.35 | phase_before, phase_after (readable: "<team> in control", "chaotic", "balanced"), control_index_*, chaos_index, turnovers_last_5 |
 | tempo_change | \|tempo − match avg\| > 35 % for ≥ 2 min | 0.25 | tempo_ppm, tempo_match_avg |

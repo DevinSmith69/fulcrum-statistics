@@ -143,15 +143,26 @@ def _moment_header(moment: Moment) -> str:
     )
 
 
+WHATIF_NOTE = (
+    "WHAT-IF\nThis chance did not go in. The whatif_ facts are the engine's win probability had it gone in, at "
+    'the same minute: you may use them, phrased as a counterfactual ("had it gone in").'
+)
+
+
 def _common_sections(ctx: MomentContext) -> list[str]:
     seq = "\n".join(ctx.recent_sequence) if ctx.recent_sequence else "(none)"
-    return [
+    sections = [
         _moment_header(ctx.moment),
         "FACTS\n" + format_facts_table(ctx.moment.facts),
         "ROSTER\n" + format_roster(ctx.home, ctx.away),
         "RECENT SEQUENCE\n" + seq,
         f"SCORE\n{ctx.home.name} {ctx.score} {ctx.away.name}",
     ]
+    if any(
+        f.key.startswith("whatif_") for f in ctx.moment.facts
+    ):  # never otherwise: models copy it into unrelated moments
+        sections.append(WHATIF_NOTE)
+    return sections
 
 
 def _with_issues(sections: list[str], issues: Sequence[str]) -> str:

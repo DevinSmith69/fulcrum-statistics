@@ -724,8 +724,12 @@ class MatchTracker:
     def box_entries_last_window(self, team_id: str | None) -> int:
         return sum(t == team_id for t in self.box_entry_window.items(self.clock_ms))
 
-    def win_prob(self) -> WinProbability:
-        """Live outcome probability for the current state (MODEL_SPEC §3)."""
+    def win_prob(self, extra_home: int = 0, extra_away: int = 0) -> WinProbability:
+        """Live outcome probability for the current state (MODEL_SPEC §3).
+
+        `extra_home` / `extra_away` add goals to the current score and change nothing else (same minute, same
+        rates, same cards): the what-if counterfactual of MODEL_SPEC §3.1 ("if that chance had gone in").
+        """
         wpp = self.params.winprob
         home, away = TeamStrength.from_team(self.home, wpp), TeamStrength.from_team(self.away, wpp)
         lam_h, lam_a = pre_match_rates(home, away, wpp)
@@ -741,8 +745,8 @@ class MatchTracker:
             away=away,
             period=self.period,
             minute=self.minute,
-            score_home=self.score_home,
-            score_away=self.score_away,
+            score_home=self.score_home + extra_home,
+            score_away=self.score_away + extra_away,
             xg_rate_home=rate(self.home_id, lam_h),
             xg_rate_away=rate(self.away_id, lam_a),
             reds_home=self.team(self.home_id).red_cards if self.home_id else 0,
@@ -750,6 +754,11 @@ class MatchTracker:
             finished=self.finished,
             params=wpp,
         )
+
+    def win_prob_if_scored(self, team_id: str | None) -> WinProbability:
+        """What-if (MODEL_SPEC §3.1): outcome probability right now had `team_id` scored one more goal."""
+        home = self.side(team_id) == "home"
+        return self.win_prob(extra_home=int(home), extra_away=int(not home))
 
     # ------------------------------------------------------------------ snapshot
 
