@@ -1,0 +1,60 @@
+{
+  "kind": "live",
+  "generated_at": "2026-10-25T08:32:48+00:00",
+  "recording": "data/matches/sample_seed11.jsonl",
+  "match_id": "hlc-mdu-s11",
+  "moments": 30,
+  "status_counts": {
+    "passed": 30
+  },
+  "status_rates_pct": {
+    "passed": 100.0
+  },
+  "latency_ms": {
+    "p50": 3646,
+    "p95": 5592,
+    "mean": 4046.2
+  },
+  "llm": {
+    "moment_analyst": {
+      "calls": 30.0,
+      "failed": 0.0,
+      "input_tokens": 40663.0,
+      "output_tokens": 3624.0,
+      "seconds": 50.02,
+      "via_prompt_agent": 30.0
+    },
+    "persona_editor": {
+      "calls": 120.0,
+      "failed": 0.0,
+      "input_tokens": 196466.0,
+      "output_tokens": 20210.0,
+      "seconds": 210.48,
+      "via_prompt_agent": 120.0
+    },
+    "match_reporter": {
+      "calls": 1.0,
+      "failed": 0.0,
+      "input_tokens": 5692.0,
+      "output_tokens": 3260.0,
+      "seconds": 24.26,
+      "via_local": 1.0
+    }
+  },
+  "prompt_agents": {
+    "fulcrum-moment-analyst": "11",
+    "fulcrum-persona-editor": "11",
+    "fulcrum-fact-reviewer": "1",
+    "fulcrum-studio-analyst": "7",
+    "fulcrum-graphics-producer": "1",
+    "fulcrum-coach": "2"
+  },
+  "tokens_total": 269915,
+  "recap": {
+    "seconds": 24.26,
+    "status": "passed",
+    "title": "Late leveller seals 2-2 thriller between Harlow Cross and Marsh Dock United",
+    "summary": "A rollercoaster finish left it 2-2 as Harlow Cross dug out a stoppage-time equaliser. At 41' Hartsell was sent off, leaving Marsh Dock United with 10 and pushing Harlow Cross' win probability from 36% to 49%. At 45+2' Rookwood struck from a quick free kick to make it 0-1 and flip Marsh Dock United's chance to 52% (from 14%). And at 90+1' Whitlock punished a corner to make it 2-2, turning Harlow Cross' win probability from 0% to 8% and sending draw probability to 89% after just 2 s. Bellweather was the standout, finishing the game with the top rating of 9.2 — they had a 0.76 chance off target at 15' (from 11.0 m) but later laid on the 66' finish that got Harlow Cross back into it. What the numbers say: final score 2-2, Harlow Cross xG 2.43 to Marsh Dock United 0.73, shots 16 to 9 and possession 63% to 37%. Rookwood (8.5) and Okonkwo-Reid (8.4) also starred in a game that swung wildly before the late leveller."
+  },
+  "fallback_notes": {}
+}

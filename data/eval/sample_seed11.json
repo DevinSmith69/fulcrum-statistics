@@ -1,60 +1,68 @@
 {
   "kind": "live",
-  "generated_at": "2026-10-24T13:49:56+00:00",
+  "generated_at": "2026-10-25T08:26:31+00:00",
   "recording": "data/matches/sample_seed11.jsonl",
   "match_id": "hlc-mdu-s11",
   "moments": 30,
   "status_counts": {
     "passed": 29,
-    "repaired": 1
+    "fallback": 1
   },
   "status_rates_pct": {
     "passed": 96.7,
-    "repaired": 3.3
+    "fallback": 3.3
   },
   "latency_ms": {
-    "p50": 3076,
-    "p95": 5720,
-    "mean": 3546.3
+    "p50": 4313,
+    "p95": 7626,
+    "mean": 4610.5
   },
   "llm": {
     "moment_analyst": {
       "calls": 30.0,
       "failed": 0.0,
-      "input_tokens": 37248.0,
-      "output_tokens": 3587.0,
-      "seconds": 41.55,
+      "input_tokens": 40663.0,
+      "output_tokens": 3703.0,
+      "seconds": 44.68,
       "via_prompt_agent": 30.0
     },
     "persona_editor": {
-      "calls": 124.0,
-      "failed": 0.0,
-      "input_tokens": 191115.0,
-      "output_tokens": 18753.0,
-      "seconds": 191.34,
-      "via_prompt_agent": 124.0
+      "calls": 120.0,
+      "failed": 1.0,
+      "input_tokens": 195243.0,
+      "output_tokens": 19283.0,
+      "seconds": 235.05,
+      "via_prompt_agent": 120.0
     },
     "match_reporter": {
       "calls": 1.0,
       "failed": 0.0,
-      "input_tokens": 4208.0,
-      "output_tokens": 3490.0,
-      "seconds": 28.25,
+      "input_tokens": 5702.0,
+      "output_tokens": 3677.0,
+      "seconds": 30.1,
       "via_local": 1.0
     }
   },
   "prompt_agents": {
-    "fulcrum-moment-analyst": "2",
-    "fulcrum-persona-editor": "2",
-    "fulcrum-fact-reviewer": "1"
+    "fulcrum-moment-analyst": "11",
+    "fulcrum-persona-editor": "11",
+    "fulcrum-fact-reviewer": "1",
+    "fulcrum-studio-analyst": "7",
+    "fulcrum-graphics-producer": "1",
+    "fulcrum-coach": "2"
   },
-  "tokens_total": 258401,
+  "tokens_total": 268271,
   "recap": {
-    "seconds": 28.25,
+    "seconds": 30.1,
     "status": "passed",
-    "title": "Whitlock\u2019s stoppage-time leveller earns Harlow Cross a 2-2 draw",
-    "summary": "Harlow Cross salvaged a 2-2 draw with a 90+1' leveller after Marsh Dock United had looked set to take all three points. 15' \u2014 Bellweather wasted a huge opening, firing an off-target 0.76 xG chance from 11.0 m at 104 km/h that left the score 0-0 and let Marsh Dock United regroup. 45+2' \u2014 Rookwood struck before halftime and flipped the match, turning a 51% home edge into 19% and lifting Marsh Dock United from 14% to 52% as they went into the break ahead. 90+1' \u2014 Whitlock levelled at 90+1', swinging Harlow Cross\u2019s win chance from 0% to 8%, sending the draw probability to 89% and cutting Marsh Dock United\u2019s chance to 2%. Bellweather stood out with a 9.2 rating, producing the early 0.76 xG opportunity and later setting up Okonkwo-Reid\u2019s 66' goal. The numbers tell the rest: Harlow Cross finished with 2.43 xG, 16 shots and 63% possession while Marsh Dock United had 0.73 xG, 9 shots and 37% possession, and the game ended 2-2 (wp_draw 100%)."
+    "title": "Late turnaround sees Harlow Cross and Marsh Dock United finish 2-2",
+    "summary": "A 2-2 finish felt like two different games: Marsh Dock United seized control through the middle periods but Harlow Cross clawed back for a stoppage-time reward. At 41' Hartsell\u2019s second yellow left Marsh Dock United down to 10, swinging control as Harlow Cross\u2019s win probability jumped from 36% to 49%. At 45+2' Rookwood struck from a free kick before halftime, flipping Marsh Dock United from 14% to 52% and changing the half-time mood. Then, at 90+1' Whitlock\u2019s late equaliser \u2014 assisted by Tolliver \u2014 dragged the game from the brink and pushed the draw chance up to 89%. Bellweather was the standout with a match-high 9.2 rating: they forced a big chance at 15' and set up Okonkwo-Reid\u2019s 66' goal, a constant spark for the home side. The box score backs the comeback \u2014 Harlow Cross finished with 63% possession, 16 shots and 2.43 xG while Marsh Dock United had 37% possession, 9 shots and 0.73 xG; the top ratings were Bellweather 9.2, Rookwood 8.5 and Okonkwo-Reid 8.4."
   },
-  "fallback_notes": {},
+  "fallback_notes": {
+    "8781f23fe3b04f13a36b33ae5e8a2bb0": [
+      "attempt 1: persona_editor: timed out after 8.0s",
+      "fallback: templates used after attempt 1 (persona_editor: timed out after 8.0s)"
+    ]
+  },
   "records_path": "data/eval/sample_seed11.records.jsonl"
 }

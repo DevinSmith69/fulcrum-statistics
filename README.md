@@ -22,10 +22,10 @@ pack, and verified template copy replaces anything that cannot be repaired.
 | **API** (health: [`/api/health`](https://<api-host>/api/health), cue feed: `/api/matches/{id}/overlay-cues`) | [https://<api-host>](https://<api-host>) |
 | **Demo video** (under 2 min) | `<VIDEO_URL>` |
 
-**At a glance** (measured on one full match, see [Trust and guardrails](#trust-and-guardrails)): 30 moments,
-96.7 % verified on the first LLM attempt, 3.3 % repaired, 0 % fallback; moment to insight in **3.1 s p50 / 5.7 s
-p95**; Foundry groundedness **4.53 / 5**. 518 Python tests and 51 web tests run offline with no Azure
-credentials.
+**At a glance** (two clean runs of one full match on the final code, see [Trust and guardrails](#trust-and-guardrails)):
+30 moments, **59 / 60 insights verified** by the fact-checker and 1 template fallback (an 8 s Editor timeout);
+moment to insight in **3.6–4.3 s p50 / 5.6–7.6 s p95**; Foundry groundedness **4.30 / 5**, relevance 4.70.
+660 Python tests and 83 web tests run offline with no Azure credentials.
 
 ---
 
@@ -230,35 +230,40 @@ badge) and `check_notes`. An optional LLM reviewer (`FULCRUM_LLM_REVIEW=1`, sign
 loop.
 
 **Measured on Foundry.** `scripts/eval_live.py` replayed the committed recording `data/matches/sample_seed11.jsonl`
-(Harlow Cross 2-2 Marsh Dock United, 30 moments) through the engine and the full agent team on Foundry. Run of
-2026-10-24 13:49 UTC ([`data/eval/sample_seed11.json`](data/eval/sample_seed11.json)):
+(Harlow Cross 2-2 Marsh Dock United, 30 moments) through the engine and the full agent team on Foundry, on the
+final code (all six agents published as Foundry prompt agents). Two clean runs on 2026-10-25
+([`data/eval/sample_seed11.json`](data/eval/sample_seed11.json),
+[`data/eval/sample_seed11_rerun.json`](data/eval/sample_seed11_rerun.json)):
 
-| Metric | Result |
-|---|---|
-| Passed / repaired / fallback | **29 / 1 / 0** (96.7 % / 3.3 % / 0 %) |
-| Moment → verified insight latency | **p50 3.08 s · p95 5.72 s** · mean 3.55 s (design budget: < 4 s p50) |
-| LLM calls | Moment Analyst 30 and Persona Editor 124, all through the Foundry prompt agents. Match Reporter 1 |
-| Tokens for the whole match | 258,401 |
-| Full-time recap (`strong`) | passed the fact-check, 28.3 s (off the live path) |
+| Metric | Run A (08:26 UTC) | Run B (08:32 UTC) |
+|---|---|---|
+| Passed / repaired / fallback | **29 / 0 / 1** (96.7 % / 0 % / 3.3 %) | **30 / 0 / 0** (100 % / 0 % / 0 %) |
+| Moment → verified insight latency | **p50 4.31 s · p95 7.63 s** · mean 4.61 s | **p50 3.65 s · p95 5.59 s** · mean 4.05 s |
+| LLM calls | Moment Analyst 30 and Persona Editor 120 via the Foundry prompt agents. Match Reporter 1 | same |
+| Tokens for the whole match | 268,271 | 269,915 |
+| Full-time recap (`strong`) | passed the fact-check, 30.1 s (off the live path) | passed, 24.3 s |
 
-Earlier runs the same day: 93.3 / 6.7 / 0 % at p50 4.2 s with one Editor call per moment, then 90.0 / 6.7 / 3.3 %
-at p50 3.6 s after the Editor fan-out. The one fallback in that second run was the fact-checker rejecting a "10"
-that was not in the fact pack, twice. The template copy was published instead, as designed.
+The one fallback was a Persona Editor call that hit the 8 s per-call timeout. The fact-checked template copy was
+published instead, as designed. Latency moves with Foundry load: the 2026-10-24 build gave p50 3.1 s. The
+design budget is < 4 s p50. A third run that day shared the `fast` deployment with the evaluation judge below and
+hit 429 token-rate limits (26 / 2 / 2). It is not counted, but it shows the fallback path holding under throttling.
 
-Foundry built-in evaluators over the same 30 published insights, run 2026-10-24 13:55 UTC, judge `fast`, scale 1–5
+Foundry built-in evaluators over Run A's 30 published insights, run 2026-10-25 08:28 UTC, judge `fast`, scale 1–5
 with pass ≥ 3 ([`data/eval/foundry_sample_seed11.json`](data/eval/foundry_sample_seed11.json)):
 
 | Evaluator | Mean | Min | Pass rate |
 |---|---|---|---|
-| Groundedness | **4.53** | 2 | 96.7 % |
-| Relevance | 4.60 | 3 | 100 % |
-| Coherence | 4.30 | 4 | 100 % |
-| Fluency | 3.80 | 3 | 100 % |
+| Groundedness | **4.30** | 2 | 90.0 % |
+| Relevance | 4.70 | 3 | 100 % |
+| Coherence | 4.33 | 4 | 100 % |
+| Fluency | 3.60 | 3 | 100 % |
 
-29 of 30 moments passed every evaluator. The one groundedness fail (a 90+5' passing milestone) was the judge
-objecting to interpretation ("keeping the ball under pressure"), not to a number. Every number had already passed
-the deterministic checker. A repeat run on the same records gave 4.57 / 4.70 / 4.37 / 3.83, so treat
-single-moment scores as ±1 noise.
+27 of 30 moments passed every evaluator. All three groundedness fails were about wording, not numbers: every
+number had already passed the deterministic checker. In two, the judge objected to fan-voice framing ("losing
+control fast"). In one it was right: the home-fan copy of the 45+2' goal called a 0-1 deficit "a 0-1 lead". That
+is the limit of a number checker: it verifies the values, not the meaning around them. On the 2026-10-24 code the
+same evaluators gave 4.53 / 4.60 / 4.30 / 3.80, and a repeat on identical records moved means by up to 0.10.
+Treat single-moment scores as ±1 noise.
 
 ---
 
@@ -320,8 +325,8 @@ tests/         pytest, one folder per module
 `models.py`, appending to `docs/CONTRACT_CHANGES.md` and running `make schemas`, which regenerates the JSON Schema
 the web app's types are built from. Only additive optional fields have been added.
 
-**Tests.** 518 Python tests (`pytest`, offline, with `FULCRUM_BUS=memory FULCRUM_LLM=fake`; 517 pass and 1 is the
-opt-in live Event Hubs test, skipped by default) and 51 web tests (`cd web && npm test`). They cover simulator
+**Tests.** 660 Python tests (`pytest`, offline, with `FULCRUM_BUS=memory FULCRUM_LLM=fake`; 658 pass and 2 are
+opt-in, skipped by default: the live Event Hubs test and the Bicep compile) and 83 web tests (`cd web && npm test`). They cover simulator
 determinism and calibration, win-probability sanity values, moment counts on the recorded matches, every
 PASSED / REPAIRED / FALLBACK path, timeouts, every template against the fact-checker, denylist and decimal-comma
 cases, the WebSocket protocol, cue scheduling, fact trail and the speech queue. With only `make install` (no
