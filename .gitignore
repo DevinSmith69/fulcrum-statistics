@@ -13,3 +13,6 @@ data/matches/*.jsonl
 
 # demo video build output (narration, clips)
 /video/
+
+# agent brief (kept local)
+CLAUDE.md

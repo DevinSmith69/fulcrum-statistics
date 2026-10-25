@@ -1,6 +1,6 @@
 """Words the agents must never output: real football brands and gambling language.
 
-Fulcrum is fictional end to end (CLAUDE.md rule 2), and the copy must never read like betting content
+Fulcrum is fictional end to end (a project rule), and the copy must never read like betting content
 (AI_PROMPT_DESIGN §5.4). Matching is done by `factcheck.py` on word boundaries and ignores case, except
 for `CASE_SENSITIVE_CLUB_WORDS` (nicknames that are ordinary words, e.g. "wolves").
 

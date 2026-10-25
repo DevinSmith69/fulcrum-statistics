@@ -30,6 +30,8 @@ git worktree add ../fulcrum-ws4 -b ws4-web
 # in each: claude  (paste the brief below; for unattended runs use your usual permission settings)
 ```
 Every brief starts with: *"Read CLAUDE.md, docs/API_CONTRACT.md, docs/MODEL_SPEC.md, docs/AI_PROMPT_DESIGN.md first."*
+(CLAUDE.md was the agents' shared working brief: project rules, ownership and commands. It stays out of the
+public repo; the rules it set are reflected in the README and the docs above.)
 
 ---------------------------------------------------------------------------------------------------
 ## WS1 — Simulator (`src/fulcrum/sim/`) · overnight Fri

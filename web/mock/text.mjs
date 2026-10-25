@@ -1,7 +1,7 @@
 // Fulcrum mock "agent" copy: insight variants per persona × language, overlay cues and recaps.
 //
 // Stands in for WS3 (agents) until the real pipeline is up. Every number in the copy is taken from the
-// moment's fact pack — the same rule the real agents follow (CLAUDE.md rule 3) — so the mock never shows
+// moment's fact pack — the same rule the real agents follow — so the mock never shows
 // a number the engine did not produce. Languages other than English use decimal commas.
 
 export const LANGUAGES = ["en", "es", "fr", "pt", "de"];
