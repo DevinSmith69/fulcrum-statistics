@@ -10,3 +10,6 @@ web/dist/
 data/matches/*.jsonl
 !data/matches/sample*.jsonl
 .idea/
+
+# demo video build output (narration, clips)
+/video/

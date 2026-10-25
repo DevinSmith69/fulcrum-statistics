@@ -68,6 +68,13 @@ T = Template
 TEMPLATES: dict[MomentType, dict[str, list[Template]]] = {
     MomentType.GOAL: {
         "analyst": [
+            T(  # situation: "penalty", "header from a corner", … (a 0.76 xG chance from 11 m is a penalty)
+                "{scorer} scores: {team} {wp_scorer_before}% → {wp_scorer_after}% to win",
+                "{scorer} finishes a {xg} xG chance ({situation}) from {distance_m} m at {shot_speed_kmh} km/h. "
+                "{team} make it {score_after} and their win probability moves from {wp_scorer_before}% to "
+                "{wp_scorer_after}%.",
+                "{xg} xG, {shot_speed_kmh} km/h, and {team} are now at {wp_scorer_after}% to win.",
+            ),
             T(
                 "{scorer} scores: {team} {wp_scorer_before}% → {wp_scorer_after}% to win",
                 "{scorer} finishes a {xg} xG chance from {distance_m} m at {shot_speed_kmh} km/h. {team} make it "

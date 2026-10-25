@@ -20,7 +20,7 @@ from fulcrum.contracts import CheckStatus, Insight, Moment, MomentType, Persona,
 from fulcrum.llm import LLMClient
 
 from .context import fact_map, match_hashtag, moment_minute, recap_prompt
-from .factcheck import FactSheet, Issue, cut_off
+from .factcheck import FactSheet, Issue, base_language, cut_off, fix_lead_order
 from .orchestrator import LLMTimeout, OrchestratorConfig, call_llm
 from .prompts import MATCH_REPORTER
 from .schemas import RecapOutput
@@ -239,6 +239,14 @@ class RecapService:
                 log.warning("recap %s failed (attempt %d): %s", key, attempt, e)
                 issues, status = [], CheckStatus.REPAIRED
                 continue
+            if base_language(lang) == "en":  # "a 1-2 lead" -> "a 2-1 lead" (see factcheck.fix_lead_order)
+                out = out.model_copy(
+                    update={
+                        "title": fix_lead_order(out.title),
+                        "summary": fix_lead_order(out.summary),
+                        "social_posts": [fix_lead_order(x) for x in out.social_posts],
+                    }
+                )
             problems = check_recap(
                 out,
                 sheet,
