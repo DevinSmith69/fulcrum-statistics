@@ -25,3 +25,6 @@ fulcrum-ws*.txt
 # Recorded matches: only the committed replay fixture goes in (the API's fallback when the sim is absent).
 data/matches/*
 !data/matches/sample_seed7.jsonl
+
+# demo video build output (clips, browser profile)
+video
