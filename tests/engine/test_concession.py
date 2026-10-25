@@ -147,9 +147,27 @@ class Chain:
         out = Outcome.SUCCESS if ok else Outcome.FAIL
         self.ev(EventType.PASS, clock_ms, team, player, x=x, y=y, end_x=x + 10, end_y=y, outcome=out, **{"pass": pa})
 
-    def shot(self, clock_ms, team, player, xg=0.35, goal=True, near=4.2, x=94.0, y=34.0, on_target=True):
+    def shot(
+        self,
+        clock_ms,
+        team,
+        player,
+        xg=0.35,
+        goal=True,
+        near=4.2,
+        x=94.0,
+        y=34.0,
+        on_target=True,
+        situation="open_play",
+    ):
         sa = ShotAttributes(
-            distance_m=11.0, angle_rad=0.6, body_part="right_foot", xg=xg, shot_speed_kmh=101.4, on_target=on_target
+            distance_m=11.0,
+            angle_rad=0.6,
+            body_part="right_foot",
+            xg=xg,
+            shot_speed_kmh=101.4,
+            on_target=on_target,
+            situation=situation,
         )
         out = Outcome.GOAL if goal else Outcome.SAVED if on_target else Outcome.OFF_TARGET
         got = self.ev(EventType.SHOT, clock_ms, team, player, x=x, y=y, outcome=out, shot=sa, nearest_opponent_m=near)
@@ -186,6 +204,36 @@ def test_misplaced_pass_origin_with_its_difficulty_and_expected_completion():
     assert f["coach_goalkeeper"] == "Penhallow"  # NBA-01, the defending keeper
     assert "coach_keeper_shot_profile" not in f  # a 0.35 xG chance from 11 m is not a low-probability finish
     assert "coach_defenders_goal_side" not in f  # no tracking frames in this chain: never faked
+
+
+def test_penalty_goal_names_the_situation_and_both_scores():
+    c = Chain()
+    c.pass_(5_000, "NBA", "NBA-04")
+    c.ev(EventType.FOUL, 18_000, "RVR", "RVR-04", x=94.0, y=34.0)  # the sim emits no restart event for a penalty
+    goal = next(m for m in c.shot(22_000, "NBA", "NBA-09", xg=0.76, situation="penalty") if m.type == "goal")
+    f = _facts(goal)
+    assert f["situation"].value == "penalty"  # 0.76 xG from 11 m reads as a penalty, not a wonder chance
+    assert (f["score_before"].value, f["score_after"].value) == ("0-0", "1-0")
+
+
+def test_corner_header_has_no_zero_pass_count():
+    c = Chain()
+    c.pass_(5_000, "NBA", "NBA-04")
+    c.ev(EventType.CORNER, 20_000, "NBA", "NBA-07", x=105.0, y=0.0)
+    goal = next(m for m in c.shot(23_000, "NBA", "NBA-09", situation="corner") if m.type == "goal")
+    f = _facts(goal)
+    assert f["situation"].value == "header from a corner" and f["coach_move_origin"].value == "corner"
+    assert "coach_move_passes" not in f  # never "needed 0 passes"
+    assert f["coach_move_seconds"].value == 3
+
+
+def test_open_play_situation_and_away_goal_score_before():
+    c = Chain()
+    c.pass_(5_000, "RVR", "RVR-06")
+    goal = next(m for m in c.shot(9_000, "RVR", "RVR-09") if m.type == "goal")
+    f = _facts(goal)
+    assert f["situation"].value == "open play"
+    assert (f["score_before"].value, f["score_after"].value) == ("0-0", "0-1")
 
 
 def test_free_kick_origin_names_the_fouler():
@@ -289,7 +337,7 @@ def test_every_goal_and_big_chance_has_coach_facts(seed11):
         assert f["coach_defending_team"] in names and f["coach_defending_team"] != base["team"].value
         assert {"coach_chance_xg", "coach_shot_distance_m", "coach_chance_quality"} <= f.keys()
         assert f["coach_chance_xg"] == base["xg"].value and f["coach_shot_distance_m"] == base["distance_m"].value
-        assert f["coach_move_passes"] >= 0 and 0 <= f["coach_move_seconds"] <= 600
+        assert f.get("coach_move_passes", 1) > 0 and 0 <= f["coach_move_seconds"] <= 600  # no "0 passes"
         if "coach_nearest_defender_m" in f:
             assert 0 < f["coach_nearest_defender_m"] < 40
         if "coach_defenders_goal_side" in f:

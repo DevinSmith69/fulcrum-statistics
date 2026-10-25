@@ -330,7 +330,11 @@ class CountingAgents:
 
     async def translate(self, insight_id, language):
         self.translate_calls += 1
-        return []  # → English fallback
+        return [
+            InsightVariant(
+                persona="analyst", language=language, headline="titular", body="cuerpo.", commentary_line="línea"
+            )
+        ]
 
     async def translate_cues(self, insight_id, language):
         return []
@@ -369,13 +373,17 @@ def test_hello_after_full_time_bounds_translation_and_sends_recap(client):
     with client.websocket_connect("/ws") as ws:
         ws.send_json({"type": "subscribe", "match_id": MID, "prefs": {"persona": "analyst", "language": "es"}})
         hello = ws.receive_json()
+        # the snapshot doesn't wait for translation: everything is still English (nothing cached yet)
         assert hello["type"] == "hello" and len(hello["payload"]["insights"]) == 8
+        assert {i["variants"][0]["language"] for i in hello["payload"]["insights"]} == {"en"}
+        # then: the newest 5 insights re-sent in Spanish, the nearest recap, and the viewer's own recap
+        rest = [ws.receive_json() for _ in range(7)]
+        updates = [m["payload"] for m in rest if m["type"] == "insight"]
+        assert sorted(u["moment_id"] for u in updates) == [f"m-{k}" for k in range(3, 8)]
+        assert {u["variants"][0]["language"] for u in updates} == {"es"}
         assert agents.translate_calls == 5  # only the newest insights are translated on demand
-        # the nearest recap straight away, then the viewer's own one once the reporter has written it
-        first = ws.receive_json()
-        assert first["type"] == "recap" and first["payload"]["title"] == "casual-en recap"
-        recap = ws.receive_json()
-        assert recap["type"] == "recap" and recap["payload"]["title"] == "analyst-es recap"  # lazily generated
+        recaps = [m["payload"]["title"] for m in rest if m["type"] == "recap"]
+        assert recaps == ["casual-en recap", "analyst-es recap"]  # nearest first, then the lazily written one
     assert (
         client.get(f"/api/matches/{MID}/recap", params={"persona": "analyst", "language": "es"}).json()["title"]
         == "analyst-es recap"

@@ -138,7 +138,7 @@ def classify_phase(
 
 
 class PhaseTracker:
-    """Applies the 60 s persistence hysteresis: a new phase must hold before it becomes current."""
+    """Applies the persistence hysteresis: a new phase must hold `phase_persist_s` before it becomes current."""
 
     def __init__(self, params: MetricParams = DEFAULT_PARAMS.metrics) -> None:
         self.persist_ms = int(params.phase_persist_s * 1000)
@@ -146,8 +146,20 @@ class PhaseTracker:
         self._candidate: MatchPhase | None = None
         self._since_ms = 0
 
-    def update(self, candidate: MatchPhase, clock_ms: int) -> MatchPhase | None:
-        """Feed the instantaneous phase. Returns the *previous* phase if a transition was committed."""
+    def update(self, candidate: MatchPhase, clock_ms: int, control_diff: float | None = None) -> MatchPhase | None:
+        """Feed the instantaneous phase. Returns the *previous* phase if a transition was committed.
+
+        `control_diff` (home minus away control index): a "X in control" phase ends at once, back to balanced,
+        when the other side's control is higher, so the label never contradicts the control gauges on screen.
+        """
+        stale = (self.phase == MatchPhase.CONTROL_HOME and control_diff is not None and control_diff < 0) or (
+            self.phase == MatchPhase.CONTROL_AWAY and control_diff is not None and control_diff > 0
+        )
+        if stale:
+            before, self.phase = self.phase, MatchPhase.BALANCED
+            self._candidate = None if candidate == MatchPhase.BALANCED else candidate
+            self._since_ms = clock_ms
+            return before
         if candidate == self.phase:
             self._candidate = None
             return None

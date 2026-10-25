@@ -36,6 +36,14 @@ from .params import MomentParams
 from .state import EventEffects, FrameEffects, MatchTracker, ShotRecord
 
 MT = MomentType
+# ShotAttributes.situation as copy may say it
+SITUATION_LABELS = {
+    "open_play": "open play",
+    "counter": "counter-attack",
+    "set_piece": "direct free kick",
+    "penalty": "penalty",
+    "corner": "header from a corner",
+}
 
 
 def pct(p: float) -> int:
@@ -177,6 +185,11 @@ class MomentDetector:
             return []
         seq, facts = self._coach_by_shot.get(shot.team_id, (-1, []))
         return list(facts) if seq == shot.seq else []
+
+    @staticmethod
+    def _situation_fact(shot: ShotRecord) -> Fact:
+        """How the shot came about, so a penalty's high xG from 11 m reads as a penalty."""
+        return Fact(key="situation", label="Shot situation", value=SITUATION_LABELS.get(shot.situation, "open play"))
 
     def _team_fact(self, team_id: str | None) -> Fact:
         return Fact(key="team", label="Team", value=self.t.team_name(team_id))
@@ -326,9 +339,13 @@ class MomentDetector:
             if shot_seq == shot.seq:
                 seq_start, before = shot_seq, shot_wp
         b, a = pct(getattr(before, side)), pct(getattr(wp_after, side))
+        home_before = t.score_home - (side == "home")
+        away_before = t.score_away - (side == "away")
         facts = [
             self._team_fact(g.team_id),
             self._player_fact("scorer", "Goalscorer", g.scorer_id),
+            # both scores, so copy can't present the new score as unchanged ("stayed 3-0")
+            Fact(key="score_before", label="Score before the goal", value=f"{home_before}-{away_before}"),
             Fact(key="score_after", label="Score after the goal", value=t.score_label),
             Fact(key="wp_scorer_before", label="Scoring team win probability before", value=b, unit="%"),
             Fact(key="wp_scorer_after", label="Scoring team win probability after", value=a, unit="%"),
@@ -336,6 +353,7 @@ class MomentDetector:
         ]
         if shot is not None:
             facts += [
+                self._situation_fact(shot),
                 Fact(key="xg", label="Expected goals of the shot", value=r2(shot.xg), unit="xG"),
                 Fact(key="shot_speed_kmh", label="Shot speed", value=ri(shot.speed_kmh), unit="km/h"),
                 Fact(key="distance_m", label="Shot distance", value=r1(shot.distance_m), unit="m"),
@@ -433,6 +451,7 @@ class MomentDetector:
         facts = [
             self._team_fact(s.team_id),
             self._player_fact("shooter", "Shooter", s.player_id),
+            self._situation_fact(s),
             Fact(key="xg", label="Expected goals of the chance", value=r2(s.xg), unit="xG"),
             Fact(key="outcome", label="Outcome", value=s.outcome.replace("_", " ")),
             Fact(key="distance_m", label="Shot distance", value=r1(s.distance_m), unit="m"),

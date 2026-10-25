@@ -153,3 +153,20 @@ def test_player_rating_is_soft_capped():
     assert player_rating(4.27) < 9.3  # sample_seed11's no-goal winger used to read 10.0
     assert player_rating(20) <= 10 and player_rating(-20) >= 3
     assert player_rating(-1.5) == pytest.approx(6 - 3 * math.tanh(0.5))
+
+
+def test_control_phase_ends_once_the_other_side_has_more_control():
+    """The header must never say "HLC in control" while the gauges show HLC 9, MDU 60 (it lagged 120 s)."""
+    from fulcrum.contracts import MatchPhase
+    from fulcrum.engine.metrics import PhaseTracker
+
+    t = PhaseTracker()
+    t.update(MatchPhase.CONTROL_HOME, 0, 30)
+    assert t.update(MatchPhase.CONTROL_HOME, 200_000, 30) == MatchPhase.BALANCED  # held 120 s: committed
+    assert t.phase == MatchPhase.CONTROL_HOME
+    assert t.update(MatchPhase.BALANCED, 210_000, 10) is None  # home still ahead on control: hysteresis applies
+    assert t.update(MatchPhase.CONTROL_AWAY, 215_000, -51) == MatchPhase.CONTROL_HOME  # flips at once...
+    assert t.phase == MatchPhase.BALANCED  # ...to balanced: the away side must still hold control to own it
+    assert t.update(MatchPhase.CONTROL_AWAY, 300_000, -51) is None
+    assert t.update(MatchPhase.CONTROL_AWAY, 336_000, -51) == MatchPhase.BALANCED
+    assert t.phase == MatchPhase.CONTROL_AWAY

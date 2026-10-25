@@ -1,5 +1,5 @@
 import { API_URL, DEFAULT_FIXTURE } from "./config";
-import type { AskAnswer, AskRequest, MatchEvent, MatchSummary, Team, ViewerPrefs } from "../types";
+import type { AskAnswer, AskRequest, MatchEvent, MatchSummary, OverlayCue, Team, ViewerPrefs } from "../types";
 import { coachPath, type CoachView } from "./coach";
 import { demoFixture, type ControlAction, type ControlState } from "./director";
 import { pickMatch, requestedMatchId } from "./matchPick";
@@ -75,6 +75,10 @@ export const postControl = (matchId: string, body: ControlAction) =>
 /** Start the demo fixture (seed 11, HLC v MDU) at `speed`. */
 export const startDemoMatch = (speed: number) =>
   getJson<{ match_id: string }>("/api/matches", { method: "POST", body: JSON.stringify(demoFixture(speed)) });
+
+/** Every overlay cue so far for these prefs (the cue inspector's history before it went live). */
+export const fetchOverlayCues = (matchId: string, prefs: ViewerPrefs) =>
+  getJson<OverlayCue[]>(overlayCuesUrl(matchId, prefs).slice(API_URL.length));
 
 /** URL of the machine-readable overlay cue feed for a graphics partner (shown in the cue inspector). */
 export function overlayCuesUrl(matchId: string, prefs: ViewerPrefs) {

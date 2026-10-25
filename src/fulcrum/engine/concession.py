@@ -315,19 +315,22 @@ class ConcessionTracker:
                         value=zone_label(PITCH_X - mv.start_x, self.p),
                     )
                 )
-            facts += [
-                Fact(
-                    key="coach_move_passes",
-                    label="Completed passes from the start of the move to the shot",
-                    value=mv.passes,
-                ),
+            if mv.passes:  # "needed 0 passes" reads badly; a set piece is named by the move's origin instead
+                facts.append(
+                    Fact(
+                        key="coach_move_passes",
+                        label="Number of completed passes in the move (not its length in seconds)",
+                        value=mv.passes,
+                    )
+                )
+            facts.append(
                 Fact(
                     key="coach_move_seconds",
-                    label="Seconds from the start of the move to the shot",
+                    label="Length of the move in seconds (not a pass count)",
                     value=ri(max(0, ev.clock_ms - mv.start_clock_ms) / 1000),
                     unit="s",
-                ),
-            ]
+                )
+            )
 
         # Pressure on the shooter. The nearest-opponent distance is the simulator's own measurement on the shot
         # event (MODEL_SPEC §1.2); tracking frames are not used for it because the two nearest players of each

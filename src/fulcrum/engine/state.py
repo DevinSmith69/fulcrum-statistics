@@ -123,6 +123,7 @@ class ShotRecord:
     assister_id: str | None
     assist_difficulty: float | None
     wp_before: WinProbability | None = None
+    situation: str = "open_play"  # ShotAttributes.situation: open_play | counter | set_piece | penalty | corner
 
 
 @dataclass
@@ -347,7 +348,9 @@ class MatchTracker:
             100.0,
         )
         if self.clock_ms >= self.params.metrics.phase_min_elapsed_s * 1000:
-            fx.phase_before = self.phase.update(self._instant_phase(), self.clock_ms)
+            home, away = self.control_index(self.home_id), self.control_index(self.away_id)
+            instant = mx.classify_phase(self.chaos_index(), home, away, self.params.metrics)
+            fx.phase_before = self.phase.update(instant, self.clock_ms, home - away)
         return fx
 
     def _track_possession(self, ev: MatchEvent, fx: EventEffects) -> None:
@@ -535,6 +538,7 @@ class MatchTracker:
             sh.big_chance if sh else False,
             assister,
             assist_difficulty,
+            situation=str(sh.situation) if sh else "open_play",
         )
         self.shot_window.add(ev.clock_ms, rec)
         self._last_shot[ev.team_id] = rec
@@ -711,11 +715,6 @@ class MatchTracker:
     def tempo_match_avg(self) -> float:
         elapsed_min = max(1.0, self.clock_ms / 60000.0)
         return self.total_passes / elapsed_min
-
-    def _instant_phase(self) -> MatchPhase:
-        return mx.classify_phase(
-            self.chaos_index(), self.control_index(self.home_id), self.control_index(self.away_id), self.params.metrics
-        )
 
     def recent_shots(self, team_id: str | None, window_s: float) -> list[ShotRecord]:
         lo = self.clock_ms - int(window_s * 1000)
