@@ -85,7 +85,13 @@ function MainShell({ route }: { route: Exclude<Route, "split"> }) {
         </ReplayStageProvider>
       )}
       {(route === "studio" || route === "broadcast") && (
-        <DemoPanel feed={feed} lang={prefs.language ?? "en"} placement={route === "broadcast" ? "top-center" : "bottom-left"} />
+        <DemoPanel
+          key={route}
+          feed={feed}
+          lang={prefs.language ?? "en"}
+          placement={route === "broadcast" ? "top-center" : "bottom-left"}
+          defaultShown={route === "studio"}
+        />
       )}
       {route === "recap" && <RecapView feed={feed} prefs={prefs} onPlayHighlights={playHighlights} />}
       {route === "quality" && <QualityView feed={feed} />}

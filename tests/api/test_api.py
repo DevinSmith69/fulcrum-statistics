@@ -175,6 +175,9 @@ def test_full_match_through_rest(client):
 
     wp = client.get(f"/api/matches/{MID}/winprob").json()
     assert len(wp) > 100 and all(abs(p["home"] + p["draw"] + p["away"] - 1) < 1e-6 for p in wp)
+    # momentum history for the momentum chart (contract 2026-10-25): on every point, and it moves
+    assert all(p["momentum"] is not None and -100 <= p["momentum"] <= 100 for p in wp)
+    assert max(abs(p["momentum"]) for p in wp) > 10
     types = {m["type"] for m in client.get(f"/api/matches/{MID}/moments").json()}
     assert {"goal", "red_card", "big_chance", "full_time"} <= types
 

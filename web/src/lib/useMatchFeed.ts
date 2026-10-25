@@ -79,7 +79,7 @@ function reducer(s: FeedState, a: Action): FeedState {
     case "state": {
       const st = a.payload;
       const last = s.winprob[s.winprob.length - 1];
-      const point = { clock_ms: st.clock_ms, seq: st.seq, home: st.win_prob.home, draw: st.win_prob.draw, away: st.win_prob.away };
+      const point = { clock_ms: st.clock_ms, seq: st.seq, home: st.win_prob.home, draw: st.win_prob.draw, away: st.win_prob.away, momentum: st.momentum };
       const winprob = !last || st.seq > last.seq ? [...s.winprob, point] : s.winprob;
       return { ...s, state: st, winprob };
     }

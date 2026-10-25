@@ -34,12 +34,20 @@ export async function resolveMatchId(): Promise<string> {
   const picked = pickMatch(matches, requested);
   if (picked) return picked;
   if (requested) throw new Error(`match ${requested} not found yet`); // the feed retries until it exists
-  const created = await getJson<{ match_id: string }>("/api/matches", {
+  // One start per page: a second caller (React dev mode runs effects twice) shares the first one's match.
+  autoStart ??= getJson<{ match_id: string }>("/api/matches", {
     method: "POST",
     body: JSON.stringify(DEFAULT_FIXTURE),
-  });
-  return created.match_id;
+  })
+    .then((created) => created.match_id)
+    .catch((e) => {
+      autoStart = null; // let a retry start one
+      throw e;
+    });
+  return autoStart;
 }
+
+let autoStart: Promise<string> | null = null;
 
 /** Start a fresh match (used by the "Restart match" control). */
 export const startMatch = () =>

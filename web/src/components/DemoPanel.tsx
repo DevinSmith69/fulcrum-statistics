@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { controlStatus, demoRequested, SPEEDS, speedLabel, stepSpeed } from "../lib/director";
+import { controlStatus, initialDirectorMode, SPEEDS, speedLabel, stepSpeed } from "../lib/director";
 import { momentLabel } from "../lib/i18n";
 import { useDirector } from "../lib/useDirector";
 import type { MatchFeed } from "../lib/useMatchFeed";
@@ -12,11 +12,11 @@ const PLACEMENT = { "bottom-left": "bottom-4 left-4", "top-center": "top-[4.5rem
 
 /**
  * Demo director bar (Match Studio + Broadcast): new demo match, speed, pause / resume, next moment.
- * Off by default; `?demo=1` or C shows it. C again hides the bar but keeps the shortcuts, for clean recordings:
+ * Shown by default where `defaultShown` (Match Studio), else off; `?demo=1` / `?demo=0` override, C toggles it. C again hides the bar but keeps the shortcuts, for clean recordings:
  * Space pause / resume · ] faster · [ slower · N next moment.
  */
-export function DemoPanel({ feed, lang, placement = "bottom-left" }: { feed: MatchFeed; lang: string; placement?: "bottom-left" | "top-center" }) {
-  const [mode, setMode] = useState<Mode>(() => (demoRequested(window.location.search) ? "shown" : "off"));
+export function DemoPanel({ feed, lang, placement = "bottom-left", defaultShown = false }: { feed: MatchFeed; lang: string; placement?: "bottom-left" | "top-center"; defaultShown?: boolean }) {
+  const [mode, setMode] = useState<Mode>(() => initialDirectorMode(window.location.search, defaultShown));
   const d = useDirector(feed.matchId, mode !== "off");
   const ctl = d.control;
   const live = !!ctl && !d.unavailable;
@@ -47,7 +47,7 @@ export function DemoPanel({ feed, lang, placement = "bottom-left" }: { feed: Mat
 
   if (mode !== "shown") return null;
 
-  const status = d.unavailable ?? controlStatus(ctl, (t) => momentLabel(lang, t));
+  const status = d.notice ?? d.unavailable ?? controlStatus(ctl, (t) => momentLabel(lang, t));
   const effective = ctl?.skipping ? ctl.effective_speed : d.speed;
   return (
     <div

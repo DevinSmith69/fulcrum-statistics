@@ -856,4 +856,8 @@ export interface WinProbPoint {
   home: number;
   draw: number;
   away: number;
+  /**
+   * MatchState.momentum at this point (+ = home on top); None if unknown
+   */
+  momentum?: number | null;
 }

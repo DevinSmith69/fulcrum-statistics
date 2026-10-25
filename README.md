@@ -128,6 +128,16 @@ exported to `schemas/`, and the web app's TypeScript types are generated from th
   Thirteen rule-based moment types (goal, big chance, win-probability swing, pressure shift, phase change, tempo
   change, red card, speed record, elite pass, player milestone, momentum run, half time, full time) are tuned to
   20–35 per match. Each one carries a **fact pack** of pre-formatted numbers and deltas, so the agents never compute.
+- **Momentum chart.** Under the momentum bar (Match Studio) and on the Recap: the engine's momentum index
+  (−100 to +100, from each side's decayed pressure) through the whole match. It is filled in the home colour above
+  the line and the away colour below, with goals and red cards marked, on the same minute axis as the outcome chart.
+  Seed 11 shows why both matter: Harlow Cross hold momentum for most of the game while Marsh Dock United lead.
+- **Demo director** (bottom-left of Match Studio; `C` hides it, `?demo=0` turns it off). Start a new match, change
+  speed (1–60×), pause, or **skip to the next big moment** (`N`, runs at 120× until a goal, red card, big chance
+  or full time). Speed changes only how fast events are released, never the events: the same seed gives the same
+  match. Anyone can start a match, so the API caps matches running at once (`FULCRUM_MAX_LIVE_MATCHES`, default 3;
+  a paused match stops counting after 2 quiet minutes) and how often one viewer may start one
+  (`FULCRUM_MATCH_RATE`, default 3 per 10 minutes). The bar shows the reason when a start is refused.
 - **Persona engine.** Each moment gets one explanation and four rewrites: *analyst* (tactical, at least two
   numbers), *casual* (plain words, at most one number), *club fan* for each side (partisan but factual), and
   *player lens* on demand (the moment retold through the followed player when that player is involved). Any of

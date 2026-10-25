@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CheckBadge } from "../components/InsightFeed";
 import { KitStripe } from "../components/TeamMark";
+import { MomentumChart } from "../components/MomentumChart";
 import { WinProbChart } from "../components/WinProbChart";
 import { as100, fixtureColours, minuteLabel } from "../lib/format";
 import { momentLabel, personaLabel } from "../lib/i18n";
@@ -101,6 +102,10 @@ export function RecapView({ feed, prefs, onPlayHighlights }: { feed: MatchFeed; 
 
           <div className="panel p-6">
             <WinProbChart feed={feed} height={240} />
+          </div>
+
+          <div className="panel p-6">
+            <MomentumChart feed={feed} height={160} showHeader />
           </div>
 
           <div className="panel p-6">

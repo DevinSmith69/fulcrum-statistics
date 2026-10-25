@@ -5,6 +5,7 @@ Persistence (Cosmos DB) is a stretch goal; everything here is process-local and 
 
 from __future__ import annotations
 
+import time
 from collections import OrderedDict, deque
 from dataclasses import dataclass, field
 from typing import Any
@@ -52,6 +53,7 @@ class MatchReadModel:
     score_home: int = 0
     score_away: int = 0
     period_starts: dict[str, int] = field(default_factory=dict)  # period ("1"/"2") -> clock_ms at its start
+    last_activity: float = field(default_factory=time.monotonic)  # monotonic time of the last event / state
     _moment_ids: set[str] = field(default_factory=set)
     _cue_ids: set[str] = field(default_factory=set)
 
@@ -62,6 +64,7 @@ class MatchReadModel:
         if ev.seq <= self.last_seq:
             return False
         self.last_seq = ev.seq
+        self.last_activity = time.monotonic()
         self.events.append(ev)
         self.clock_ms = max(self.clock_ms, ev.clock_ms)
         self.score_home = max(self.score_home, ev.score_home)
@@ -82,6 +85,7 @@ class MatchReadModel:
         if self.state is not None and state.seq < self.state.seq:
             return False
         self.state = state
+        self.last_activity = time.monotonic()
         self.clock_ms = max(self.clock_ms, state.clock_ms)
         # max(): the event feed runs ahead of the engine, so a lagging state must not undo a goal
         self.score_home = max(self.score_home, state.score_home)
@@ -89,7 +93,14 @@ class MatchReadModel:
         wp = state.win_prob
         if not self.winprob or self.winprob[-1].seq != state.seq:
             self.winprob.append(
-                WinProbPoint(clock_ms=state.clock_ms, seq=state.seq, home=wp.home, draw=wp.draw, away=wp.away)
+                WinProbPoint(
+                    clock_ms=state.clock_ms,
+                    seq=state.seq,
+                    home=wp.home,
+                    draw=wp.draw,
+                    away=wp.away,
+                    momentum=state.momentum,
+                )
             )
         if self.status == "scheduled":
             self.status = "live"
@@ -158,6 +169,14 @@ class Registry:
     def __init__(self, teams: dict[str, Team]) -> None:
         self.teams = teams
         self.matches: dict[str, MatchReadModel] = {}
+
+    def running(self, idle_s: float = 120.0) -> int:
+        """Matches not finished that saw an event or state in the last `idle_s` seconds (or were just created).
+        A match left paused, or whose simulator died, stops counting once it goes quiet."""
+        now = time.monotonic()
+        return sum(
+            1 for rm in self.matches.values() if rm.status in ("scheduled", "live") and now - rm.last_activity < idle_s
+        )
 
     def create(self, config: MatchConfig) -> MatchReadModel:
         rm = self.matches.get(config.match_id) or MatchReadModel(config.match_id)

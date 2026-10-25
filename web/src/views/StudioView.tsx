@@ -6,6 +6,7 @@ import { Gauges, MomentumBar } from "../components/Meters";
 import { OverlayLayer } from "../components/OverlayLayer";
 import { StagedPitch } from "../components/PitchReplay";
 import { Scoreboard } from "../components/Scoreboard";
+import { MomentumChart } from "../components/MomentumChart";
 import { WinProbChart } from "../components/WinProbChart";
 import type { MatchFeed } from "../lib/useMatchFeed";
 import type { ViewerPrefs } from "../types";
@@ -47,7 +48,12 @@ export function StudioView({ feed, prefs }: { feed: MatchFeed; prefs: ViewerPref
             <WinProbChart feed={feed} height={170} />
           </div>
           <div className="panel flex flex-col gap-4 p-4">
-            <MomentumBar feed={feed} />
+            <div>
+              <MomentumBar feed={feed} />
+              <div className="mt-2">
+                <MomentumChart feed={feed} height={96} />
+              </div>
+            </div>
             <Gauges feed={feed} />
           </div>
           <AskStudio feed={feed} prefs={prefs} onCite={cite} />

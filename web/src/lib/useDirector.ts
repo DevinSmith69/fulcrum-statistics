@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchControl, postControl, startDemoMatch } from "./api";
-import { DEFAULT_DEMO_SPEED, matchUrl, type ControlAction, type ControlState } from "./director";
+import { DEFAULT_DEMO_SPEED, matchUrl, startError, type ControlAction, type ControlState } from "./director";
 
 const POLL_MS = 2000;
 const POLL_SKIPPING_MS = 500;
+const NOTICE_MS = 8000;
 
 export interface Director {
   control: ControlState | null;
   /** Why the controls are disabled (e.g. the match is simulated out of process), or null. */
   unavailable: string | null;
+  /** A short-lived message (e.g. why a new match couldn't start), shown ahead of the control status. */
+  notice: string | null;
   /** The speed shown / used for a new demo match. */
   speed: number;
   busy: boolean;
@@ -25,6 +28,7 @@ export function useDirector(matchId: string | null, enabled: boolean): Director 
   const [unavailable, setUnavailable] = useState<string | null>(null);
   const [localSpeed, setLocalSpeed] = useState(DEFAULT_DEMO_SPEED);
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const skipping = control?.skipping ?? false;
   const controlRef = useRef(control);
   controlRef.current = control;
@@ -89,9 +93,15 @@ export function useDirector(matchId: string | null, enabled: boolean): Director 
       .then(({ match_id }) => window.location.assign(matchUrl(window.location.href, match_id)))
       .catch((e) => {
         setBusy(false);
-        setUnavailable(`Couldn't start a match: ${e instanceof Error ? e.message : e}`);
+        setNotice(startError(e));
       });
   }, [speed]);
 
-  return { control, unavailable, speed, busy, act, setSpeed, togglePause, nextMoment, newDemoMatch };
+  useEffect(() => {
+    if (!notice) return;
+    const t = window.setTimeout(() => setNotice(null), NOTICE_MS);
+    return () => window.clearTimeout(t);
+  }, [notice]);
+
+  return { control, unavailable, notice, speed, busy, act, setSpeed, togglePause, nextMoment, newDemoMatch };
 }

@@ -20,6 +20,21 @@
     "away": {
       "title": "Away",
       "type": "number"
+    },
+    "momentum": {
+      "anyOf": [
+        {
+          "maximum": 100,
+          "minimum": -100,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "MatchState.momentum at this point (+ = home on top); None if unknown",
+      "title": "Momentum"
     }
   },
   "required": [
