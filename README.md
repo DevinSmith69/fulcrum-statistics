@@ -19,7 +19,7 @@ pack, and verified template copy replaces anything that cannot be repaired.
 | | |
 |---|---|
 | **Live overlay and API** | Links are in the hackathon submission (the live deployment runs on a personal Azure subscription, so it isn't listed publicly). Deploy your own with `azd up`: [docs/DEPLOY.md](docs/DEPLOY.md) |
-| **Demo video** (under 2 min) | `<VIDEO_URL>` |
+| **Demo video** (under 2 min) | [Watch on YouTube](https://youtu.be/ONTjPpAJrjQ) · [download the MP4](docs/fulcrum-demo.mp4) |
 
 **At a glance** (two clean runs of one full match on the final code, see [Trust and guardrails](#trust-and-guardrails)):
 30 moments, **59 / 60 insights verified** by the fact-checker and 1 template fallback (an 8 s Editor timeout);
