@@ -29,7 +29,7 @@ OUT = ROOT / "video" / "clips"
 SNAPS = ROOT / "video" / "snaps"
 PORT = 9333
 SCALE = int(os.getenv("FULCRUM_VIDEO_SCALE", "2"))  # 2 = 4K frames: crisp push-ins, sharper 1080p export
-SITE = os.getenv("FULCRUM_VIDEO_SITE", "https://<web-host>/")
+SITE = os.getenv("FULCRUM_VIDEO_SITE", "http://localhost:5173/")  # the deployed overlay to record
 FFMPEG = shutil.which("ffmpeg") or str(
     next((Path(os.environ["LOCALAPPDATA"]) / "Microsoft" / "WinGet" / "Packages").glob("Gyan.FFmpeg*/*/bin/ffmpeg.exe"))
 )

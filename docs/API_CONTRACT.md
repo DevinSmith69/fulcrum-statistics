@@ -39,7 +39,7 @@ one kind of process in it, so in `hybrid` the engine and agents apps stand by in
 |---|---|---|---|
 | GET | `/api/health` | – | `{"status":"ok","bus":"memory","llm":"fake","topology":"inprocess","in_process":true,"sim":"simulator","agents":true,"agents_state":"running","agents_error":null,"speech":false,"match_controls":true}` (`match_controls`: see Match controls below); `topology` is `split` \| `inprocess` \| `hybrid`; `sim` is `simulator` \| `replay` (in this process), `service` (forwarded to `FULCRUM_SIM_URL`) or null; `agents*` are null in `split`; `agents` is true only once the agents service is running (it starts with the first match); `agents_state` is `off` \| `unavailable` \| `not_started` \| `starting` \| `running` \| `failed` (reason in `agents_error`) |
 | GET | `/api/teams` | – | `Team[]` (from data/teams.json) |
-| POST | `/api/matches` | `MatchConfig` (match_id optional) | `{"match_id": str}` — starts a simulated match. **429** (problem JSON, `Retry-After`) when `FULCRUM_MAX_LIVE_MATCHES` (default 3) matches are already running (a match counts until it finishes or goes 2 min without events) or this client has started `FULCRUM_MATCH_RATE` (default 3/600 s) matches |
+| POST | `/api/matches` | `MatchConfig` (match_id optional) | `{"match_id": str}` — starts a simulated match. **429** (problem JSON, `Retry-After`) when `FULCRUM_MAX_LIVE_MATCHES` (default 3) matches are already running (a match counts until it finishes or goes 2 min without events) or this client has started `FULCRUM_MATCH_RATE` (default 3/600 s) matches, or all clients together have started `FULCRUM_MATCH_DAILY` (default 40/day) |
 | GET | `/api/matches` | – | `[{match_id, home_team_id, away_team_id, status, clock_ms, score}]` |
 | GET | `/api/matches/{id}/state` | – | latest `MatchState` |
 | GET | `/api/matches/{id}/events` | `since_seq` | `MatchEvent[]` |
@@ -48,7 +48,7 @@ one kind of process in it, so in `hybrid` the engine and agents apps stand by in
 | GET | `/api/matches/{id}/insights` | `persona`, `language` | `Insight[]` (variants filtered) |
 | GET | `/api/matches/{id}/overlay-cues` | `persona`, `language`, `since_clock_ms` | `OverlayCue[]` — **the machine-readable feed for a broadcast graphics partner** |
 | GET | `/api/matches/{id}/recap` | `persona`, `language` | `Recap` (404 until full time; generated lazily per persona/lang, cached) |
-| POST | `/api/matches/{id}/translate` | `{"insight_id", "language"}` | `InsightVariant[]` (on-demand translation, cached) |
+| POST | `/api/matches/{id}/translate` | `{"insight_id", "language"}` | `InsightVariant[]` (on-demand translation, cached). **422** unless `language` is en/es/fr/pt/de |
 | GET | `/api/matches/{id}/insights/{insight_id}/coach` | `language` (default `en`) | `CoachView` `{match_id, insight_id, moment_id, moment_type, defending_team_id, language, check_status, points: [{text, fact_keys}], takeaway, facts, latency_ms}` — **Coach's view** of a goal or big chance (see below) |
 | GET | `/api/speech` | – | `{"enabled": bool, "auth": "key" \| "entra" \| null, "voices": {lang: voice}}` — is neural voice configured? |
 | POST | `/api/speech` | `{"text"` (1–400 chars)`, "language"}` | `audio/mpeg`: the line in that language's Azure AI Speech neural voice (cached per voice + text). **503** when Azure Speech is not configured (the overlay then uses the browser's `speechSynthesis`); 502 if the Speech service fails |
@@ -56,14 +56,14 @@ one kind of process in it, so in `hybrid` the engine and agents apps stand by in
 | POST | `/api/matches/{id}/ask` | `AskRequest` `{"question", "persona"?, "language"?, "favourite_team_id"?}` | `AskAnswer` `{answer, answerable, check_status, cited_moment_ids, fact_keys, persona, language, latency_ms, …}` — **Ask the studio** (see below) |
 
 **Ask the studio** (`POST /api/matches/{id}/ask`): the Studio Analyst agent answers a viewer's question (1–300
-chars) about the live match in `language` (en/es/fr/pt/de, default en) and the `persona`'s tone (default casual;
+chars) about the live match in `language` (en/es/fr/pt/de, default en; any other is 422) and the `persona`'s tone (default casual;
 `favourite_team_id` sets the club_fan side). It uses only a context pack built from the match so far (score,
 minute, team and top-player live stats from `MatchState`, the most significant + latest moments with their
 facts, rosters), and every number is fact-checked against that pack (one repair). `answerable=false` with
 `check_status="fallback"` is a safe deterministic reply: the question was about betting/odds or a real club
 (refused without an LLM call), or the answer could not be verified. Answers are cached per (match, normalised
 question, language, persona, team, number of moments so far). Errors: 404 unknown match · 422 bad body ·
-429 rate limit (per client IP, `FULCRUM_ASK_RATE`, default `6/30` = 6 questions per 30 s; `Retry-After` header) ·
+429 rate limit (per client IP, `FULCRUM_ASK_RATE`, default `6/30` = 6 questions per 30 s, plus 60/min for all clients and `FULCRUM_LLM_DAILY` (default 400/day, shared with producer graphics); `Retry-After` header) ·
 503 when no agents service is running in the API process (out-of-process deployments, or the agents failed
 to start).
 
@@ -106,7 +106,7 @@ A broadcast graphics team does not put AI copy on air unseen. Per match, a produ
   persona gets them, in English), and appear in `overlay-cues` and on the WebSocket like any cue.
 - **Auth.** If `FULCRUM_PRODUCER_KEY` is set, every producer endpoint needs header `X-Producer-Key: <key>`
   (else **401**). Unset = open (demo). Graphic requests are rate limited per client (`FULCRUM_GRAPHIC_RATE`,
-  default `10/30`, plus the shared LLM ceiling; **429** + `Retry-After`).
+  default `10/30`, plus the shared per-minute and daily LLM ceilings; **429** + `Retry-After`).
 - Errors: 404 unknown match / held item / proposal · 409 putting a refused proposal on air · 422 bad body or
   failed edit · **503** for a graphic request when no agents service runs in the API process (in-process and
   hybrid topologies host it; split does not).

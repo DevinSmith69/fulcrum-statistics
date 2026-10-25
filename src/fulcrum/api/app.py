@@ -66,13 +66,17 @@ from .producer import DeskError, ProducerDesk
 from .readmodel import MatchReadModel, Registry
 from .speech import MAX_TEXT_CHARS, SpeechError, SpeechSynth, voice_for
 from .studio import DEFAULT_SPEECH_RATE, RateLimiter, client_key
-from .translation import Translator
+from .translation import Translator, supported_language
 
 log = logging.getLogger("fulcrum.api")
 DEFAULT_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 
 DEFAULT_MATCH_RATE = "3/600"  # matches one client may start per 10 minutes (FULCRUM_MATCH_RATE, 0 = unlimited)
 DEFAULT_MAX_LIVE_MATCHES = 3  # matches running at once (FULCRUM_MAX_LIVE_MATCHES, 0 = unlimited)
+# Daily ceilings for all clients together, so a public deployment has a bounded worst-case bill however many
+# addresses a caller rotates through (process-local: a restart resets them).
+DEFAULT_MATCH_DAILY = "40/86400"  # match starts per day (FULCRUM_MATCH_DAILY, 0 = unlimited)
+DEFAULT_LLM_DAILY = "400/86400"  # Ask the studio questions + producer graphics per day (FULCRUM_LLM_DAILY)
 
 
 def _env_int(var: str, default: int) -> int:
@@ -251,6 +255,7 @@ def create_app(
         app.state.speech = speech if speech is not None else SpeechSynth.from_env()
         app.state.ask_limiter = RateLimiter.from_env()
         app.state.ask_global = RateLimiter(60, 60)  # all clients together: a ceiling on LLM spend
+        app.state.llm_daily = RateLimiter.from_env("FULCRUM_LLM_DAILY", DEFAULT_LLM_DAILY)
         app.state.speech_limiter = RateLimiter.from_env("FULCRUM_SPEECH_RATE", DEFAULT_SPEECH_RATE)
         app.state.speech_global = RateLimiter(600, 60)
         app.state.producer = desk
@@ -259,6 +264,7 @@ def create_app(
         # on a shared quota: cap matches running at once, and how often one client may start one.
         app.state.match_limiter = RateLimiter.from_env("FULCRUM_MATCH_RATE", DEFAULT_MATCH_RATE)
         app.state.max_running = _env_int("FULCRUM_MAX_LIVE_MATCHES", DEFAULT_MAX_LIVE_MATCHES)
+        app.state.match_daily = RateLimiter.from_env("FULCRUM_MATCH_DAILY", DEFAULT_MATCH_DAILY)
         if pipeline is not None:
             if not the_topology.api_runs_sim:
                 # hybrid: events come from another process (and from sim autostarts nobody POSTed), so the engine
@@ -400,6 +406,12 @@ def _router() -> APIRouter:
                 f"you've started several matches recently: try again in {max(1, round(wait))} s",
                 headers={"Retry-After": str(max(1, round(wait)))},
             )
+        if (wait := request.app.state.match_daily.allow("*")) is not None:
+            raise HTTPException(
+                429,
+                "today's allowance of new demo matches is used up: follow a match that's already running",
+                headers={"Retry-After": str(max(1, round(wait)))},
+            )
         reg.create(config)
         pipeline: Pipeline | None = request.app.state.pipeline
         if pipeline is not None:
@@ -528,7 +540,13 @@ def _router() -> APIRouter:
                 503, "the agents service is not running, so the studio can't answer questions right now"
             )
         client = client_key(request.headers, request.client.host if request.client else None)
-        wait = request.app.state.ask_limiter.allow(client) or request.app.state.ask_global.allow("*")
+        if body.language is not None and not supported_language(body.language):
+            raise HTTPException(422, "language must be one of en, es, fr, pt, de")
+        wait = (
+            request.app.state.ask_limiter.allow(client)
+            or request.app.state.ask_global.allow("*")
+            or request.app.state.llm_daily.allow("*")
+        )
         if wait is not None:
             raise HTTPException(
                 429,
@@ -550,6 +568,8 @@ def _router() -> APIRouter:
         insight = rm.insights.get(body.insight_id)
         if insight is None:
             raise HTTPException(404, f"unknown insight '{body.insight_id}'")
+        if not supported_language(body.language):
+            raise HTTPException(422, "language must be one of en, es, fr, pt, de")
         native = [v for v in insight.variants if v.language == body.language]
         if native:
             return native
@@ -563,6 +583,8 @@ def _router() -> APIRouter:
         The evidence is the moment's engine-computed coach_ facts; the agents explain it (fact-checked, one
         repair). Without agents, or when no checked copy can be written, the deterministic fallback lists the facts.
         """
+        if not supported_language(language):
+            raise HTTPException(422, "language must be one of en, es, fr, pt, de")
         rm = match(request, match_id)
         insight = rm.insights.get(insight_id)
         if insight is None:
@@ -666,7 +688,11 @@ def _producer_routes(r: APIRouter, match: Any) -> None:
         if agents is None:
             raise HTTPException(503, "the agents service is not running, so the graphics desk can't take requests")
         client = client_key(request.headers, request.client.host if request.client else None)
-        wait = request.app.state.graphic_limiter.allow(client) or request.app.state.ask_global.allow("*")
+        wait = (
+            request.app.state.graphic_limiter.allow(client)
+            or request.app.state.ask_global.allow("*")
+            or request.app.state.llm_daily.allow("*")
+        )
         if wait is not None:
             raise HTTPException(429, "too many graphic requests", headers={"Retry-After": str(max(1, round(wait)))})
         proposal = await agents.graphic(match_id, body.request, state=rm.state, winprob=list(rm.winprob))

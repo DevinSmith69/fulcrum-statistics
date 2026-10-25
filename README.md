@@ -18,14 +18,13 @@ pack, and verified template copy replaces anything that cannot be repaired.
 
 | | |
 |---|---|
-| **Live overlay** | [https://<web-host>](https://<web-host>) |
-| **API** (health: [`/api/health`](https://<api-host>/api/health), cue feed: `/api/matches/{id}/overlay-cues`) | [https://<api-host>](https://<api-host>) |
+| **Live overlay and API** | Links are in the hackathon submission (the live deployment runs on a personal Azure subscription, so it isn't listed publicly). Deploy your own with `azd up`: [docs/DEPLOY.md](docs/DEPLOY.md) |
 | **Demo video** (under 2 min) | `<VIDEO_URL>` |
 
 **At a glance** (two clean runs of one full match on the final code, see [Trust and guardrails](#trust-and-guardrails)):
 30 moments, **59 / 60 insights verified** by the fact-checker and 1 template fallback (an 8 s Editor timeout);
 moment to insight in **3.6–4.3 s p50 / 5.6–7.6 s p95**; Foundry groundedness **4.30 / 5**, relevance 4.70.
-697 Python tests and 90 web tests run offline with no Azure credentials.
+701 Python tests and 90 web tests run offline with no Azure credentials.
 
 ---
 
@@ -137,7 +136,8 @@ exported to `schemas/`, and the web app's TypeScript types are generated from th
   or full time). Speed changes only how fast events are released, never the events: the same seed gives the same
   match. Anyone can start a match, so the API caps matches running at once (`FULCRUM_MAX_LIVE_MATCHES`, default 3;
   a paused match stops counting after 2 quiet minutes) and how often one viewer may start one
-  (`FULCRUM_MATCH_RATE`, default 3 per 10 minutes). The bar shows the reason when a start is refused.
+  (`FULCRUM_MATCH_RATE`, default 3 per 10 minutes), with a daily ceiling for everyone together
+  (`FULCRUM_MATCH_DAILY`, default 40). The bar shows the reason when a start is refused.
 - **Persona engine.** Each moment gets one explanation and four rewrites: *analyst* (tactical, at least two
   numbers), *casual* (plain words, at most one number), *club fan* for each side (partisan but factual), and
   *player lens* on demand (the moment retold through the followed player when that player is involved). Any of
@@ -342,7 +342,7 @@ tests/         pytest, one folder per module
 `models.py`, appending to `docs/CONTRACT_CHANGES.md` and running `make schemas`, which regenerates the JSON Schema
 the web app's types are built from. Only additive optional fields have been added.
 
-**Tests.** 697 Python tests (`pytest`, offline, with `FULCRUM_BUS=memory FULCRUM_LLM=fake`; 695 pass and 2 are
+**Tests.** 701 Python tests (`pytest`, offline, with `FULCRUM_BUS=memory FULCRUM_LLM=fake`; 699 pass and 2 are
 opt-in, skipped by default: the live Event Hubs test and the Bicep compile) and 90 web tests (`cd web && npm test`). They cover simulator
 determinism and calibration, win-probability sanity values, moment counts on the recorded matches, every
 PASSED / REPAIRED / FALLBACK path, timeouts, every template against the fact-checker, denylist and decimal-comma
@@ -378,6 +378,9 @@ Fulcrum was built so the demo and the production shape differ only in configurat
 - **Cost.** One match uses about 270k tokens on mini models (268k and 270k in the two eval runs), under £1 in Foundry tokens. Translations, Player Lens
   and Ask the studio are on demand and cached, so cost follows what viewers actually use, not personas ×
   languages. The weekend deployment, including test matches, is estimated at about £10–15 ([DEPLOY §5](docs/DEPLOY.md#5-cost-rough-payg-per-day-while-running)).
+  Because the demo is public, every endpoint that spends tokens is bounded: per-viewer rate limits, a per-minute
+  ceiling for all viewers, and daily ceilings (`FULCRUM_MATCH_DAILY` 40 match starts, `FULCRUM_LLM_DAILY` 400 Ask
+  the studio questions and producer graphics). Translations only run for the five supported languages.
 - **Quality gates.** `eval_live.py` and `eval_foundry.py` can run in CI on recorded matches, with a prompt-version
   bump blocked if fallback rate, latency or groundedness regress. Prompt versions are already recorded in the
   Foundry agent version metadata.

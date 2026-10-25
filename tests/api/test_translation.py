@@ -172,3 +172,13 @@ async def test_player_lens_failure_and_wrong_language_are_not_cached():
     assert [v.headline for v in second.variants] == ["lens-en"]  # served, but English is not cached as "es"
     await personalise_insight(INSIGHT, _lens_prefs("NBA-10", "es"), tr)
     assert len(agents.calls) == 3
+
+
+async def test_unsupported_languages_never_reach_the_agents():
+    agents = FakeAgents()
+    tr = Translator(agents)
+    assert (await tr.variants(INSIGHT, INSIGHT.variants[:1], "xx"))[0].headline == "casual-en"
+    assert (await tr.cue(CUE, "tlh")).headline == "casual-en cue"
+    assert await tr.recap("m", Persona.CASUAL, "zz") is None
+    assert agents.calls == []
+    assert (await tr.variants(INSIGHT, INSIGHT.variants[:1], "pt-BR"))[0].headline == "casual-pt-BR"

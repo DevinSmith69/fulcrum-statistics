@@ -51,3 +51,12 @@ def test_one_client_can_only_start_a_few_matches(monkeypatch):
 def test_cap_falls_back_to_the_default_on_bad_config(monkeypatch, bad):
     with _client(monkeypatch, cap=bad, rate="0") as c:
         assert c.app.state.max_running == 3
+
+
+def test_daily_ceiling_holds_across_clients(monkeypatch):
+    monkeypatch.setenv("FULCRUM_MATCH_DAILY", "2/86400")
+    with _client(monkeypatch, cap="0", rate="0") as c:
+        assert _start(c, "a", ip="203.0.113.1").status_code == 201
+        assert _start(c, "b", ip="203.0.113.2").status_code == 201
+        r = _start(c, "c", ip="203.0.113.3")
+        assert r.status_code == 429 and "allowance" in r.json()["detail"]

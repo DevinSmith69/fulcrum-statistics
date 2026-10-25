@@ -117,3 +117,19 @@ def test_client_key_uses_the_right_most_hop():
     assert client_key({"x-forwarded-for": "1.1.1.1, 2.2.2.2"}, "10.0.0.1") == "2.2.2.2"
     assert client_key({}, "10.0.0.1") == "10.0.0.1"
     assert client_key({"x-forwarded-for": " "}, None) == "unknown"
+
+
+def test_ask_rejects_an_unsupported_language(client):
+    llm = with_agents(client)
+    r = client.post(f"/api/matches/{MID}/ask", json={"question": "Who's on top?", "language": "xx"})
+    assert r.status_code == 422 and llm.calls == []
+
+
+def test_ask_has_a_daily_ceiling_for_all_clients(client):
+    with_agents(client)
+    client.app.state.llm_daily = RateLimiter(2, 86400)
+    ask = {"question": "Who's on top?"}
+    for ip in ("203.0.113.1", "203.0.113.2"):
+        assert client.post(f"/api/matches/{MID}/ask", json=ask, headers={"X-Forwarded-For": ip}).status_code == 200
+    r = client.post(f"/api/matches/{MID}/ask", json=ask, headers={"X-Forwarded-For": "203.0.113.3"})
+    assert r.status_code == 429

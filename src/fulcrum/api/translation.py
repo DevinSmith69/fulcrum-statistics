@@ -14,9 +14,17 @@ from __future__ import annotations
 import logging
 from typing import Any, Protocol
 
+from fulcrum.agents.translate import LANGUAGE_NAMES, normalise_language
 from fulcrum.contracts import Insight, InsightVariant, OverlayCue, Persona, Recap
 
 log = logging.getLogger("fulcrum.api.translation")
+
+
+def supported_language(language: str | None) -> bool:
+    """True for the overlay's languages (en/es/fr/pt/de, regional tags like pt-BR included).
+
+    Every other code would be a fresh LLM call per insight, so the API never asks the agents for one."""
+    return bool(language) and normalise_language(language).split("-")[0] in LANGUAGE_NAMES
 
 
 class AgentHooks(Protocol):
@@ -47,8 +55,9 @@ class Translator:
         self._lens: dict[tuple[str, str, str], InsightVariant | None] = {}
 
     async def _hook(self, name: str, *args: Any) -> Any:
+        """Call an agents hook; every hook takes the language last, and unsupported ones never reach the LLM."""
         fn = getattr(self.agents, name, None)
-        if fn is None:
+        if fn is None or not supported_language(args[-1]):
             return None
         try:
             return await fn(*args)
