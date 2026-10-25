@@ -1,7 +1,7 @@
 // Demo director helpers and the main-pitch replay pick. Run with `npm test`.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { controlStatus, demoFixture, demoRequested, matchUrl, speedLabel, stepSpeed, type ControlState } from "../src/lib/director.ts";
+import { controlStatus, demoFixture, demoRequested, initialDirectorMode, startError, matchUrl, speedLabel, stepSpeed, type ControlState } from "../src/lib/director.ts";
 import { latestReplayable } from "../src/lib/replay.ts";
 
 test("speed steps through the presets and stops at either end", () => {
@@ -55,4 +55,17 @@ test("R replays the newest big moment, else the newest replayable one", () => {
   assert.equal(latestReplayable(moments.slice(1))?.id, "p");
   assert.equal(latestReplayable([m("full_time", 1, "ft")]), null);
   assert.equal(latestReplayable([]), null);
+});
+
+test("the bar starts shown on Match Studio, off on Broadcast; ?demo=1 / ?demo=0 override", () => {
+  assert.equal(initialDirectorMode("", true), "shown");
+  assert.equal(initialDirectorMode("", false), "off");
+  assert.equal(initialDirectorMode("?demo=1", false), "shown");
+  assert.equal(initialDirectorMode("?demo=0", true), "off");
+  assert.equal(initialDirectorMode("?match=x", true), "shown");
+});
+
+test("a refused start shows the API's reason", () => {
+  assert.equal(startError(new Error("429 3 matches are already running: follow one")), "3 matches are already running: follow one");
+  assert.equal(startError(new Error("502 Bad Gateway")), "Couldn't start a match (502 Bad Gateway)");
 });

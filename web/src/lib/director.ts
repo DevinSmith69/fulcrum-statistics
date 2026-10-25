@@ -45,6 +45,26 @@ export function stepSpeed(current: number, dir: 1 | -1): number {
 export const speedLabel = (speed: number) => `${Number.isInteger(speed) ? speed : speed.toFixed(1)}×`;
 
 /** Whether the page was opened with `?demo=1` (the control bar starts visible). */
+/** What the bar says when a new match can't start: the API's reason for a 429 (match cap, rate limit). */
+export function startError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  const m = /^429 (.+)$/.exec(msg);
+  if (m) return m[1].charAt(0).toUpperCase() + m[1].slice(1);
+  return `Couldn't start a match (${msg})`;
+}
+
+export function demoOff(search: string): boolean {
+  const v = new URLSearchParams(search).get("demo");
+  return v === "0" || v === "false";
+}
+
+/** The bar's starting state: `?demo=1` shows it anywhere, `?demo=0` keeps it off, else `defaultShown` decides
+ * (Match Studio shows it; Broadcast stays clean for overlay cues). C toggles it either way. */
+export function initialDirectorMode(search: string, defaultShown: boolean): "off" | "shown" {
+  if (demoRequested(search)) return "shown";
+  return defaultShown && !demoOff(search) ? "shown" : "off";
+}
+
 export function demoRequested(search: string): boolean {
   const v = new URLSearchParams(search).get("demo");
   return v != null && v !== "0" && v !== "false";

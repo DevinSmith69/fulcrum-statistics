@@ -71,6 +71,17 @@ from .translation import Translator
 log = logging.getLogger("fulcrum.api")
 DEFAULT_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 
+DEFAULT_MATCH_RATE = "3/600"  # matches one client may start per 10 minutes (FULCRUM_MATCH_RATE, 0 = unlimited)
+DEFAULT_MAX_LIVE_MATCHES = 3  # matches running at once (FULCRUM_MAX_LIVE_MATCHES, 0 = unlimited)
+
+
+def _env_int(var: str, default: int) -> int:
+    """An int from the environment, or `default` if unset or not a number."""
+    try:
+        return int(os.getenv(var) or default)
+    except ValueError:
+        return default
+
 
 class TranslateRequest(BaseModel):
     insight_id: str
@@ -244,6 +255,10 @@ def create_app(
         app.state.speech_global = RateLimiter(600, 60)
         app.state.producer = desk
         app.state.graphic_limiter = RateLimiter.from_env("FULCRUM_GRAPHIC_RATE", DEFAULT_GRAPHIC_RATE)
+        # Anyone can start a match from the overlay's director bar, and each one costs a full match of agent calls
+        # on a shared quota: cap matches running at once, and how often one client may start one.
+        app.state.match_limiter = RateLimiter.from_env("FULCRUM_MATCH_RATE", DEFAULT_MATCH_RATE)
+        app.state.max_running = _env_int("FULCRUM_MAX_LIVE_MATCHES", DEFAULT_MAX_LIVE_MATCHES)
         if pipeline is not None:
             if not the_topology.api_runs_sim:
                 # hybrid: events come from another process (and from sim autostarts nobody POSTed), so the engine
@@ -371,6 +386,20 @@ def _router() -> APIRouter:
             raise HTTPException(422, "home and away must be different teams")
         if reg.get(config.match_id) is not None:
             raise HTTPException(409, f"match '{config.match_id}' already exists")
+        cap = request.app.state.max_running
+        if cap > 0 and reg.running() >= cap:
+            raise HTTPException(
+                429,
+                f"{cap} matches are already running: follow one of them, or try again in a few minutes",
+                headers={"Retry-After": "60"},
+            )
+        client = client_key(request.headers, request.client.host if request.client else None)
+        if (wait := request.app.state.match_limiter.allow(client)) is not None:
+            raise HTTPException(
+                429,
+                f"you've started several matches recently: try again in {max(1, round(wait))} s",
+                headers={"Retry-After": str(max(1, round(wait)))},
+            )
         reg.create(config)
         pipeline: Pipeline | None = request.app.state.pipeline
         if pipeline is not None:

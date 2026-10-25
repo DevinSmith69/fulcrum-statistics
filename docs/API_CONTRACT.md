@@ -39,11 +39,11 @@ one kind of process in it, so in `hybrid` the engine and agents apps stand by in
 |---|---|---|---|
 | GET | `/api/health` | – | `{"status":"ok","bus":"memory","llm":"fake","topology":"inprocess","in_process":true,"sim":"simulator","agents":true,"agents_state":"running","agents_error":null,"speech":false,"match_controls":true}` (`match_controls`: see Match controls below); `topology` is `split` \| `inprocess` \| `hybrid`; `sim` is `simulator` \| `replay` (in this process), `service` (forwarded to `FULCRUM_SIM_URL`) or null; `agents*` are null in `split`; `agents` is true only once the agents service is running (it starts with the first match); `agents_state` is `off` \| `unavailable` \| `not_started` \| `starting` \| `running` \| `failed` (reason in `agents_error`) |
 | GET | `/api/teams` | – | `Team[]` (from data/teams.json) |
-| POST | `/api/matches` | `MatchConfig` (match_id optional) | `{"match_id": str}` — starts a simulated match |
+| POST | `/api/matches` | `MatchConfig` (match_id optional) | `{"match_id": str}` — starts a simulated match. **429** (problem JSON, `Retry-After`) when `FULCRUM_MAX_LIVE_MATCHES` (default 3) matches are already running (a match counts until it finishes or goes 2 min without events) or this client has started `FULCRUM_MATCH_RATE` (default 3/600 s) matches |
 | GET | `/api/matches` | – | `[{match_id, home_team_id, away_team_id, status, clock_ms, score}]` |
 | GET | `/api/matches/{id}/state` | – | latest `MatchState` |
 | GET | `/api/matches/{id}/events` | `since_seq` | `MatchEvent[]` |
-| GET | `/api/matches/{id}/winprob` | – | `WinProbPoint[]` |
+| GET | `/api/matches/{id}/winprob` | – | `WinProbPoint[]` (each with `momentum`, the state's momentum at that point, for the momentum chart; `null` from older builds) |
 | GET | `/api/matches/{id}/moments` | – | `Moment[]` |
 | GET | `/api/matches/{id}/insights` | `persona`, `language` | `Insight[]` (variants filtered) |
 | GET | `/api/matches/{id}/overlay-cues` | `persona`, `language`, `since_clock_ms` | `OverlayCue[]` — **the machine-readable feed for a broadcast graphics partner** |

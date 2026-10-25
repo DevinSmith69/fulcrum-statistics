@@ -324,6 +324,9 @@ class WinProbPoint(_Base):
     home: float
     draw: float
     away: float
+    momentum: float | None = Field(
+        None, ge=-100, le=100, description="MatchState.momentum at this point (+ = home on top); None if unknown"
+    )
 
 
 # --------------------------------------------------------------------------- #
