@@ -77,6 +77,14 @@ BEATS: list[tuple[str, float, str]] = [
         "One <sub alias='A Z D up'>azd up</sub> deploys it. <break time='500ms'/>"
         "Fulcrum: <break time='200ms'/>the AI explains the numbers. <break time='250ms'/>It never invents them.",
     ),
+    (  # alternative close: matches the live Quality shot (27 of 27 passed on the first draft)
+        "07_close_live",
+        17,
+        "Live on Azure, all twenty-seven insights passed the fact-check on the first draft. <break time='250ms'/>"
+        "In our Foundry evaluations, groundedness scored four point three out of five. <break time='300ms'/>"
+        "One <sub alias='A Z D up'>azd up</sub> deploys it. <break time='450ms'/>"
+        "Fulcrum: <break time='200ms'/>the AI explains the numbers. <break time='250ms'/>It never invents them.",
+    ),
 ]
 
 
