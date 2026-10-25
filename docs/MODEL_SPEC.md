@@ -104,8 +104,10 @@ Rolling windows use **sim time** (clock_ms), not wall clock.
   recovery in opponent half 1.5. `index = 100·(1 − exp(−raw/8))`.
 - **Control index** (per team, last 5 min): `100 · poss_share · completion · min(1, mean_passes_per_possession/8)`.
 - **Chaos index** (match, last 5 min): `100 · (0.5·min(1, turnovers_per_min/2.5) + 0.3·share_possessions_<3_passes + 0.2·share_passes_>35m)`.
-- **Phase** (with 60 s persistence hysteresis): chaos ≥ 60 → `chaos`; control_home − control_away ≥ 20 →
-  `control_home`; ≤ −20 → `control_away`; else `balanced`.
+- **Phase** (with persistence hysteresis, `phase_persist_s` = 120 s): chaos ≥ 65 → `chaos`;
+  control_home − control_away ≥ 20 → `control_home`; ≤ −20 → `control_away`; else `balanced`. A new phase must
+  hold for 120 s before it becomes current, but a `control_*` phase ends at once (back to `balanced`) as soon as
+  the other side's control index is higher, so the "X in control" label never contradicts the control gauges.
 - **Tempo**: passes per minute, rolling 5 min.
 - **Momentum** (−100…100): EMA (α = 0.2 per event) of `pressure_home − pressure_away`.
 - **Player rating** (3–10, start 6.0): goal +1.0 · assist +0.6 · key pass +0.2 · xG ×1.0 · shot on target +0.1 ·
@@ -171,8 +173,8 @@ Target **20 – 35 moments per match**; if over, raise thresholds in params, don
 
 | Type | Rule | Significance | Required facts (keys) |
 |---|---|---|---|
-| goal | every goal | 0.6 + min(0.4, largest \|Δ\| across P(home), P(draw), P(away)) | scorer, minute, xg, shot_speed_kmh, distance_m, wp_scorer_before, wp_scorer_after, score_after, assist (if any), pass_difficulty_of_assist |
-| big_chance | shot xG ≥ 0.30 not scored | 0.3 + 0.5·xG | shooter, xg, outcome, distance_m, team_xg_total, whatif_* (§3.1) |
+| goal | every goal | 0.6 + min(0.4, largest \|Δ\| across P(home), P(draw), P(away)) | scorer, minute, xg, shot_speed_kmh, distance_m, wp_scorer_before, wp_scorer_after, score_before, score_after, situation, assist (if any), pass_difficulty_of_assist |
+| big_chance | shot xG ≥ 0.30 not scored | 0.3 + 0.5·xG | shooter, situation, xg, outcome, distance_m, team_xg_total, whatif_* (§3.1) |
 | wp_swing | \|ΔP(home) or ΔP(away)\| ≥ 0.06 within 90 s, not a goal | min(1, 5·\|Δ\|) | wp_*_before, wp_*_after, cause_event, minute, pressure_index_*; whatif_* (§3.1) when the swing is the shooting team's |
 | pressure_shift | sign flip of (P_home − P_away) with \|diff\| ≥ 25, or +30 in 3 min | 0.4–0.6 | pressure_index_*_before/after, shots_last_5, box_entries_last_5 |
 | phase_change | phase transition (persisted) | 0.35 | phase_before, phase_after (readable: "<team> in control", "chaotic", "balanced"), control_index_*, chaos_index, turnovers_last_5 |
@@ -183,6 +185,8 @@ Target **20 – 35 moments per match**; if over, raise thresholds in params, don
 | player_milestone | 50th completed pass, 2nd/3rd goal, 10 km, ≥ 95 % accuracy on ≥ 30 passes at HT | 0.2–0.5 | player, milestone, value |
 | momentum_run | ≥ 3 shots in 5 min with 0 opponent shots, or ≥ 4 consecutive possessions reaching final third | 0.4 | team, shots_last_5, opp_shots_last_5, xg_last_5 |
 | half_time / full_time | period end | 0.5 / 1.0 | score, xg_*, possession_*, wp_* , top 3 player ratings |
+
+`situation` on goals and big chances is the shot's `ShotAttributes.situation`, readable: "open play", "counter-attack", "direct free kick", "penalty" or "header from a corner" (a penalty's 0.76 xG from 11 m otherwise reads as a wonder chance). `score_before` is the score just before the goal, so copy can't present the new score as unchanged.
 
 **Fact formatting** (so the fact-checker can match strings): percentages as integers 0–100 with unit
 `%` (e.g. `wp_home_after = 71`), xG two decimals, speeds integers, distances one decimal, minutes as
@@ -241,8 +245,8 @@ target; the only keeper label is `low-probability finish` for an on-target shot 
 | `coach_free_kick_foul_by` | `<defending team>` player whose foul gave away the free kick | `"Bellweather"` | free kick after a foul |
 | `coach_move_start_minute` | Minute the attacking move started | `"65'"` | always (with a move) |
 | `coach_move_start_zone` | Where the move started, seen from `<defending team>`: `own third` (x < 35), `middle third`, `final third` (x ≥ 70) | `"middle third"` | start has x |
-| `coach_move_passes` | Completed passes from the start of the move to the shot | `4` | with a move |
-| `coach_move_seconds` | Seconds from the start of the move to the shot (s) | `46` | with a move |
+| `coach_move_passes` | Number of completed passes in the move (not its length in seconds) | `4` | with a move, and only if > 0 (a set piece is named by `coach_move_origin`; "needed 0 passes" read badly) |
+| `coach_move_seconds` | Length of the move in seconds (not a pass count) (s) | `46` | with a move |
 | `coach_nearest_defender_m` | Distance from the shooter to the nearest `<defending team>` player (m) | `6.1` | measured |
 | `coach_defenders_goal_side` | `<defending team>` outfield players goal-side of the ball at the shot | `2` | tracking frame |
 | `coach_chance_xg` | Expected goals of the chance conceded | `0.11` | always |

@@ -25,7 +25,7 @@ pack, and verified template copy replaces anything that cannot be repaired.
 **At a glance** (two clean runs of one full match on the final code, see [Trust and guardrails](#trust-and-guardrails)):
 30 moments, **59 / 60 insights verified** by the fact-checker and 1 template fallback (an 8 s Editor timeout);
 moment to insight in **3.6–4.3 s p50 / 5.6–7.6 s p95**; Foundry groundedness **4.30 / 5**, relevance 4.70.
-660 Python tests and 83 web tests run offline with no Azure credentials.
+689 Python tests and 90 web tests run offline with no Azure credentials.
 
 ---
 
@@ -153,6 +153,13 @@ exported to `schemas/`, and the web app's TypeScript types are generated from th
 
   ![Broadcast mode with the cue inspector open](docs/img/broadcast.jpg)
 
+- **Producer console** (`#/producer`). The broadcast desk a graphics team would actually use. An **editorial
+  gate**: switch on "Approval required" and every new insight and its cues wait in a queue until the producer
+  approves, edits or kills them; an edited insight is fact-checked again before it can go out, and every
+  decision is logged. **Graphics in plain language**: type "pressure bar for the last 10 minutes" and the Graphics
+  Producer agent builds one `OverlayCue` from a deterministic context pack. It picks fact keys and the values are
+  filled in from the pack, never written by the model, and the text is fact-checked. The result appears on a
+  **preview** monitor and goes to the **program** monitor only when the producer puts it on air.
 - **Fact trail.** Every number in an insight card is traced back to its fact (hover shows label · value · key),
   using the same matching rules as the server's fact-checker. A disclosure lists the facts the explanation relied
   on, plus its check status (Passed / Repaired / Fallback).
@@ -335,8 +342,8 @@ tests/         pytest, one folder per module
 `models.py`, appending to `docs/CONTRACT_CHANGES.md` and running `make schemas`, which regenerates the JSON Schema
 the web app's types are built from. Only additive optional fields have been added.
 
-**Tests.** 660 Python tests (`pytest`, offline, with `FULCRUM_BUS=memory FULCRUM_LLM=fake`; 658 pass and 2 are
-opt-in, skipped by default: the live Event Hubs test and the Bicep compile) and 83 web tests (`cd web && npm test`). They cover simulator
+**Tests.** 689 Python tests (`pytest`, offline, with `FULCRUM_BUS=memory FULCRUM_LLM=fake`; 687 pass and 2 are
+opt-in, skipped by default: the live Event Hubs test and the Bicep compile) and 90 web tests (`cd web && npm test`). They cover simulator
 determinism and calibration, win-probability sanity values, moment counts on the recorded matches, every
 PASSED / REPAIRED / FALLBACK path, timeouts, every template against the fact-checker, denylist and decimal-comma
 cases, the WebSocket protocol, cue scheduling, fact trail and the speech queue. With only `make install` (no
@@ -368,7 +375,7 @@ Fulcrum was built so the demo and the production shape differ only in configurat
   SignalR for WebSocket fan-out to many viewers.
 - **Auth and multi-tenancy.** Entra ID for operators, API keys or OAuth for partners, and per-tenant rosters,
   denylists, personas, languages and branding. The fact-checker's denylist and name rules are already data-driven.
-- **Cost.** One match uses about 258k tokens on mini models, under £1 in Foundry tokens. Translations, Player Lens
+- **Cost.** One match uses about 270k tokens on mini models (268k and 270k in the two eval runs), under £1 in Foundry tokens. Translations, Player Lens
   and Ask the studio are on demand and cached, so cost follows what viewers actually use, not personas ×
   languages. The weekend deployment, including test matches, is estimated at about £10–15 ([DEPLOY §5](docs/DEPLOY.md#5-cost-rough-payg-per-day-while-running)).
 - **Quality gates.** `eval_live.py` and `eval_foundry.py` can run in CI on recorded matches, with a prompt-version

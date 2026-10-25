@@ -41,8 +41,8 @@ from .translation import Translator
 log = logging.getLogger("fulcrum.api.hub")
 GROUPS = {TOPIC_EVENTS: "api-feed", TOPIC_STATE: "api", TOPIC_MOMENTS: "api", TOPIC_INSIGHTS: "api"}
 CONNECTION_QUEUE_MAX = 5_000
-# A catch-up snapshot translates only the newest insights on demand (one LLM call each); older ones use
-# cached translations or English, so switching language never stalls the live feed for long.
+# After a catch-up snapshot, only the newest insights are translated on demand (one LLM call each); older ones
+# keep cached translations or English. The snapshot itself never waits for an LLM call.
 HELLO_TRANSLATE_LATEST = 5
 
 
@@ -82,15 +82,14 @@ class Connection:
         await self.send("error", {"code": code, "message": message})
 
     async def hello(self, rm: MatchReadModel) -> None:
-        """Catch-up snapshot for the current prefs (API_CONTRACT §3 `hello`)."""
+        """Catch-up snapshot for the current prefs (API_CONTRACT §3 `hello`).
+
+        Sent straight away from cached translations (or English), so a non-English viewer sees the match at once;
+        the newest few insights are then translated in the background and re-sent as `insight` updates.
+        """
         items = list(rm.insights.values())
-        cutoff = len(items) - HELLO_TRANSLATE_LATEST
-        # Concurrently: the newest few may each need an LLM call (translation / player lens); the rest are cache-only.
         insights = await asyncio.gather(
-            *(
-                ps.personalise_insight(i, self.prefs, self.hub.translator, translate=n >= cutoff)
-                for n, i in enumerate(items)
-            )
+            *(ps.personalise_insight(i, self.prefs, self.hub.translator, translate=False) for i in items)
         )
         await self.send(
             "hello",
@@ -107,6 +106,25 @@ class Connection:
             },
             rm.match_id,
         )
+        latest = list(zip(items, insights, strict=True))[-HELLO_TRANSLATE_LATEST:]
+        if latest:
+            task = asyncio.create_task(self._fill_in(latest, self.prefs.model_copy()))
+            _BACKGROUND.add(task)
+            task.add_done_callback(_BACKGROUND.discard)
+
+    async def _fill_in(self, latest: list[tuple[Insight, Insight]], prefs: ViewerPrefs) -> None:
+        """Translate (or lens) the newest snapshot insights and queue each one that changed as an update."""
+
+        async def one(raw: Insight, sent: Insight) -> None:
+            try:
+                got = await ps.personalise_insight(raw, prefs, self.hub.translator)
+            except Exception:
+                log.exception("catch-up translation of %s failed", raw.insight_id)
+                return
+            if got != sent:
+                self.push("insight_ready", (prefs, got))
+
+        await asyncio.gather(*(one(raw, sent) for raw, sent in latest))
 
     async def sender(self) -> None:
         """Drain the queue, personalising each item for this viewer."""
@@ -142,6 +160,10 @@ class Connection:
             # Each arriving recap is a nudge to offer this viewer the best one we have.
             if rm is not None:
                 await self._offer_recap(rm)
+        elif kind == "insight_ready":  # a catch-up insight translated after the snapshot
+            prefs, insight = item
+            if prefs == self.prefs and insight.match_id == self.match_id:
+                await self.send("insight", dump(insight))
         elif kind == "recap_ready":  # the viewer's own persona + language recap, written in the background
             if (str(item.persona), item.language) == (str(self.prefs.persona), self.prefs.language):
                 self._recap_sent = self._recap_exact = True

@@ -166,7 +166,7 @@ Client → server (`ClientMessage`):
 Server → client (`ServerMessage`), `payload` is the JSON of the named model:
 | type | payload | when |
 |---|---|---|
-| `hello` | `{"match_id", "home": Team, "away": Team, "state": MatchState, "winprob": WinProbPoint[], "moments": Moment[], "insights": Insight[], "status", "period_start_clock_ms": {"1": 0, "2": <clock at H2 kick-off>}}` | on subscribe (catch-up snapshot) |
+| `hello` | `{"match_id", "home": Team, "away": Team, "state": MatchState, "winprob": WinProbPoint[], "moments": Moment[], "insights": Insight[], "status", "period_start_clock_ms": {"1": 0, "2": <clock at H2 kick-off>}}` | on subscribe (catch-up snapshot). Sent at once, never waiting for an LLM: insights use cached translations or English. The newest 5 are then translated (or lensed) in the background and re-sent as `insight` updates (same `moment_id`, replace the earlier copy) |
 | `event` | `MatchEvent` | every event (web may throttle rendering) |
 | `state` | `MatchState` | ≤ 1 Hz |
 | `moment` | `Moment` | when detected (before the insight is ready → UI can show "analysing…") |

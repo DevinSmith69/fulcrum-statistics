@@ -1,7 +1,7 @@
 // Run with `npm test` (node:test + type stripping; no browser needed).
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { emptyStage, offer, tick, EXIT_MS } from "../src/lib/cueStage.ts";
+import { emptyStage, mergeCueLog, offer, tick, EXIT_MS } from "../src/lib/cueStage.ts";
 import type { OverlayCue } from "../src/types/generated.ts";
 
 const cue = (id: string, anchor: OverlayCue["anchor"], priority: number, duration = 6000): OverlayCue => ({
@@ -43,4 +43,14 @@ test("leaving cues are cleaned up after the exit animation", () => {
   s = tick(s, 1000 + EXIT_MS + 1);
   assert.equal(s.leaving.length, 0);
   assert.equal(s.active.top_left, undefined);
+});
+
+test("inspector log: history + live, one entry per cue (live wins), oldest first", () => {
+  const a = { ...cue("a", "lower_third", 1), show_at_clock_ms: 2000 };
+  const b = { ...cue("b", "top_left", 1), show_at_clock_ms: 1000 };
+  const liveA = { ...a, headline: "live" };
+  const c = { ...cue("c", "top_left", 1), show_at_clock_ms: 3000 };
+  const log = mergeCueLog([a, b], [liveA, c]);
+  assert.deepEqual(log.map((x) => x.cue_id), ["b", "a", "c"]);
+  assert.equal(log[1].headline, "live");
 });

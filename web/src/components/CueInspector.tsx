@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { overlayCuesUrl } from "../lib/api";
+import { useEffect, useState } from "react";
+import { fetchOverlayCues, overlayCuesUrl } from "../lib/api";
+import { mergeCueLog } from "../lib/cueStage";
 import type { MatchFeed } from "../lib/useMatchFeed";
 import type { OverlayCue, ViewerPrefs } from "../types";
 
@@ -23,8 +24,22 @@ function JsonView({ cue }: { cue: OverlayCue }) {
 /** Raw OverlayCue stream — proof that the overlay is machine-readable for a broadcast graphics partner. */
 export function CueInspector({ feed, prefs, onClose }: { feed: MatchFeed; prefs: ViewerPrefs; onClose: () => void }) {
   const [open, setOpen] = useState<string | null>(null);
-  const cues = [...feed.cues].reverse();
+  const [history, setHistory] = useState<OverlayCue[]>([]);
   const url = feed.matchId ? overlayCuesUrl(feed.matchId, prefs) : "";
+  // Live messages only start when the viewer subscribes: fetch what was sent before, so a finished match isn't empty.
+  useEffect(() => {
+    setHistory([]);
+    if (!feed.matchId) return;
+    let live = true;
+    fetchOverlayCues(feed.matchId, prefs)
+      .then((got) => live && setHistory(got))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [url]); // url carries matchId + persona + language
+  const log = mergeCueLog(history, feed.cues);
+  const cues = [...log].reverse();
   const [copied, setCopied] = useState(false);
 
   return (
@@ -58,7 +73,7 @@ export function CueInspector({ feed, prefs, onClose }: { feed: MatchFeed; prefs:
         )}
         <div className="mt-3 flex gap-4 text-xs text-ink-400">
           <span>
-            <span className="font-display text-base font-semibold text-ink-50">{feed.cues.length}</span> cues received
+            <span className="font-display text-base font-semibold text-ink-50">{log.length}</span> cues
           </span>
           <span>
             persona <span className="text-ink-100">{prefs.persona}</span> · language <span className="text-ink-100">{prefs.language}</span>

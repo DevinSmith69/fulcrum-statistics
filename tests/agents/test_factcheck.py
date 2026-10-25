@@ -308,3 +308,81 @@ def test_copy_cut_off_mid_sentence_is_flagged(sheet):
         assert codes(check_variant(variant(body=ending), sheet)) == [], ending
     expl = Explanation(headline="H", why_it_matters="It shifts the game", tactical_tag="chaos", key_fact_keys=[])
     assert [i.code for i in check_explanation(expl, sheet)] == ["cut_off"]
+
+
+# --------------------------------------------------------------------------- rule 6: misread numbers
+
+
+def goal_sheet(before="2-0", after="3-0", **extra) -> FactSheet:
+    facts = [F("score_before", before), F("score_after", after), F("seconds", 3, label="Length of the move in seconds")]
+    facts += [F(k, v, label=label) for k, (v, label) in extra.items()]
+    return FactSheet.build(facts)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Loxley scores and the score stayed 3-0.",
+        "It remained at 3-0 after Loxley's goal.",
+        "Still 3-0, Loxley again.",
+        "3-0 stayed on the board.",
+    ],
+)
+def test_goal_copy_calling_the_new_score_unchanged_fails(text):
+    assert codes(goal_sheet().check_text(text, "body")) == ["misread_number"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Loxley makes it 3-0 and they still need to see it out.",  # "still" after the score is fine
+        "It stayed 2-0 until Loxley made it 3-0.",  # the old score did stay
+    ],
+)
+def test_goal_copy_with_a_real_change_passes(text):
+    assert goal_sheet().check_text(text, "body") == []
+
+
+def test_a_recap_may_say_a_score_stayed():
+    facts = [F("score_before", "0-0"), F("score_after", "1-0"), F("score_before", "1-0"), F("score_after", "2-0")]
+    assert FactSheet.build(facts).check_text("It stayed 2-0 to the end.", "summary") == []
+
+
+@pytest.mark.parametrize(
+    "text, ok",
+    [
+        ("Marsh Dock protect a 2-1 lead.", True),
+        ("Marsh Dock protect a 1-2 lead.", False),
+        ("A 1-2 lead now feels like a gut punch.", False),
+        ("A 1-1 lead", False),
+        ("They face a 1-2 deficit.", True),
+        ("They face a 2-1 deficit.", False),
+    ],
+)
+def test_a_lead_is_written_winner_first(text, ok):
+    issues = goal_sheet(before="1-1", after="2-1").check_text(text, "body")
+    assert codes(issues) == ([] if ok else ["misread_number"])
+
+
+@pytest.mark.parametrize(
+    "text, ok",
+    [
+        ("A 4-pass move.", True),
+        ("Only 4 completed passes, then the shot.", True),
+        ("A 3-pass corner move.", False),  # 3 is the move's length in seconds
+        ("After 3 completed passes.", False),
+        ("The tempo is 4.6 passes per minute.", True),  # 4.6 is a pass fact; never read as "6 passes"
+        ("Tolliver reaches 50 passes.", True),  # a pass number inside a string fact
+    ],
+)
+def test_pass_counts_must_be_pass_facts(text, ok):
+    sheet = goal_sheet(
+        coach_move_passes=(4, "Number of completed passes in the move"),
+        tempo_ppm=(4.6, "Passes per minute, last 5 minutes"),
+        milestone=("50 passes", "Milestone"),
+    )
+    assert codes(sheet.check_text(text, "body")) == ([] if ok else ["misread_number"])
+
+
+def test_misread_rules_are_english_only():
+    assert goal_sheet().check_text("El marcador se quedó 3-0 tras un 3-pass.", "body", language="es") == []

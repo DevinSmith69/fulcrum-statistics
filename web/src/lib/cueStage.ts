@@ -118,3 +118,14 @@ export function useCueStage(cues: OverlayCue[], clockMs: number, filter?: (c: Ov
 
   return stage;
 }
+
+/**
+ * The cue inspector's log: cues fetched from `/overlay-cues` (everything before the viewer arrived) plus the
+ * live ones, one entry per cue (the live copy wins), oldest first.
+ */
+export function mergeCueLog(history: OverlayCue[], live: OverlayCue[]): OverlayCue[] {
+  const key = (c: OverlayCue) => c.cue_id ?? `${c.insight_id}|${c.template}|${c.anchor}|${c.show_at_clock_ms}`;
+  const byKey = new Map<string, OverlayCue>();
+  for (const c of [...history, ...live]) byKey.set(key(c), c);
+  return [...byKey.values()].sort((a, b) => a.show_at_clock_ms - b.show_at_clock_ms);
+}

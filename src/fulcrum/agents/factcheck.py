@@ -16,6 +16,9 @@ A text fails if it contains:
    ignored, except for club nicknames that are ordinary words ("wolves").
 4. **banned language**: gambling words in English plus the copy's own language.
 5. **a length violation**: headline > 90, body > 300, commentary_line > 160 chars or > 25 words.
+6. **a misread number** (English copy): a pass count ("3-pass move", "1 completed pass") that is not the value
+   of a pass fact; "a 0-1 lead" (a lead is written winner-first, so the first number must be larger) or
+   "a 2-1 deficit"; and, on a single goal's copy, the new score called unchanged ("the score stayed 3-0").
 
 `check_insight_copy` additionally verifies the Persona Editor returned exactly the four variants required.
 """
@@ -36,6 +39,18 @@ NUMBER_RE = re.compile(r"\d+(?:[.,]\d+)?")
 # Thousands groups: "11,240" in any language; "11.240" only outside English (de/es/pt/fr style).
 THOUSANDS_COMMA_RE = re.compile(r"(?<![\d.,])[1-9]\d{0,2}(?:,\d{3})+(?![\d,]|\.\d)")
 THOUSANDS_DOT_RE = re.compile(r"(?<![\d.,])[1-9]\d{0,2}(?:\.\d{3})+(?![\d.]|,\d)")
+
+# Rule 6 (English). A scoreline is "3-0" / "3–0"; a pass count is "3-pass" / "3 passes" / "1 completed pass".
+SCORELINE = r"(\d+)\s*[-–]\s*(\d+)"
+PASS_COUNT_RE = re.compile(r"(?<![\w.,])(\d+)(?:-|\s+)(?:completed\s+|successful\s+)?pass(?:es)?\b", re.IGNORECASE)
+LEAD_RE = re.compile(rf"\b{SCORELINE}\s+(lead|advantage|deficit)\b", re.IGNORECASE)
+UNCHANGED = r"(?:stayed|stays|remained|remains|still|unchanged|held)"
+# "stayed 3-0", "still at 3-0", "the score remained 3-0"; after the score only a verb ("3-0 stayed"), since
+# "makes it 3-0 and they still need…" is fine.
+UNCHANGED_RE = re.compile(
+    rf"\b{UNCHANGED}\b(?:\W+\w+){{0,2}}?\W+{SCORELINE}|{SCORELINE}\W+(?:stayed|remained|was unchanged)\b",
+    re.IGNORECASE,
+)
 
 MAX_HEADLINE = 90
 MAX_BODY = 300
@@ -103,7 +118,7 @@ def base_language(language: str | None) -> str:
 class Issue:
     """One fact-check failure. `str(issue)` is the line fed back to the agent in the repair prompt."""
 
-    code: str  # unknown_number | unknown_fact_key | denylisted_name | foreign_name | banned_term | too_long | variants
+    code: str  # unknown_number | misread_number | unknown_fact_key | denylisted_name | foreign_name | banned_term | …
     where: str
     detail: str
 
@@ -143,6 +158,8 @@ class FactSheet:
     numbers: frozenset[Decimal]
     keys: frozenset[str]
     foreign_names: tuple[str, ...] = ()
+    pass_counts: frozenset[Decimal] = frozenset()  # values of pass facts: the only numbers "N passes" may use
+    new_score: str | None = None  # a single goal's score_after (normalised "3-0"): never "stayed" at it
     _foreign_re: re.Pattern[str] | None = field(default=None, repr=False, compare=False)
 
     @classmethod
@@ -158,12 +175,24 @@ class FactSheet:
         """Collect every number the copy may use from `facts`, the score and the moment minute."""
         numbers: set[Decimal] = set()
         keys: set[str] = set()
+        pass_counts: set[Decimal] = set()
+        befores: list[str] = []
+        afters: list[str] = []
 
         def add_tokens(text: str) -> None:
             numbers.update(d for t in numbers_in(text) if (d := to_decimal(t)) is not None)
 
         for fact in facts:
             keys.add(fact.key)
+            numeric = isinstance(fact.value, int | float) and not isinstance(fact.value, bool)
+            if numeric and "pass" in fact.label.lower():
+                pass_counts.add(abs(Decimal(str(fact.value))))
+            if isinstance(fact.value, str) and "pass" in fact.value.lower():
+                pass_counts.update(d for t in numbers_in(fact.value) if (d := to_decimal(t)) is not None)
+            if fact.key == "score_before":
+                befores.append(str(fact.value))
+            elif fact.key == "score_after":
+                afters.append(str(fact.value))
             add_tokens(fact.label)
             if isinstance(fact.value, str):
                 add_tokens(fact.value)
@@ -177,10 +206,14 @@ class FactSheet:
         for token in extra_numbers:
             add_tokens(token)
         names = tuple(foreign_names)
+        # Only one goal's facts (a recap may rightly say a score "stayed 3-0 until the end").
+        one_goal = len(befores) == 1 and len(afters) == 1 and befores != afters
         return cls(
             numbers=frozenset(numbers),
             keys=frozenset(keys),
             foreign_names=names,
+            pass_counts=frozenset(pass_counts),
+            new_score=_scoreline(afters[0]) if one_goal else None,
             _foreign_re=_word_pattern(names, ignore_case=True, hyphen_is_word=True),
         )
 
@@ -202,12 +235,40 @@ class FactSheet:
             if pattern is not None:
                 for m in pattern.finditer(text):
                     issues.append(Issue(code, where, f"'{m.group(0)}' is a {what}"))
+        if base_language(language) == "en":
+            issues += self._misread(text, where)
         for lang in dict.fromkeys(("en", base_language(language))):
             pattern = _BANNED_RE.get(lang)
             if pattern is not None:
                 for m in pattern.finditer(text):
                     issues.append(Issue("banned_term", where, f"banned betting/market term '{m.group(0)}'"))
         return issues
+
+    def _misread(self, text: str, where: str) -> list[Issue]:
+        """Rule 6: numbers that are in FACTS but used as the wrong thing (English copy only)."""
+        issues: list[Issue] = []
+        for m in PASS_COUNT_RE.finditer(text):
+            if (d := to_decimal(m.group(1))) is not None and d not in self.pass_counts:
+                detail = f"'{m.group(0)}': {m.group(1)} is not a pass count in FACTS"
+                issues.append(Issue("misread_number", where, detail))
+        for m in LEAD_RE.finditer(text):
+            a, b, word = int(m.group(1)), int(m.group(2)), m.group(3).lower()
+            if (word == "deficit" and a > b) or (word != "deficit" and a <= b):
+                detail = f"'{m.group(0)}': write a {word} with the leading side's goals first"
+                issues.append(Issue("misread_number", where, detail))
+        if self.new_score:
+            for m in UNCHANGED_RE.finditer(text):
+                nums = [g for g in m.groups() if g is not None]
+                if f"{nums[0]}-{nums[1]}" == self.new_score:
+                    detail = f"'{m.group(0)}': this goal made it {self.new_score}; it did not stay"
+                    issues.append(Issue("misread_number", where, detail))
+        return issues
+
+
+def _scoreline(text: str) -> str | None:
+    """'3 – 0' → '3-0'; None if `text` has no scoreline."""
+    m = re.search(SCORELINE, text)
+    return f"{m.group(1)}-{m.group(2)}" if m else None
 
 
 def context_sheet(ctx: MomentContext) -> FactSheet:
