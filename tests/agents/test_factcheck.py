@@ -386,3 +386,32 @@ def test_pass_counts_must_be_pass_facts(text, ok):
 
 def test_misread_rules_are_english_only():
     assert goal_sheet().check_text("El marcador se quedó 3-0 tras un 3-pass.", "body", language="es") == []
+
+
+@pytest.mark.parametrize(
+    "text, fixed",
+    [
+        ("Marsh Dock protect a 0-1 lead.", "Marsh Dock protect a 1-0 lead."),
+        ("a 1–2 lead!", "a 2–1 lead!"),
+        ("a 1 - 3 advantage", "a 3 - 1 advantage"),
+        ("They face a 2-1 deficit.", "They face a 1-2 deficit."),
+        ("A 2-1 lead and a 1-2 deficit.", "A 2-1 lead and a 1-2 deficit."),  # already right
+        ("a 1-1 lead", "a 1-1 lead"),  # not fixable: still flagged by rule 6
+    ],
+)
+def test_lead_order_is_fixed_deterministically(text, fixed):
+    from fulcrum.agents.factcheck import fix_lead_order
+
+    assert fix_lead_order(text) == fixed
+
+
+def test_fix_copy_touches_english_only():
+    from fulcrum.agents.factcheck import fix_copy
+
+    expl = Explanation(
+        headline="MDU hold a 0-1 lead", why_it_matters="A 0-1 lead at 70'.", tactical_tag="control", key_fact_keys=[]
+    )
+    en, es = variant(body="Protect the 1-2 lead."), variant(language="es", body="Una 1-2 lead.")
+    got_expl, (got_en, got_es) = fix_copy(expl, [en, es])
+    assert got_expl.headline == "MDU hold a 1-0 lead" and got_expl.why_it_matters == "A 1-0 lead at 70'."
+    assert got_en.body == "Protect the 2-1 lead." and got_es.body == "Una 1-2 lead."

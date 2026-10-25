@@ -14,7 +14,7 @@ export function ScoreBug({ feed }: { feed: MatchFeed }) {
   const s = feed.state;
   const clock = s ? matchClock(s.clock_ms, s.period, feed.periodStarts) : { main: "00:00", added: null };
   return (
-    <div className="flex items-stretch overflow-hidden rounded-md bg-ink-950/92 text-ink-50 ring-1 ring-white/10">
+    <div className="flex items-stretch overflow-hidden whitespace-nowrap rounded-md bg-ink-950/92 text-ink-50 ring-1 ring-white/10">
       <div className="flex items-center gap-2 px-3 py-1.5">
         <KitStripe team={feed.home} className="h-6 w-1" />
         <span className="font-display text-xl font-semibold">{feed.home?.short_name}</span>

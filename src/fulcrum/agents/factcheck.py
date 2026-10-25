@@ -265,6 +265,46 @@ class FactSheet:
         return issues
 
 
+def fix_lead_order(text: str) -> str:
+    """English copy: "a 0-1 lead" -> "a 1-0 lead", "a 2-1 deficit" -> "a 1-2 deficit" (same numbers, right way round).
+
+    The fact pack gives scores home-first ("Score (Harlow Cross first) 0-1"), so the model often writes an away
+    lead as "a 0-1 lead" and, told to quote numbers exactly, keeps doing it in the repair. The convention is
+    unambiguous, so it is fixed here instead of costing a repair or a fallback. A "lead" at level scores is not
+    fixable and is still flagged by rule 6.
+    """
+
+    def swap(m: re.Match[str]) -> str:
+        a, b, word = int(m.group(1)), int(m.group(2)), m.group(3).lower()
+        wrong = (word == "deficit" and a > b) or (word != "deficit" and a < b)
+        if not wrong:
+            return m.group(0)
+        sep, tail = m.string[m.end(1) : m.start(2)], m.string[m.end(2) : m.end(0)]
+        return f"{m.group(2)}{sep}{m.group(1)}{tail}"
+
+    return LEAD_RE.sub(swap, text)
+
+
+def fix_copy(
+    explanation: Explanation | None, variants: Sequence[InsightVariant]
+) -> tuple[Explanation | None, list[InsightVariant]]:
+    """`fix_lead_order` on every English text field of an explanation and its variants."""
+    if explanation is not None:
+        explanation = explanation.model_copy(
+            update={
+                "headline": fix_lead_order(explanation.headline),
+                "why_it_matters": fix_lead_order(explanation.why_it_matters),
+            }
+        )
+    fixed = [
+        v.model_copy(update={k: fix_lead_order(getattr(v, k)) for k in ("headline", "body", "commentary_line")})
+        if base_language(v.language) == "en"
+        else v
+        for v in variants
+    ]
+    return explanation, fixed
+
+
 def _scoreline(text: str) -> str | None:
     """'3 – 0' → '3-0'; None if `text` has no scoreline."""
     m = re.search(SCORELINE, text)

@@ -197,7 +197,10 @@ Runs on the Explanation and every variant (and every translation). Fail if any o
    of a pass fact (the engine's move length in seconds is not a pass count); a lead written loser-first
    ("a 0-1 lead") or a deficit winner-first; and, on one goal's copy, its new score called unchanged ("the score
    stayed 3-0": `score_before` and `score_after` are both in the facts). The Analyst, Editor and Reporter prompts
-   state the same rules, so a repair is rarely needed. Over the final eval's 30 moments the rule flags exactly the
+   state the same rules. A loser-first lead is not sent back for repair: the fact pack gives scores home-first, so
+   the model tends to keep "0-1 lead" even when asked again (5 fallbacks in one live match), and the right form uses
+   the same numbers, so `fix_lead_order` rewrites it ("a 0-1 lead" -> "a 1-0 lead") before the check; only a
+   "lead" at level scores is still flagged. Over the final eval's 30 moments the rule flags exactly the
    four "0-1 lead" / "1-2 lead" slips and nothing else.
 
 Outcome: pass → `PASSED`. Fail → one retry with the issues appended to the prompt ("Fix these issues: …") → pass →

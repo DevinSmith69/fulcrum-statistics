@@ -41,7 +41,7 @@ from fulcrum.telemetry import current_trace_id
 
 from .context import analyst_prompt, editor_prompt, review_prompt
 from .cues import build_cues
-from .factcheck import check_insight_copy, context_sheet, required_variants
+from .factcheck import check_insight_copy, context_sheet, fix_copy, required_variants
 from .prompts import FACT_REVIEWER, MOMENT_ANALYST, PERSONA_EDITOR, PromptSpec
 from .schemas import EditorOutput, MomentContext, ReviewOutput
 from .templates import fallback_explanation, fallback_variants
@@ -226,6 +226,7 @@ class FactCheckStep:
     name: str = "fact_checker"
 
     async def run(self, ctx: MomentContext) -> None:
+        ctx.explanation, ctx.variants = fix_copy(ctx.explanation, ctx.variants)  # "a 0-1 lead" -> "a 1-0 lead"
         result = check_insight_copy(
             ctx.explanation, ctx.variants, context_sheet(ctx), home_id=ctx.home.team_id, away_id=ctx.away.team_id
         )
