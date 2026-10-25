@@ -19,6 +19,7 @@ A text fails if it contains:
 6. **a misread number** (English copy): a pass count ("3-pass move", "1 completed pass") that is not the value
    of a pass fact; "a 0-1 lead" (a lead is written winner-first, so the first number must be larger) or
    "a 2-1 deficit"; and, on a single goal's copy, the new score called unchanged ("the score stayed 3-0").
+7. **a data key in the copy**: a snake_case token such as `control_index_home` (say it in words).
 
 `check_insight_copy` additionally verifies the Persona Editor returned exactly the four variants required.
 """
@@ -51,6 +52,9 @@ UNCHANGED_RE = re.compile(
     rf"\b{UNCHANGED}\b(?:\W+\w+){{0,2}}?\W+{SCORELINE}|{SCORELINE}\W+(?:stayed|remained|was unchanged)\b",
     re.IGNORECASE,
 )
+
+# Rule 7: a snake_case data key ("control_index_home", "chaos_index") never belongs in copy for viewers.
+FACT_KEY_RE = re.compile(r"(?<![\w-])[a-z][a-z0-9]*(?:_[a-z0-9]+)+(?![\w-])")
 
 MAX_HEADLINE = 90
 MAX_BODY = 300
@@ -226,6 +230,8 @@ class FactSheet:
             value = to_decimal(token)
             if value is None or value not in self.numbers:
                 issues.append(Issue("unknown_number", where, f"number '{token}' is not in FACTS"))
+        for m in FACT_KEY_RE.finditer(text):  # "control_index_home at 16" leaked into live copy
+            issues.append(Issue("fact_key_in_text", where, f"'{m.group(0)}' is a data key: say it in words"))
         for pattern, code, what in (
             (_COMPETITIONS_RE, "denylisted_name", "real competition"),
             (_CLUBS_RE, "denylisted_name", "real club"),

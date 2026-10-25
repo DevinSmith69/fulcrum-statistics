@@ -202,6 +202,7 @@ Runs on the Explanation and every variant (and every translation). Fail if any o
    the same numbers, so `fix_lead_order` rewrites it ("a 0-1 lead" -> "a 1-0 lead") before the check; only a
    "lead" at level scores is still flagged. Over the final eval's 30 moments the rule flags exactly the
    four "0-1 lead" / "1-2 lead" slips and nothing else.
+7. **Data key in the copy:** a snake_case token (`control_index_home`, `chaos_index`) leaked from FACTS; say it in words.
 
 Outcome: pass → `PASSED`. Fail → one retry with the issues appended to the prompt ("Fix these issues: …") → pass →
 `REPAIRED`. Still failing, an LLM error, or a timeout (> 8 s per call) → `FALLBACK` using templates. Every fallback is

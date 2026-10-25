@@ -415,3 +415,9 @@ def test_fix_copy_touches_english_only():
     got_expl, (got_en, got_es) = fix_copy(expl, [en, es])
     assert got_expl.headline == "MDU hold a 1-0 lead" and got_expl.why_it_matters == "A 1-0 lead at 70'."
     assert got_en.body == "Protect the 2-1 lead." and got_es.body == "Una 1-2 lead."
+
+
+def test_data_keys_in_copy_fail(sheet):
+    issues = sheet.check_text("Control index control_index_home moves, and chaos_index rises.", "body")
+    assert codes(issues) == ["fact_key_in_text", "fact_key_in_text"]
+    assert sheet.check_text("A well-timed counter-attack in open play.", "body") == []

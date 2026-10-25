@@ -25,7 +25,7 @@ pack, and verified template copy replaces anything that cannot be repaired.
 **At a glance** (two clean runs of one full match on the final code, see [Trust and guardrails](#trust-and-guardrails)):
 30 moments, **59 / 60 insights verified** by the fact-checker and 1 template fallback (an 8 s Editor timeout);
 moment to insight in **3.6–4.3 s p50 / 5.6–7.6 s p95**; Foundry groundedness **4.30 / 5**, relevance 4.70.
-696 Python tests and 90 web tests run offline with no Azure credentials.
+697 Python tests and 90 web tests run offline with no Azure credentials.
 
 ---
 
@@ -342,7 +342,7 @@ tests/         pytest, one folder per module
 `models.py`, appending to `docs/CONTRACT_CHANGES.md` and running `make schemas`, which regenerates the JSON Schema
 the web app's types are built from. Only additive optional fields have been added.
 
-**Tests.** 696 Python tests (`pytest`, offline, with `FULCRUM_BUS=memory FULCRUM_LLM=fake`; 694 pass and 2 are
+**Tests.** 697 Python tests (`pytest`, offline, with `FULCRUM_BUS=memory FULCRUM_LLM=fake`; 695 pass and 2 are
 opt-in, skipped by default: the live Event Hubs test and the Bicep compile) and 90 web tests (`cd web && npm test`). They cover simulator
 determinism and calibration, win-probability sanity values, moment counts on the recorded matches, every
 PASSED / REPAIRED / FALLBACK path, timeouts, every template against the fact-checker, denylist and decimal-comma
